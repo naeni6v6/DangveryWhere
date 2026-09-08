@@ -28,7 +28,3 @@ The name is a wordplay on **댕댕이 (dog)** + **Everywhere**.
 ## Tech Stack
 
 > 🚧 TBD
-
-## Author
-
-**NAYEON KIM** ([@naeni6v6](https://github.com/naeni6v6))
