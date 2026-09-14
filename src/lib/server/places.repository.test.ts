@@ -1,0 +1,34 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { env, query } = vi.hoisted(() => ({ env: { DATABASE_URL: '' }, query: vi.fn() }));
+vi.mock('$env/dynamic/private', () => ({ env }));
+vi.mock('./db', () => ({ database: () => query }));
+import { getPlaces } from './places.repository';
+
+beforeEach(() => {
+  env.DATABASE_URL = '';
+  query.mockReset();
+});
+
+describe('place data source', () => {
+  it('allows the UI preview without making a database request', async () => {
+    const places = await getPlaces();
+    expect(places).toHaveLength(81);
+    expect(places.every((place) => place.verifiedAt === null)).toBe(true);
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('uses database records when configured, including an intentionally empty result', async () => {
+    env.DATABASE_URL = 'configured-for-test';
+    query.mockResolvedValue([]);
+    expect(await getPlaces()).toEqual([]);
+    expect(query).toHaveBeenCalledOnce();
+  });
+  it('returns a safe service error instead of falling back to stale records on database failure', async () => {
+    env.DATABASE_URL = 'configured-for-test';
+    query.mockRejectedValue(new Error('private connection details'));
+    await expect(getPlaces()).rejects.toMatchObject({
+      status: 503,
+      body: { message: '장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' }
+    });
+  });
+});

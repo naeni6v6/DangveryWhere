@@ -1,0 +1,44 @@
+{
+  "name": "dangverywhere",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "deploy": "npm run build && wrangler deploy",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:check": "node --env-file=.env scripts/database.mjs check",
+    "db:setup": "node --env-file=.env scripts/database.mjs setup"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.43.0",
+    "@neondatabase/serverless": "^1.0.0"
+  },
+  "overrides": {
+    "cookie": "^0.7.2",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-cloudflare": "^7.2.9",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@types/navermaps": "^3.9.2",
+    "@types/node": "^24.0.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte": "^5.57.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "vitest": "^4.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

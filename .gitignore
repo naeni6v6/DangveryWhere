@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Keep local Markdown documents out of version control at any depth.
+*.[mM][dD]
+
+# SvelteKit / Cloudflare / local tooling
+node_modules/
+.svelte-kit/
+.wrangler/
+.env.*
+!.env.example
+.dev.vars*
+!.dev.vars.example
+playwright-report/
+test-results/
+local-artifacts/
