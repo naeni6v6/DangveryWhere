@@ -8,12 +8,15 @@
     places,
     selectedId,
     onselect,
-    appLayout = false
+    appLayout = false,
+    padding = { top: 212, right: 8, bottom: 310, left: 8 }
   }: {
     places: Place[];
     selectedId: string | null;
     onselect: (place: Place) => void;
     appLayout?: boolean;
+    /** Map viewport padding so overlaid panels do not hide the fitted area. */
+    padding?: { top: number; right: number; bottom: number; left: number };
   } = $props();
   let mapElement: HTMLDivElement;
   let ready = $state(false);
@@ -74,7 +77,7 @@
           scaleControl: true,
           logoControlOptions: { position: maps.Position.TOP_RIGHT },
           mapDataControlOptions: { position: maps.Position.TOP_RIGHT },
-          padding: { top: 212, right: 8, bottom: 310, left: 8 }
+          padding
         });
         idleListener = maps.Event.addListener(map, 'idle', () => mapRevision++);
         resize.observe(mapElement);

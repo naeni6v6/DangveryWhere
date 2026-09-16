@@ -9,10 +9,15 @@ export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
     error(503, '로그인 연결을 준비 중이에요.');
   const expected = cookies.get('dw_oauth_state');
   cookies.delete('dw_oauth_state', { path: '/auth' });
+  const storedReturn = cookies.get('dw_oauth_return') ?? '';
+  const returnTo = /^\/web(?:\/(?:explore|favorites|dog))?$/.test(storedReturn)
+    ? storedReturn
+    : '/';
+  cookies.delete('dw_oauth_return', { path: '/auth' });
   const state = url.searchParams.get('state');
   if (!expected || !state || expected !== state)
     error(400, '로그인 요청이 만료됐어요. 다시 시도해 주세요.');
-  if (url.searchParams.has('error')) redirect(303, '/?auth=cancelled');
+  if (url.searchParams.has('error')) redirect(303, `${returnTo}?auth=cancelled`);
   const code = url.searchParams.get('code');
   if (!code) error(400, '로그인 코드를 확인할 수 없어요.');
   const origin = new URL(env.APP_ORIGIN).origin;
@@ -43,5 +48,5 @@ export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
     await sql`INSERT INTO app_users (kakao_id) VALUES (${String(account.id)}) ON CONFLICT (kakao_id) DO UPDATE SET kakao_id = excluded.kakao_id RETURNING id`;
   // Kakao tokens and optional profile/email fields are not persisted.
   await issueSession(users[0].id as string, cookies, origin.startsWith('https:'));
-  redirect(303, '/');
+  redirect(303, returnTo);
 };
