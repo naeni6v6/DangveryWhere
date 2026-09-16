@@ -15,7 +15,12 @@ const sql = neon(process.env.DATABASE_URL);
 try {
   if (command === 'setup') {
     const queries = [];
-    for (const file of ['001_initial.sql', '002_places.sql']) {
+    for (const file of [
+      '001_initial.sql',
+      '002_places.sql',
+      '003_food_kind.sql',
+      '004_multiple_dogs.sql'
+    ]) {
       const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
       // These checked-in migrations contain no functions or semicolons in literals.
       const statements = source
@@ -31,15 +36,21 @@ try {
     );
     const rows = snapshot.map((place, order) => ({ ...place, order }));
     queries.push(sql`
-      INSERT INTO places (id, name, category, address, latitude, longitude, phone,
+      INSERT INTO places (id, name, category, food_kind, address, latitude, longitude, phone,
         description, policy, hours, source_url, imported_at, verified_at, source_weight, display_order)
-      SELECT id, name, category, address, latitude, longitude, phone, description,
+      SELECT id, name, category, "foodKind", address, latitude, longitude, phone, description,
         policy, hours, "sourceUrl", "importedAt", "verifiedAt", "sourceWeight", "order"
       FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS p(
-        id text, name text, category text, address text, latitude float8, longitude float8,
-        phone text, description text, policy text, hours text, "sourceUrl" text,
+        id text, name text, category text, "foodKind" text, address text, latitude float8,
+        longitude float8, phone text, description text, policy text, hours text, "sourceUrl" text,
         "importedAt" date, "verifiedAt" date, "sourceWeight" numeric, "order" integer)
       ON CONFLICT (id) DO NOTHING
+    `);
+    // 이미 들어 있던 행에는 위 INSERT 가 닿지 않으므로, 카페/식당 구분만 따로 맞춥니다.
+    queries.push(sql`
+      UPDATE places AS target SET food_kind = source."foodKind"
+      FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS source(id text, "foodKind" text)
+      WHERE target.id = source.id AND target.food_kind IS DISTINCT FROM source."foodKind"
     `);
     await sql.transaction(queries);
     console.log('Schema and initial Gangneung data are ready. Existing records were preserved.');

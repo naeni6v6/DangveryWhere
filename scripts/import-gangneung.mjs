@@ -15,6 +15,9 @@ const places = source.details
     id: `gw-${row.contentSeq}`,
     name: clean(row.title),
     category: categories[row.partName],
+    // 카페/식당 구분은 상세 페이지의 키워드 태그에만 있습니다.
+    // 이 스크립트 다음에 `node scripts/classify-food.mjs` 를 돌려 채워 주세요.
+    foodKind: null,
     address: clean(row.address),
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),

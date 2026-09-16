@@ -13,7 +13,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=120",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-126",
@@ -29,7 +30,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=126",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-130",
@@ -45,7 +47,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=130",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-133",
@@ -61,7 +64,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=133",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-135",
@@ -77,7 +81,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=135",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-362",
@@ -93,7 +98,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=362",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 10
+    "sourceWeight": 10,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-364",
@@ -109,7 +115,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=364",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-365",
@@ -125,7 +132,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=365",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-368",
@@ -141,7 +149,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=368",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 5
+    "sourceWeight": 5,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-369",
@@ -157,7 +166,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=369",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-370",
@@ -173,7 +183,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=370",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-371",
@@ -189,7 +200,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=371",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-375",
@@ -205,7 +217,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=375",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-377",
@@ -221,7 +234,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=377",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-379",
@@ -237,7 +251,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=379",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-396",
@@ -253,7 +268,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=396",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-510",
@@ -269,7 +285,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=510",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-524",
@@ -285,7 +302,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=524",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-541",
@@ -301,7 +319,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=541",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-592",
@@ -317,7 +336,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=592",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-595",
@@ -333,7 +353,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=595",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-600",
@@ -349,7 +370,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=600",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-606",
@@ -365,7 +387,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=606",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-640",
@@ -381,7 +404,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=640",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-651",
@@ -397,7 +421,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=651",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 15
+    "sourceWeight": 15,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-655",
@@ -413,7 +438,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=655",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-657",
@@ -429,7 +455,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=657",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-700",
@@ -445,7 +472,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=700",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-708",
@@ -461,7 +489,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=708",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "cafe"
   },
   {
     "id": "gw-709",
@@ -477,7 +506,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/food?contentSeq=709",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": "restaurant"
   },
   {
     "id": "gw-105",
@@ -493,7 +523,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=105",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-108",
@@ -509,7 +540,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=108",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-110",
@@ -525,7 +557,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=110",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 7
+    "sourceWeight": 7,
+    "foodKind": null
   },
   {
     "id": "gw-113",
@@ -541,7 +574,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=113",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 5
+    "sourceWeight": 5,
+    "foodKind": null
   },
   {
     "id": "gw-115",
@@ -557,7 +591,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=115",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-117",
@@ -573,7 +608,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=117",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-145",
@@ -589,7 +625,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=145",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-151",
@@ -605,7 +642,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=151",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-152",
@@ -621,7 +659,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=152",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-153",
@@ -637,7 +676,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=153",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-366",
@@ -653,7 +693,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=366",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-367",
@@ -669,7 +710,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=367",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 8
+    "sourceWeight": 8,
+    "foodKind": null
   },
   {
     "id": "gw-373",
@@ -685,7 +727,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=373",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-419",
@@ -701,7 +744,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=419",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 10
+    "sourceWeight": 10,
+    "foodKind": null
   },
   {
     "id": "gw-531",
@@ -717,7 +761,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=531",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 10
+    "sourceWeight": 10,
+    "foodKind": null
   },
   {
     "id": "gw-535",
@@ -733,7 +778,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=535",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 10
+    "sourceWeight": 10,
+    "foodKind": null
   },
   {
     "id": "gw-561",
@@ -749,7 +795,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=561",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 10
+    "sourceWeight": 10,
+    "foodKind": null
   },
   {
     "id": "gw-590",
@@ -765,7 +812,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=590",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-632",
@@ -781,7 +829,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=632",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-633",
@@ -797,7 +846,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/lodge?contentSeq=633",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-235",
@@ -813,7 +863,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=235",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-280",
@@ -829,7 +880,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=280",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 15
+    "sourceWeight": 15,
+    "foodKind": null
   },
   {
     "id": "gw-374",
@@ -845,7 +897,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=374",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-376",
@@ -861,7 +914,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=376",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-378",
@@ -877,7 +931,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=378",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-380",
@@ -893,7 +948,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=380",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-381",
@@ -909,7 +965,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=381",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-382",
@@ -925,7 +982,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=382",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-383",
@@ -941,7 +999,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=383",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-384",
@@ -957,7 +1016,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=384",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-385",
@@ -973,7 +1033,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=385",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-386",
@@ -989,7 +1050,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=386",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-387",
@@ -1005,7 +1067,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=387",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-388",
@@ -1021,7 +1084,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=388",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-389",
@@ -1037,7 +1101,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=389",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-390",
@@ -1053,7 +1118,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=390",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-391",
@@ -1069,7 +1135,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=391",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-392",
@@ -1085,7 +1152,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=392",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-393",
@@ -1101,7 +1169,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=393",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-394",
@@ -1117,7 +1186,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=394",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-395",
@@ -1133,7 +1203,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=395",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-397",
@@ -1149,7 +1220,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=397",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-398",
@@ -1165,7 +1237,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=398",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-400",
@@ -1181,7 +1254,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=400",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-401",
@@ -1197,7 +1271,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=401",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-517",
@@ -1213,7 +1288,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=517",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": 40
+    "sourceWeight": 40,
+    "foodKind": null
   },
   {
     "id": "gw-714",
@@ -1229,7 +1305,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/tour?contentSeq=714",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-363",
@@ -1245,7 +1322,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/experience?contentSeq=363",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-399",
@@ -1261,7 +1339,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/experience?contentSeq=399",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-624",
@@ -1277,7 +1356,8 @@
     "sourceUrl": "https://www.pettravel.kr/petapi/data/experience?contentSeq=624",
     "importedAt": "2026-09-10",
     "verifiedAt": null,
-    "sourceWeight": null
+    "sourceWeight": null,
+    "foodKind": null
   },
   {
     "id": "gw-861",
@@ -1292,6 +1372,211 @@
     "hours": "연중가능",
     "sourceUrl": "https://www.pettravel.kr/petapi/data/experience?contentSeq=861",
     "importedAt": "2026-09-10",
+    "verifiedAt": null,
+    "sourceWeight": null,
+    "foodKind": null
+  },
+  {
+    "id": "gw-h-353",
+    "name": "강릉동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 옥가로 18",
+    "latitude": 37.7578600896052,
+    "longitude": 128.899428721673,
+    "phone": "0507-1315-7584",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-352",
+    "name": "아이즈동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 옥가로 22",
+    "latitude": 37.7582074036615,
+    "longitude": 128.899470964112,
+    "phone": "033-646-8841",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-351",
+    "name": "베스트동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 경강로 2129",
+    "latitude": 37.756957561466,
+    "longitude": 128.899164527041,
+    "phone": "033-922-7582",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-350",
+    "name": "행복한종합동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 경강로 2142",
+    "latitude": 37.7572913191258,
+    "longitude": 128.90029329622,
+    "phone": "033-648-7533",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-349",
+    "name": "애견종합동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 경강로 2130",
+    "latitude": 37.7565503480437,
+    "longitude": 128.899418028989,
+    "phone": "033-647-8575",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-348",
+    "name": "중앙동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 주문진읍 연주로 308-1",
+    "latitude": 37.8799359087494,
+    "longitude": 128.826784436765,
+    "phone": "010-3946-7582",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-347",
+    "name": "위드동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 선수촌로63번길 18-7 1층",
+    "latitude": 37.7570476582585,
+    "longitude": 128.868339494495,
+    "phone": "033-645-5575",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-346",
+    "name": "주주동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 성덕포남로 105",
+    "latitude": 37.7629914050229,
+    "longitude": 128.914652345266,
+    "phone": "033-652-0075",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-54",
+    "name": "나은동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 교동광장로100번길 8-12 나은동물병원",
+    "latitude": 37.7651683632747,
+    "longitude": 128.87723400752,
+    "phone": "033-642-7587",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-53",
+    "name": "24시보듬동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 경강로 2070",
+    "latitude": 37.7532047634636,
+    "longitude": 128.894037261898,
+    "phone": "033-655-7975",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-52",
+    "name": "하슬라동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 하슬라로 131",
+    "latitude": 37.7617924691466,
+    "longitude": 128.873316602993,
+    "phone": "033-645-7585",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
+    "verifiedAt": null,
+    "sourceWeight": null
+  },
+  {
+    "id": "gw-h-51",
+    "name": "도그빌동물병원",
+    "category": "hospital",
+    "foodKind": null,
+    "address": "강원 강릉시 명륜로 23-1 도그빌동물병원",
+    "latitude": 37.7621384001073,
+    "longitude": 128.895942466209,
+    "phone": "033-645-2289",
+    "description": "",
+    "policy": "",
+    "hours": "",
+    "sourceUrl": "https://www.pettravel.kr/petapi/data/hospital",
+    "importedAt": "2026-09-16",
     "verifiedAt": null,
     "sourceWeight": null
   }

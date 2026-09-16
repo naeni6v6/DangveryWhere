@@ -11,9 +11,10 @@ export async function getPlaces(): Promise<Place[]> {
   try {
     const sql = database();
     return (await sql`
-      SELECT id, name, category, address, latitude, longitude, phone, description,
-        policy, hours, source_url AS "sourceUrl", imported_at::text AS "importedAt",
-        verified_at::text AS "verifiedAt", source_weight::float8 AS "sourceWeight"
+      SELECT id, name, category, food_kind AS "foodKind", address, latitude, longitude,
+        phone, description, policy, hours, source_url AS "sourceUrl",
+        imported_at::text AS "importedAt", verified_at::text AS "verifiedAt",
+        source_weight::float8 AS "sourceWeight"
       FROM places ORDER BY display_order, id
     `) as Place[];
   } catch {
