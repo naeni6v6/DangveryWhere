@@ -14,7 +14,8 @@
     onselect: () => void;
     onsave: () => void;
   } = $props();
-  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles };
+  // hospital 은 웹(PC) 전용 분류라 이 화면에는 오지 않지만, 타입을 채워 둡니다.
+  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles, hospital: MapPin };
   const Icon = $derived(icons[place.category]);
   const area = $derived(
     place.address

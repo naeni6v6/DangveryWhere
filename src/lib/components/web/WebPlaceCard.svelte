@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Coffee, House, Trees, Sparkles, Heart, MapPin, ArrowUpRight } from '@lucide/svelte';
-  import { categoryNames, type Place } from '$lib/domain/place';
+  import { Heart, MapPin, ArrowUpRight } from '@lucide/svelte';
+  import { placeArea, placeTheme, shortAddress, themeNames, type Place } from '$lib/domain/place';
+  import ThemeIcon from './ThemeIcon.svelte';
   let {
     place,
     selected = false,
@@ -14,31 +15,34 @@
     onselect: () => void;
     onsave: () => void;
   } = $props();
-  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles };
-  const Icon = $derived(icons[place.category]);
+  const theme = $derived(placeTheme(place));
+  // 동물병원에는 동반 규정이 없어, 카드에 '동반 규정 확인'을 띄우면 거짓말이 됩니다.
+  const isHospital = $derived(place.category === 'hospital');
+  // 여러 지역을 함께 볼 수 있으니 시군구까지 붙여 보여 줍니다.
   const area = $derived(
-    place.address
-      .replace(/^강원(?:특별자치도|도)?\s*/, '')
-      .replace(/^강릉시\s*/, '')
-      .split(' ')
-      .slice(0, 2)
-      .join(' ')
+    [placeArea(place).city, ...shortAddress(place).split(' ').slice(0, 2)].filter(Boolean).join(' ')
   );
 </script>
 
 <article class="web-card" class:chosen={selected} data-id={place.id}>
-  <button class="card-main" onclick={onselect} aria-label={`${place.name} 동반 규정 보기`}>
-    <span class="card-icon {place.category}" aria-hidden="true"
-      ><Icon size={28} strokeWidth={1.6} /></span
+  <button
+    class="card-main"
+    onclick={onselect}
+    aria-label={`${place.name} ${isHospital ? '정보 보기' : '동반 규정 보기'}`}
+  >
+    <span class="card-icon" aria-hidden="true"
+      ><ThemeIcon {theme} size={28} strokeWidth={1.4} /></span
     >
     <span class="card-copy">
-      <span class="card-eyebrow">{categoryNames[place.category]}</span>
+      <span class="card-eyebrow">{themeNames[theme]}</span>
       <strong>{place.name}</strong>
       <span class="card-area"><MapPin size={14} />{area}</span>
       <span class="card-pill" class:weight={place.sourceWeight !== null}
-        >{place.sourceWeight
-          ? `원본 제한 체중 ${place.sourceWeight}kg`
-          : '동반 규정 확인'}<ArrowUpRight size={13} /></span
+        >{isHospital
+          ? '전화·길찾기'
+          : place.sourceWeight
+            ? `원본 제한 체중 ${place.sourceWeight}kg`
+            : '동반 규정 확인'}<ArrowUpRight size={13} /></span
       >
     </span>
   </button>
@@ -80,31 +84,22 @@
     padding: 18px 54px 18px 14px;
     cursor: pointer;
   }
+  /* 미니멀 라인형 — 옅은 원 안에 가는 선 아이콘.
+     색을 채우지 않아 목록이 길어져도 시끄럽지 않고, 장소 이름이 먼저 읽힙니다. */
   .card-icon {
-    width: 66px;
-    height: 66px;
+    width: 62px;
+    height: 62px;
     flex-shrink: 0;
-    border-radius: 18px;
+    border-radius: 50%;
     display: grid;
     place-items: center;
     background: var(--sand);
-    color: var(--brown-warm);
+    color: var(--ink);
   }
-  .card-icon.food {
-    background: #f7e5e0;
-    color: #a34a4a;
-  }
-  .card-icon.stay {
-    background: #f1e6dc;
-    color: #8a5a3c;
-  }
-  .card-icon.outdoor {
-    background: #e9eddf;
-    color: #6f7f5b;
-  }
-  .card-icon.activity {
-    background: #f6ecd9;
-    color: #a4783c;
+  .web-card:hover .card-icon,
+  .web-card.chosen .card-icon {
+    background: var(--brand-soft);
+    color: var(--brand-deep);
   }
   .card-copy {
     display: flex;
@@ -134,24 +129,34 @@
     font-size: 14px;
     color: var(--muted);
   }
+  /* 채우지 않은 라인 알약. 카드 안에서 버튼처럼 보이되 색으로 튀지 않게. */
   .card-pill {
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    margin-top: 5px;
+    margin-top: 7px;
     font-size: 13px;
-    color: var(--brand);
-    background: #fff;
-    border: 1px solid #efd6d9;
-    border-radius: 8px;
-    padding: 5px 10px;
+    color: var(--brown-warm);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 14px;
     white-space: nowrap;
+    transition:
+      border-color 0.16s,
+      color 0.16s;
   }
-  .card-pill.weight {
-    background: var(--brand);
+  .web-card:hover .card-pill,
+  .web-card.chosen .card-pill {
     border-color: var(--brand);
-    color: #fff;
+    color: var(--brand);
+  }
+  /* 제한 체중이 적혀 있는 곳은 한 번 더 눈에 들어와야 해서 선을 진하게 둡니다. */
+  .card-pill.weight {
+    border-color: var(--brand);
+    color: var(--brand);
+    font-weight: 600;
   }
   .card-save {
     position: absolute;

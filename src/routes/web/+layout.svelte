@@ -16,6 +16,7 @@
     MapPin,
     ArrowUpRight
   } from '@lucide/svelte';
+  import { areaLabel } from '$lib/domain/place';
   import { WebStore, setWebStore } from '$lib/web/store.svelte';
   import WebLoginDialog from '$lib/components/web/WebLoginDialog.svelte';
   import type { LayoutData } from './$types';
@@ -27,6 +28,12 @@
   let infoDialog: HTMLDialogElement;
   store.requestLogin = () => loginDialog?.open();
 
+  const hospitalCount = $derived(
+    data.places.filter((place) => place.category === 'hospital').length
+  );
+  const companionCount = $derived(data.places.length - hospitalCount);
+  // 다루는 지역을 문구에 박아 두지 않고 데이터에서 끌어옵니다. 지역이 늘어나면 표시도 따라와요.
+  const area = $derived(areaLabel(data.places));
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   const isLanding = $derived(path === '/web');
   const nav = [
@@ -84,11 +91,11 @@
             <strong>댕브리웨어</strong>
             <span>DangveryWhere · 반려견 동반 지도</span>
           </a>
-          <span class="city-badge"><MapPin size={15} />강원 · 강릉</span>
+          {#if area}<span class="city-badge"><MapPin size={15} />{area}</span>{/if}
           <form class="header-search" role="search" onsubmit={submitSearch}>
             <Search size={21} /><input
               aria-label="장소 검색"
-              placeholder="강릉에서 어디로 갈까요? 장소명이나 동네를 검색해 보세요"
+              placeholder="어디로 갈까요? 장소명이나 동네를 검색해 보세요"
               bind:value={store.query}
             />{#if store.query}<button
                 type="button"
@@ -130,13 +137,13 @@
     <div class="dialog-icon"><Info size={29} /></div>
     <h2 id="web-info-title">어떤 정보를 보여주나요?</h2>
     <p class="dialog-description">
-      강원 반려동물 동반관광 공공데이터에서<br />강릉의 동반 장소 {data.places.length}건을
+      강원 반려동물 동반관광 공공데이터에서<br />{area} 동반 장소 {companionCount}건과 동물병원 {hospitalCount}곳을
       가져왔어요.
     </p>
     <div class="info-copy">
       <p>
-        수집일은 2026년 9월 10일이에요. 개별 규정의 최근 확인일은 제공되지 않아, 방문 전 시설에
-        다시 확인하는 것이 좋아요.
+        동반 장소는 2026년 9월 10일, 동물병원은 9월 16일에 받아 왔어요. 개별 규정의 최근 확인일은
+        제공되지 않아, 방문 전 시설에 다시 확인하는 것이 좋아요.
       </p>
       <p>
         ‘우리 강아지’에서 체중을 비교할 수 있지만, 제한 체중만으로 입장을 보장하지 않아요. 준비물과
@@ -159,7 +166,8 @@
   .web-app {
     display: flex;
     width: 100%;
-    height: 100dvh;
+    /* UI 배율(--ui-zoom)만큼 확대되므로 화면 높이는 배율로 나눠 줍니다. */
+    height: calc(100dvh / var(--ui-zoom, 1));
     min-height: 640px;
     background: var(--cream);
     overflow: hidden;
@@ -186,9 +194,19 @@
     align-items: center;
     gap: 8px;
     padding: 18px 10px 20px;
-    background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 55%, var(--brown-deep) 100%);
+    /* 예전에는 밝은 브라운 → 진한 갈색까지 명도 차이가 커서 띠가 눈에 보였어요.
+       같은 색 안에서 아주 조금만 어두워지게 두면 면이 평평하게 읽힙니다. */
+    background: linear-gradient(180deg, #9d6144 0%, #8e5439 100%);
     color: #f6e6dc;
     overflow-y: auto;
+    /* 옆 화면 위로 얕게 드리우는 그림자. 진한 한 겹 대신 옅은 세 겹을 포개
+       경계는 또렷하고 번짐은 부드럽게 — 색이 아니라 깊이로 구분되게 했습니다. */
+    position: relative;
+    z-index: 2;
+    box-shadow:
+      1px 0 0 #4a34280f,
+      4px 0 12px #4a342812,
+      16px 0 36px #4a34280f;
   }
   .rail-brand {
     display: grid;

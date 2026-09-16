@@ -5,53 +5,62 @@
     Map,
     ArrowRight,
     ArrowUpRight,
-    Coffee,
-    House,
-    Trees,
-    Sparkles,
     Scale,
     TriangleAlert,
     LogIn
   } from '@lucide/svelte';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
+  import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
   import {
-    categoryNames,
+    placeArea,
+    placeTheme,
     policyLines,
+    shortAddress,
     profileNotice,
-    type Category,
-    type Place
+    themeNames,
+    type Place,
+    type ThemeFilter
   } from '$lib/domain/place';
+  import { josa } from '$lib/domain/korean';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const store = getWebStore();
   let selected = $state<Place | null>(null);
-  let category = $state<Category>('all');
+  let category = $state<ThemeFilter>('all');
 
-  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles };
   const byId = $derived(new globalThis.Map(data.places.map((place) => [place.id, place])));
   // 최근에 찜한 순서대로 보여줍니다.
   const saved = $derived(
     store.savedIds.map((id) => byId.get(id)).filter((place): place is Place => Boolean(place))
   );
   const shown = $derived(
-    category === 'all' ? saved : saved.filter((place) => place.category === category)
+    category === 'all' ? saved : saved.filter((place) => placeTheme(place) === category)
   );
+  // 찜한 곳이 하나도 없는 분류는 탭에서 빼, 빈 탭이 줄줄이 늘어서지 않게 합니다.
   const tabs = $derived(
-    (['all', 'food', 'stay', 'outdoor', 'activity'] as Category[]).map((id) => ({
-      id,
-      label: categoryNames[id],
-      count: id === 'all' ? saved.length : saved.filter((place) => place.category === id).length
-    }))
+    (['all', 'cafe', 'restaurant', 'stay', 'outdoor', 'activity', 'hospital'] as ThemeFilter[])
+      .map((id) => ({
+        id,
+        label: themeNames[id],
+        count: id === 'all' ? saved.length : saved.filter((place) => placeTheme(place) === id).length
+      }))
+      .filter((tab) => tab.id === 'all' || tab.count > 0)
   );
   const restrictedCount = $derived(
     store.dog
       ? saved.filter((place) => profileNotice(place, store.dog!).kind === 'restricted').length
       : 0
   );
-  const shortAddress = (address: string) =>
-    address.replace(/^강원(?:특별자치도|도)?\s*/, '').replace(/^강릉시\s*/, '');
+  // 시도만 떼고 시군구는 남겨 둡니다. 여러 지역이 섞이면 어디인지 보여야 하니까요.
+  const cityAddress = (place: Place) =>
+    [placeArea(place).city, shortAddress(place)].filter(Boolean).join(' ');
+
+  // 마지막 한 곳의 찜을 풀면 그 탭이 사라지므로, 빈 화면에 갇히지 않게 전체로 돌려놓습니다.
+  $effect(() => {
+    if (!tabs.some((tab) => tab.id === category)) category = 'all';
+  });
 </script>
 
 <svelte:head>
@@ -64,10 +73,12 @@
     <header class="page-head">
       <div>
         <span class="page-eyebrow"><Heart size={16} fill="currentColor" />MY FAVORITES</span>
-        <h1>찜한 장소</h1>
-        <p>가고 싶은 곳을 모아두고, 떠나기 전에 동반 규정을 다시 확인하세요.</p>
+        <h1>
+          {#if store.dog}{store.dog.name}{josa(store.dog.name, '와/과')} 가고 싶은 곳{:else}찜한
+            장소{/if}
+        </h1>
+        <p>모아둔 곳을 떠나기 전에 다시 확인하세요. 동반 규정은 언제든 바뀔 수 있어요.</p>
       </div>
-      <a class="primary-button" href="/web/explore"><Map size={19} />지도에서 더 찾기</a>
     </header>
 
     {#if !store.loggedIn}
@@ -99,7 +110,7 @@
         </div>
         <div class="summary-item" class:warn={restrictedCount > 0}>
           {#if store.dog}<strong>{restrictedCount}</strong><span
-              >{store.dog.name} 기준 제한 안내</span
+              >{store.dog.name} 조건 제한 안내</span
             >{:else}<a href="/web/dog">우리 강아지를 등록하면<br />제한 안내를 볼 수 있어요</a
             >{/if}
         </div>
@@ -117,18 +128,18 @@
       {#if shown.length}
         <div class="fav-grid">
           {#each shown as place (place.id)}
-            {@const Icon = icons[place.category]}
+            {@const theme = placeTheme(place)}
             {@const notice = store.dog ? profileNotice(place, store.dog) : null}
             <article class="fav-card" class:chosen={selected?.id === place.id}>
               <button class="fav-main" onclick={() => (selected = place)}>
                 <div class="fav-top">
-                  <span class="fav-icon {place.category}"><Icon size={24} strokeWidth={1.6} /></span>
+                  <span class="fav-icon"><ThemeIcon {theme} size={25} strokeWidth={1.4} /></span>
                   <div>
-                    <small>{categoryNames[place.category]}</small>
+                    <small>{themeNames[theme]}</small>
                     <strong>{place.name}</strong>
                   </div>
                 </div>
-                <span class="fav-address"><MapPin size={14} />{shortAddress(place.address)}</span>
+                <span class="fav-address"><MapPin size={14} />{cityAddress(place)}</span>
                 <p class="fav-policy">
                   {policyLines(place.policy)[0] ?? '상세 규정이 부족해요. 방문 전 문의해 주세요.'}
                 </p>
@@ -375,27 +386,21 @@
     letter-spacing: -0.6px;
     color: var(--ink);
   }
+  /* 가게 찾기 목록과 같은 미니멀 라인형으로 맞춥니다. */
   .fav-icon {
     display: grid;
     place-items: center;
     width: 56px;
     height: 56px;
     flex-shrink: 0;
-    border-radius: 17px;
+    border-radius: 50%;
     background: var(--sand);
-    color: var(--brown-warm);
+    color: var(--ink);
   }
-  .fav-icon.food {
-    background: #f7e5e0;
-    color: #a34a4a;
-  }
-  .fav-icon.outdoor {
-    background: #e9eddf;
-    color: #6f7f5b;
-  }
-  .fav-icon.activity {
-    background: #f6ecd9;
-    color: #a4783c;
+  .fav-card:hover .fav-icon,
+  .fav-card.chosen .fav-icon {
+    background: var(--brand-soft);
+    color: var(--brand-deep);
   }
   .fav-address {
     display: flex;

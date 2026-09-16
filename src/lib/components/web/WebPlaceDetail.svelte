@@ -9,14 +9,12 @@
     Clock3,
     PawPrint,
     Info,
-    ExternalLink,
-    Coffee,
-    House,
-    Trees,
-    Sparkles
+    ExternalLink
   } from '@lucide/svelte';
   import {
-    categoryNames,
+    placeArea,
+    placeTheme,
+    themeNames,
     policyLines,
     profileNotice,
     type Place,
@@ -24,6 +22,7 @@
   } from '$lib/domain/place';
   // 장소 대표 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
+  import ThemeIcon from './ThemeIcon.svelte';
   let {
     place,
     dog,
@@ -37,8 +36,11 @@
     onclose: () => void;
     onsave: () => void;
   } = $props();
-  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles };
-  const Icon = $derived(icons[place.category]);
+  const theme = $derived(placeTheme(place));
+  // 동물병원은 '동반 장소'가 아니라 응급·진료용이라 안내 문구를 따로 씁니다.
+  const isHospital = $derived(place.category === 'hospital');
+  // 지역명은 이 장소의 주소에서 그대로 가져옵니다.
+  const area = $derived(placeArea(place).city);
   const lines = $derived(policyLines(place.policy));
   const notice = $derived(dog ? profileNotice(place, dog) : null);
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
@@ -87,10 +89,10 @@
       >
     </div>
     {#if !hasPhoto}<div class="cover-art" aria-hidden="true">
-        <Icon size={30} strokeWidth={1.4} />
+        <ThemeIcon {theme} size={32} strokeWidth={1.4} />
       </div>{/if}
     <div class="cover-text">
-      <span class="cover-eyebrow">{categoryNames[place.category]} · 강릉</span>
+      <span class="cover-eyebrow">{themeNames[theme]}{area ? " · " + area : ""}</span>
       <h2>{place.name}</h2>
       <p class="cover-address"><MapPin size={15} />{place.address}</p>
     </div>
@@ -101,10 +103,13 @@
     <div class="detail-body">
       <div class="policy-heading">
         <PawPrint size={19} />
-        <h3>함께 가기 전에</h3>
-        <span>동반 규정</span>
+        <h3>{isHospital ? '진료 전에' : '함께 가기 전에'}</h3>
+        <span>{isHospital ? '병원 정보' : '동반 규정'}</span>
       </div>
-      {#if notice}<div class="profile-notice" class:restricted={notice.kind === 'restricted'}>
+      {#if notice && !isHospital}<div
+          class="profile-notice"
+          class:restricted={notice.kind === 'restricted'}
+        >
           <strong>{dog?.name} · {notice.label}</strong>
           <p>{notice.detail}</p>
         </div>{/if}
@@ -113,15 +118,20 @@
             <span class="policy-number">{String(i + 1).padStart(2, '0')}</span>
             <p>{line}</p>
           </div>{/each}
+        <!-- 원본이 동물병원에는 진료시간·진료과목을 주지 않습니다. 없는 걸 있는 척하지 않습니다. -->
         {#if !lines.length}<p class="policy-empty">
-            상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.
+            {isHospital
+              ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
+              : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
           </p>{/if}
       </div>
       <div class="verification">
         <Info size={16} />
         <p>
           공공데이터에 등록된 안내예요.<br /><strong
-            >최근 운영 규정은 방문 전에 확인해 주세요.</strong
+            >{isHospital
+              ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
+              : '최근 운영 규정은 방문 전에 확인해 주세요.'}</strong
           >
         </p>
       </div>

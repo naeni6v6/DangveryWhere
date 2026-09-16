@@ -1,21 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/state';
-  import {
-    Map,
-    Search,
-    ArrowUpRight,
-    SlidersHorizontal,
-    Coffee,
-    House,
-    Trees,
-    Sparkles,
-    RotateCcw
-  } from '@lucide/svelte';
+  import { Map, Search, ArrowUpRight, SlidersHorizontal, RotateCcw } from '@lucide/svelte';
   import MapView from '$lib/components/MapView.svelte';
   import WebPlaceCard from '$lib/components/web/WebPlaceCard.svelte';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
-  import { categoryNames, type Category, type Place } from '$lib/domain/place';
+  import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
+  import {
+    areaLabel,
+    themeNames,
+    type Theme,
+    type ThemeFilter,
+    type Place
+  } from '$lib/domain/place';
+  import { josa } from '$lib/domain/korean';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
 
@@ -26,14 +24,29 @@
   let offline = $state(false);
   let listElement: HTMLDivElement;
 
-  const categories = [
-    { id: 'all', label: '전체', icon: Map },
-    { id: 'food', label: '카페·음식점', icon: Coffee },
-    { id: 'stay', label: '숙소', icon: House },
-    { id: 'outdoor', label: '관광·산책', icon: Trees },
-    { id: 'activity', label: '체험', icon: Sparkles }
-  ];
+  // 원본 API 는 식음료를 한 묶음으로 주지만, 카페와 식당은 찾는 목적이 달라 나눠 놨습니다.
+  const themes: Theme[] = ['cafe', 'restaurant', 'stay', 'outdoor', 'activity', 'hospital'];
   const filtered = $derived(store.filter(data.places));
+  // 지역명은 문구에 박아 두지 않고 지금 보고 있는 목록에서 끌어옵니다.
+  const area = $derived(areaLabel(filtered.length ? filtered : data.places));
+  const areaText = (suffix: string) => (area ? `${area} ${suffix}` : suffix);
+  // 동물병원은 동반 장소가 아니라서, 지도에 섞여 있으면 문구를 그에 맞게 바꿉니다.
+  const hospitalsShown = $derived(filtered.filter((place) => place.category === 'hospital').length);
+  const mapCaption = $derived(
+    hospitalsShown === 0
+      ? '반려견 동반 정보가 있는 장소'
+      : hospitalsShown === filtered.length
+        ? areaText('동물병원')
+        : '동반 장소와 동물병원'
+  );
+  // 분류마다 받아 온 날짜가 달라, 지금 보고 있는 목록의 가장 최근 수집일을 보여 줍니다.
+  const collectedAt = $derived(
+    (filtered.length ? filtered : data.places)
+      .map((place) => place.importedAt)
+      .sort()
+      .at(-1)
+      ?.replaceAll('-', '.') ?? ''
+  );
 
   // Keep the list in sync when a marker on the map is picked.
   $effect(() => {
@@ -47,8 +60,8 @@
     // 메인·찜한 장소 페이지에서 ?category= / ?place= 로 넘어올 수 있습니다.
     const params = page.url.searchParams;
     const requestedCategory = params.get('category');
-    if (requestedCategory && requestedCategory in categoryNames)
-      store.category = requestedCategory as Category;
+    if (requestedCategory && requestedCategory in themeNames)
+      store.category = requestedCategory as ThemeFilter;
     const requestedPlace = data.places.find((place) => place.id === params.get('place'));
     if (requestedPlace) {
       store.resetFilters();
@@ -80,13 +93,21 @@
 <aside class="web-sidebar" aria-label="장소 목록과 필터">
   <div class="sidebar-top">
     <div class="category-row" aria-label="장소 유형">
-      {#each categories as item (item.id)}<button
-          class:active={store.category === item.id}
-          aria-pressed={store.category === item.id}
+      <button
+        class:active={store.category === 'all'}
+        aria-pressed={store.category === 'all'}
+        onclick={() => {
+          store.category = 'all';
+          selected = null;
+        }}><Map size={17} />전체</button
+      >
+      {#each themes as theme (theme)}<button
+          class:active={store.category === theme}
+          aria-pressed={store.category === theme}
           onclick={() => {
-            store.category = item.id as Category;
+            store.category = theme;
             selected = null;
-          }}><item.icon size={18} />{item.label}</button
+          }}><ThemeIcon {theme} size={17} strokeWidth={1.7} />{themeNames[theme]}</button
         >{/each}
     </div>
     <div class="filter-row">
@@ -118,11 +139,24 @@
   </div>
 
   <div class="list-heading">
-    <h2>함께 갈 곳 <span>{filtered.length}</span></h2>
+    <h2>
+      {#if store.category === 'hospital'}
+        가까운 동물병원
+      {:else if store.dog}
+        {store.dog.name}{josa(store.dog.name, '와/과')} 함께 갈 곳
+      {:else}
+        함께 갈 곳
+      {/if}
+      <span class="count">{filtered.length}</span>
+    </h2>
     <p>
-      {store.mode === 'dog' && store.dog
-        ? store.dog.name + '의 체중·체급 조건 적용 중'
-        : '강릉 · 동반 규정을 확인해 보세요'}
+      {#if store.category === 'hospital'}
+        진료 시간은 전화로 확인해 주세요
+      {:else if store.mode === 'dog' && store.dog}
+        {store.dog.name}의 체중·체급 조건 적용 중
+      {:else}
+        방문 전 동반 규정을 확인해 보세요
+      {/if}
     </p>
   </div>
 
@@ -143,19 +177,20 @@
   </div>
 
   <div class="sidebar-footer">
-    <span>강원 반려동물 동반관광 데이터 · 수집 2026.09.10</span>
+    <span>강원 반려동물 동반관광 데이터 · 수집 {collectedAt}</span>
     <a href="https://www.pettravel.kr/petapi/data/total" target="_blank" rel="noreferrer"
       >공식 데이터<ArrowUpRight size={14} /></a
     >
   </div>
 </aside>
 
-<main class="web-map" class:has-detail={selected !== null} aria-label="강릉 반려견 동반 장소 지도">
-  <h1 class="sr-only">댕브리웨어 웹 · 강릉 반려견 동반 지도</h1>
+<main class="web-map" class:has-detail={selected !== null} aria-label="반려견 동반 장소 지도">
+  <h1 class="sr-only">댕브리웨어 웹 · 반려견 동반 지도</h1>
   <MapView
     places={filtered}
     selectedId={selected?.id ?? null}
     onselect={(place) => (selected = place)}
+    caption={mapCaption}
     padding={{ top: 40, right: 40, bottom: 40, left: 40 }}
   />
   {#if offline}<div class="web-offline" role="status">
@@ -287,7 +322,8 @@
     letter-spacing: -0.7px;
     margin: 0;
   }
-  .list-heading h2 span {
+  /* 개수만 — 제목 안의 다른 글자까지 물들지 않게 클래스로 좁힙니다. */
+  .list-heading h2 .count {
     color: var(--brand);
     margin-left: 4px;
   }

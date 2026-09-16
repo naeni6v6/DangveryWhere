@@ -268,7 +268,7 @@
     top: calc(100% + 8px);
     right: 0;
     width: max(100%, 440px);
-    max-width: calc(100vw - 32px);
+    max-width: calc(100vw / var(--ui-zoom, 1) - 32px);
     max-height: 392px;
     overflow: auto;
     overscroll-behavior: contain;

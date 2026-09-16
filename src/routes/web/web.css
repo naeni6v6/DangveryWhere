@@ -29,6 +29,13 @@
   /* 공용 컴포넌트(다이얼로그·지도 마커·버튼)가 쓰는 --brown 을 강조 브라운으로 재지정 */
   --brown: var(--brand);
 
+  /* 테마 아이콘 블록 — 짙은 브라운 바탕에 크림색 아이콘 */
+  --icon-brown-top: #7a5137;
+  --icon-brown-bottom: #543828;
+  --icon-cream: #f8ece0;
+  /* 예전 크림슨 팔레트의 잔재였던 분홍빛 테두리를 브라운 톤으로 맞춥니다 */
+  --line-soft: #ecd9cb;
+
   /* 레이아웃 치수 (기본 글자·요소를 크게 잡은 값) */
   --header-h: 84px;
   --rail-w: 112px;
@@ -170,4 +177,38 @@
 }
 .web-root .web-map.has-detail .map-shell .map-message {
   left: calc(50% - var(--detail-w) / 2);
+}
+
+/* ------------------------------------------------------------------
+   화면 크기별 UI 배율 (반응형 확대)
+   노트북(~1599px)에서는 --ui-zoom 이 1 이라 기존 화면과 100% 동일하고,
+   넓은 모니터에서만 UI 전체(글자·여백·사이드바·지도 컨트롤)가
+   한 단계씩 비례해서 커집니다.
+   배율을 바꾸고 싶으면 아래 숫자만 조절하면 돼요.
+   주의: 화면 높이를 쓰는 값(100dvh 등)은 배율만큼 같이 커지므로
+   var(--ui-zoom) 으로 나눠 줘야 합니다. (아래 .web-app / 랜딩 참고)
+------------------------------------------------------------------ */
+.web-root {
+  --ui-zoom: 1;
+  zoom: var(--ui-zoom);
+}
+@media (min-width: 1600px) {
+  .web-root {
+    --ui-zoom: 1.08;
+  }
+}
+@media (min-width: 1920px) {
+  .web-root {
+    --ui-zoom: 1.15;
+  }
+}
+@media (min-width: 2560px) {
+  .web-root {
+    --ui-zoom: 1.3;
+  }
+}
+
+/* 다이얼로그 높이 제한도 배율만큼 되돌려 줍니다(화면 밖으로 넘치지 않게). */
+.web-root .app-dialog {
+  max-height: calc((100dvh - 36px) / var(--ui-zoom, 1));
 }

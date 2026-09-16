@@ -11,20 +11,31 @@
     Smartphone,
     Scale,
     ShieldCheck,
-    Database,
-    Coffee,
-    House,
-    Trees,
-    Sparkles
+    Database
   } from '@lucide/svelte';
-  import { categoryNames, policyLines } from '$lib/domain/place';
+  import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
+  import {
+    areaLabel,
+    placeArea,
+    placeTheme,
+    policyLines,
+    shortAddress,
+    themeNames,
+    type Theme
+  } from '$lib/domain/place';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const store = getWebStore();
 
-  const weightCount = $derived(data.places.filter((place) => place.sourceWeight !== null).length);
+  // 동물병원은 '동반 장소'가 아니라 진료 시설이라, 소개 문구의 수에서 뺍니다.
+  const companionPlaces = $derived(data.places.filter((place) => place.category !== 'hospital'));
+  const companionCount = $derived(companionPlaces.length);
+  const weightCount = $derived(companionPlaces.filter((place) => place.sourceWeight !== null).length);
+  const hospitalCount = $derived(data.places.length - companionCount);
+  // 지역명을 문구에 박아 두지 않고 데이터에서 끌어옵니다.
+  const area = $derived(areaLabel(companionPlaces));
 
   /**
    * 메인 상단 산책 영상 (static/media/walk.mp4 · 1280x720 · 8초).
@@ -37,13 +48,14 @@
   const isGif = $derived(Boolean(walkVideo && /\.gif$/i.test(walkVideo)));
 
   const categoryCards = [
-    { id: 'food', icon: Coffee, copy: '테라스만? 실내도? 매장마다 다른 규정을 미리' },
-    { id: 'stay', icon: House, copy: '체중·마릿수 제한과 추가 요금을 떠나기 전에' },
-    { id: 'outdoor', icon: Trees, copy: '목줄 규정과 출입 가능한 구역을 한눈에' },
-    { id: 'activity', icon: Sparkles, copy: '반려견과 함께 즐길 수 있는 체험 프로그램' }
+    { id: 'cafe', copy: '테라스만? 실내도? 매장마다 다른 규정을 미리' },
+    { id: 'restaurant', copy: '밥 먹는 동안 같이 있을 수 있는 곳인지 먼저' },
+    { id: 'stay', copy: '체중·마릿수 제한과 추가 요금을 떠나기 전에' },
+    { id: 'outdoor', copy: '목줄 규정과 출입 가능한 구역을 한눈에' },
+    { id: 'activity', copy: '반려견과 함께 즐길 수 있는 체험 프로그램' }
   ] as const;
-  const count = (category: string) =>
-    data.places.filter((place) => place.category === category).length;
+  const count = (theme: Theme) =>
+    data.places.filter((place) => placeTheme(place) === theme).length;
   const featured = $derived(
     data.places.filter((place) => policyLines(place.policy).length >= 2).slice(0, 6)
   );
@@ -89,10 +101,10 @@
 </script>
 
 <svelte:head>
-  <title>댕브리웨어 — 강아지와 함께, 헛걸음 없이 강릉</title>
+  <title>댕브리웨어 — 강아지와 함께, 헛걸음 없이</title>
   <meta
     name="description"
-    content="강릉에서 강아지와 함께 갈 수 있는 카페, 숙소, 관광지. 체중 제한부터 실내외 동반 규정까지, 떠나기 전에 확인하세요."
+    content="강아지와 함께 갈 수 있는 카페, 식당, 숙소, 관광지. 체중 제한부터 실내외 동반 규정까지, 떠나기 전에 확인하세요."
   />
 </svelte:head>
 
@@ -147,26 +159,26 @@
   <main class="stage">
     <!-- 서비스 소개 -->
     <section class="intro" use:reveal>
-      <span class="intro-eyebrow"><MapPin size={15} />강원 강릉 · 반려견 동반 여행</span>
+      <span class="intro-eyebrow"><MapPin size={15} />반려견 동반 여행</span>
       <h1>강아지와 함께,<br /><em>헛걸음 없이</em></h1>
       <p class="intro-lead">
-        “여기 강아지 들어갈 수 있나요?” 매번 전화로 묻지 않아도 되도록,
-        강릉의 반려견 동반 장소 <strong>{data.places.length}곳</strong>의 출입 규정을 한곳에 모았어요.
+        “여기 강아지 들어갈 수 있나요?” 매번 전화로 묻지 않아도 되도록,<br />
+        반려견 동반 장소 <strong>{companionCount}곳</strong>의 출입 규정을 한곳에 모았어요.
       </p>
-
 
       <div class="cta">
         <a class="cta-button" href="/web/dog">시작하기<ArrowRight size={19} /></a>
-        <p class="cta-note">체중 조건이 표기된 곳 {weightCount}곳 · 로그인 없이 둘러볼 수 있어요.</p>
       </div>
     </section>
   </main>
 
   <!-- 숫자 -->
   <section class="stats" aria-label="데이터 요약" use:reveal>
-    <div><strong>{data.places.length}<small>곳</small></strong><span>강릉 반려견 동반 장소</span></div>
+    <div><strong>{companionCount}<small>곳</small></strong><span>반려견 동반 장소</span></div>
     <div><strong>{weightCount}<small>곳</small></strong><span>체중 제한이 기재된 장소</span></div>
-    <div><strong>4<small>종</small></strong><span>카페 · 숙소 · 관광 · 체험</span></div>
+    <div>
+      <strong>{hospitalCount}<small>곳</small></strong><span>동물병원</span>
+    </div>
     <div><strong>2026.09</strong><span>공공데이터 수집 시점</span></div>
   </section>
 
@@ -180,7 +192,7 @@
     <div class="feature-grid">
       <article class="feature" use:reveal>
         <span class="feature-icon"><Scale size={28} /></span>
-        <h3>우리 강아지 기준으로 비교</h3>
+        <h3>우리 강아지 조건으로 비교</h3>
         <p>체급과 몸무게를 등록하면 원본 규정의 체중·체급 제한과 맞지 않는 곳을 알려드려요.</p>
       </article>
       <article class="feature" use:reveal>
@@ -208,8 +220,8 @@
           href={`/web/explore?category=${item.id}`}
           use:reveal
         >
-          <span class="category-icon"><item.icon size={30} strokeWidth={1.6} /></span>
-          <strong>{categoryNames[item.id]}</strong>
+          <span class="category-icon"><ThemeIcon theme={item.id} size={30} /></span>
+          <strong>{themeNames[item.id]}</strong>
           <p>{item.copy}</p>
           <span class="category-count">{count(item.id)}곳 보기<ArrowRight size={16} /></span>
         </a>{/each}
@@ -225,7 +237,7 @@
           <h2>규정이 자세히 적힌 장소</h2>
         </div>
         <a class="secondary-button" href="/web/explore"
-          >전체 {data.places.length}곳 보기<ArrowRight size={17} /></a
+          >전체 {companionCount}곳 보기<ArrowRight size={17} /></a
         >
       </div>
       <div class="place-grid">
@@ -234,10 +246,12 @@
             href={`/web/explore?place=${place.id}`}
             use:reveal
           >
-            <small>{categoryNames[place.category]}</small>
+            <small>{themeNames[placeTheme(place)]}</small>
             <strong>{place.name}</strong>
             <span class="tile-address"
-              ><MapPin size={14} />{place.address.replace(/^강원(?:특별자치도|도)?\s*/, '')}</span
+              ><MapPin size={14} />{[placeArea(place).city, shortAddress(place)]
+                .filter(Boolean)
+                .join(' ')}</span
             >
             <p>{policyLines(place.policy)[0]}</p>
             <span class="tile-more">규정 자세히 보기<ArrowUpRight size={15} /></span>
@@ -249,7 +263,7 @@
   <!-- 마무리 -->
   <section class="closing" use:reveal>
     <PawPrint size={44} strokeWidth={1.2} />
-    <h2>이번 주말, 강아지와 강릉 어때요?</h2>
+    <h2>이번 주말, 강아지와 어디 가 볼까요?</h2>
     <p>지도를 열고 함께 갈 수 있는 곳부터 찾아보세요.</p>
     <div class="closing-actions">
       <a class="closing-primary" href="/web/explore">지도에서 찾기<ArrowRight size={19} /></a>
@@ -273,7 +287,7 @@
 
 <style>
   .landing {
-    min-height: 100dvh;
+    min-height: calc(100dvh / var(--ui-zoom, 1));
     background:
       radial-gradient(1100px 520px at 76% -18%, #fff 0%, transparent 60%),
       radial-gradient(760px 420px at 6% 112%, var(--brand-tint) 0%, transparent 58%),
@@ -380,7 +394,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: 78vh;
+    max-height: calc(78vh / var(--ui-zoom, 1));
     overflow: hidden;
     -webkit-mask-image: linear-gradient(
       to bottom,
@@ -481,11 +495,6 @@
       0 1px 1px #ffffff59 inset,
       0 14px 30px #b5704e59,
       0 28px 58px #b5704e38;
-  }
-  .cta-note {
-    margin: 18px 0 0;
-    font-size: 14px;
-    color: var(--muted);
   }
 
 
@@ -608,10 +617,16 @@
   }
 
   /* ---------- 카테고리 ---------- */
+  /* 카페·식당을 나누면서 5장이 되어, 4열 고정이면 마지막 한 장이 혼자 떨어집니다. */
   .category-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 20px;
+  }
+  @media (max-width: 1240px) {
+    .category-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
   .category-card {
     display: flex;
@@ -638,22 +653,9 @@
     height: 62px;
     border-radius: 19px;
     margin-bottom: 8px;
-  }
-  .category-card.food .category-icon {
-    background: #f7e7db;
-    color: #b5704e;
-  }
-  .category-card.stay .category-icon {
-    background: #f1e6dc;
-    color: #8a5a3c;
-  }
-  .category-card.outdoor .category-icon {
-    background: #e9eddf;
-    color: #6f7f5b;
-  }
-  .category-card.activity .category-icon {
-    background: #f6ecd9;
-    color: #a4783c;
+    background: linear-gradient(150deg, var(--icon-brown-top), var(--icon-brown-bottom));
+    color: var(--icon-cream);
+    box-shadow: 0 8px 18px #4a34281f;
   }
   .category-card strong {
     font-size: 21px;
