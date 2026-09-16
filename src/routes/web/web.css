@@ -1,27 +1,33 @@
 /* ------------------------------------------------------------------
    댕브리웨어 웹(PC) 버전 테마
-   메인 컬러: 크림슨 / 브라운, 따뜻한 크림 배경.
+   메인: 화이트 / 아이보리 바탕 + 브라운(#b5704e) 강조.
+   반려견 컨셉에 맞춘 따뜻하고 부드러운 톤입니다.
    `.web-root` 안에서만 적용되며, 모바일 앱(/)의 스타일은 건드리지 않습니다.
    세부 색상·크기는 여기 변수만 바꾸면 전체에 반영됩니다.
 ------------------------------------------------------------------ */
 .web-root {
-  /* 브랜드 컬러 */
-  --crimson: #9e2b3b;
-  --crimson-deep: #741d2c;
-  --crimson-soft: #f8e7e8;
-  --brown-warm: #6f4a36;
-  --brown-deep: #4a3024;
-  --gold: #d9a35f;
+  /* 강조 컬러 — 브라운 */
+  --brand: #b5704e;
+  --brand-deep: #95573a;
+  --brand-soft: #f6e7dc;
+  --brand-tint: #fbf1e9;
+  --brown-warm: #8a6144;
+  --brown-deep: #4a3428;
 
-  /* 바탕·글자 */
-  --cream: #fbf6ef;
-  --sand: #f3e9dd;
-  --ink: #2e211c;
-  --muted: #86746a;
-  --line: #eadfd4;
+  /* 포인트 (따뜻한 살구빛) */
+  --gold: #e0a06a;
+  --blush: #f5d9c4;
 
-  /* 공용 컴포넌트(다이얼로그·지도 마커·버튼)가 쓰는 --brown 을 크림슨으로 재지정 */
-  --brown: var(--crimson);
+  /* 바탕·글자 — 화이트 / 아이보리 */
+  --ivory: #fcf5ea;
+  --cream: #fcf5ea;
+  --sand: #f6ece1;
+  --ink: #3d2b20;
+  --muted: #8f7d70;
+  --line: #eee0d3;
+
+  /* 공용 컴포넌트(다이얼로그·지도 마커·버튼)가 쓰는 --brown 을 강조 브라운으로 재지정 */
+  --brown: var(--brand);
 
   /* 레이아웃 치수 (기본 글자·요소를 크게 잡은 값) */
   --header-h: 84px;
@@ -38,14 +44,14 @@
 .web-root .secondary-button {
   min-height: 52px;
   font-size: 15px;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 12px 22px;
 }
 .web-root .primary-button:hover {
-  background: var(--crimson-deep);
+  background: var(--brand-deep);
 }
 .web-root .secondary-button {
-  color: var(--crimson);
+  color: var(--brand);
 }
 .web-root .icon-button {
   width: 40px;
@@ -106,7 +112,7 @@
   transform: none;
   width: auto;
   max-width: 480px;
-  background: #3a1f24f0;
+  background: #4a3428f2;
   white-space: normal;
   line-height: 1.6;
   font-size: 15px;
@@ -115,14 +121,14 @@
 
 /* ---------- 지도 (MapView 내부 요소 크기 보정) ---------- */
 .web-root .live-map-marker {
-  background: var(--crimson);
+  background: var(--brand);
   font-size: 13.5px;
   font-weight: 600;
   padding: 9px 14px;
   border-radius: 14px;
 }
 .web-root .live-map-marker.selected {
-  background: var(--crimson-deep);
+  background: var(--brand-deep);
 }
 .web-root .web-map .map-shell .map-location {
   font-size: 14px;

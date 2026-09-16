@@ -5,8 +5,8 @@
   import {
     PawPrint,
     Map,
+    MapPinned,
     Heart,
-    House,
     Info,
     LogIn,
     LogOut,
@@ -14,38 +14,35 @@
     X,
     Smartphone,
     MapPin,
-    ArrowRight,
     ArrowUpRight
   } from '@lucide/svelte';
   import { WebStore, setWebStore } from '$lib/web/store.svelte';
+  import WebLoginDialog from '$lib/components/web/WebLoginDialog.svelte';
   import type { LayoutData } from './$types';
   import './web.css';
 
   let { data, children }: { data: LayoutData; children: Snippet } = $props();
   const store = setWebStore(untrack(() => new WebStore(data)));
-  let loginDialog: HTMLDialogElement;
+  let loginDialog: WebLoginDialog;
   let infoDialog: HTMLDialogElement;
-  store.requestLogin = () => loginDialog?.showModal();
+  store.requestLogin = () => loginDialog?.open();
 
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   const isLanding = $derived(path === '/web');
   const nav = [
-    { href: '/web/explore', label: '지도 탐색', icon: Map },
-    { href: '/web/favorites', label: '찜한 장소', icon: Heart },
-    { href: '/web/dog', label: '우리 강아지', icon: PawPrint }
+    { href: '/web/dog', label: '우리 강아지', icon: PawPrint },
+    { href: '/web/explore', label: '가게 찾기', icon: Map },
+    { href: '/web/record', label: '지도 기록', icon: MapPinned },
+    { href: '/web/favorites', label: '찜한 장소', icon: Heart }
   ];
 
-  function selectMode(next: 'all' | 'dog') {
-    if (next === 'dog' && !store.dog) goto('/web/dog');
-    else store.mode = next;
-  }
   function submitSearch(event: SubmitEvent) {
     event.preventDefault();
     if (path !== '/web/explore') goto('/web/explore');
   }
   function accountAction() {
     if (store.loggedIn) store.logout();
-    else loginDialog.showModal();
+    else loginDialog.open();
   }
   $effect(() => {
     if (data.accountUnavailable)
@@ -61,10 +58,7 @@
       <!-- 왼쪽 세로 메뉴 -->
       <nav class="web-rail" aria-label="주 메뉴">
         <a class="rail-brand" href="/web" aria-label="댕브리웨어 메인" title="메인 화면"
-          ><PawPrint size={30} fill="currentColor" strokeWidth={1} /></a
-        >
-        <a class="rail-link" class:active={path === '/web'} href="/web"
-          ><House size={26} /><span>메인</span></a
+          ><img src="/logo.png" alt="" width="58" height="58" /></a
         >
         {#each nav as item (item.href)}<a
             class="rail-link"
@@ -104,28 +98,11 @@
               >{/if}
           </form>
           <div class="header-right">
-            <div class="mode-switch" aria-label="탐색 기준">
-              <button
-                class:active={store.mode === 'all'}
-                aria-pressed={store.mode === 'all'}
-                onclick={() => selectMode('all')}>전체</button
-              ><button
-                class:active={store.mode === 'dog'}
-                aria-pressed={store.mode === 'dog'}
-                onclick={() => selectMode('dog')}
-                ><PawPrint size={15} />{store.dog ? store.dog.name + '와 함께' : '우리 강아지'}</button
-              >
-            </div>
-            <a class="dog-chip" href="/web/dog"
-              ><PawPrint size={15} />{store.dog
-                ? `${store.dog.name} · ${store.dog.weight}kg`
-                : '강아지 등록'}</a
-            >
             <a class="mobile-link" href="/" title="모바일 앱 화면으로 보기"
               ><Smartphone size={17} /><span>모바일 버전</span></a
             >
-            <a class="home-button" href="/web" aria-label="메인 화면으로" title="메인 화면"
-              ><House size={22} /></a
+            <button class="login-cta" class:signed-in={store.loggedIn} onclick={accountAction}
+              >{#if store.loggedIn}<LogOut size={17} />로그아웃{:else}<LogIn size={17} />로그인하기{/if}</button
             >
           </div>
         </header>
@@ -137,32 +114,12 @@
     </div>
   {/if}
 
-  <dialog bind:this={loginDialog} class="app-dialog" aria-labelledby="web-login-title">
-    <button
-      class="dialog-close icon-button"
-      aria-label="로그인 안내 닫기"
-      onclick={() => loginDialog.close()}><X size={22} /></button
-    >
-    <div class="dialog-icon"><PawPrint size={32} strokeWidth={1.3} /></div>
-    <span class="dialog-eyebrow">YOUR NEXT WALK STARTS HERE</span>
-    <h2 id="web-login-title">우리의 다음 외출을 저장해요</h2>
-    <p class="dialog-description">
-      마음에 든 장소를 찜하고,<br />우리 강아지 정보를 간편하게 꺼내보세요.
-    </p>
-    <div class="login-benefits">
-      <span><Heart size={19} />가고 싶은 장소 모아두기</span><span
-        ><PawPrint size={19} />반려견 프로필 저장하기</span
-      >
-    </div>
-    {#if data.authEnabled}<a
-        class="kakao-button"
-        href={`/auth/kakao?return=${encodeURIComponent(path)}`}>카카오로 계속하기</a
-      >{:else}<button class="kakao-button" disabled>카카오 로그인 · 준비 중</button>{/if}
-    <p class="form-footnote">지금은 로그인 없이 모든 장소와 규정을 볼 수 있어요.</p>
-    <button class="text-button" onclick={() => loginDialog.close()}
-      >먼저 둘러볼게요<ArrowRight size={16} /></button
-    >
-  </dialog>
+  <WebLoginDialog
+    bind:this={loginDialog}
+    kakaoEnabled={data.authEnabled}
+    returnPath={path}
+    onpending={(provider) => store.notify(`${provider} 로그인은 준비 중이에요. 곧 연결할게요!`)}
+  />
 
   <dialog bind:this={infoDialog} class="app-dialog" aria-labelledby="web-info-title">
     <button
@@ -229,7 +186,7 @@
     align-items: center;
     gap: 8px;
     padding: 18px 10px 20px;
-    background: linear-gradient(180deg, var(--crimson-deep) 0%, #5c2028 60%, var(--brown-deep) 100%);
+    background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 55%, var(--brown-deep) 100%);
     color: #f6e6dc;
     overflow-y: auto;
   }
@@ -238,12 +195,19 @@
     place-items: center;
     width: 58px;
     height: 58px;
-    border-radius: 18px;
-    background: #ffffff1f;
-    color: #fff;
     margin-bottom: 16px;
     transform: rotate(-6deg);
     flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .rail-brand:hover {
+    transform: rotate(-6deg) scale(1.05);
+  }
+  .rail-brand img {
+    width: 100%;
+    height: 100%;
+    /* 로고(assets/logo.png)가 브라운 레일 위에서도 또렷하게 보이도록 */
+    filter: drop-shadow(0 0 1.5px #ffffffb3) drop-shadow(0 6px 12px #2a18104d);
   }
   .rail-link {
     width: 100%;
@@ -256,14 +220,16 @@
     border-radius: 16px;
     background: none;
     color: #efd6cf;
-    font-size: 14px;
+    font-size: 12.5px;
     font-weight: 500;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.5px;
     text-decoration: none;
     text-align: center;
     line-height: 1.25;
     transition: background 0.15s;
     flex-shrink: 0;
+    /* '우리 강아지 등록' 처럼 긴 메뉴명도 한 줄로 */
+    white-space: nowrap;
   }
   .rail-link:hover {
     background: #ffffff17;
@@ -304,7 +270,7 @@
   .header-brand strong {
     font-size: 24px;
     letter-spacing: -1px;
-    color: var(--crimson);
+    color: var(--brand);
   }
   .header-brand span {
     font-size: 12.5px;
@@ -334,12 +300,12 @@
     border: 1px solid var(--line);
     border-radius: 14px;
     background: var(--cream);
-    color: var(--crimson);
+    color: var(--brand);
   }
   .header-search:focus-within {
     background: #fff;
-    border-color: var(--crimson);
-    box-shadow: 0 0 0 4px #9e2b3b1a;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px #b5704e26;
   }
   .header-search input {
     flex: 1;
@@ -364,49 +330,6 @@
     align-items: center;
     gap: 12px;
   }
-  .mode-switch {
-    display: flex;
-    padding: 4px;
-    background: var(--sand);
-    border-radius: 24px;
-  }
-  .mode-switch button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 40px;
-    font-size: 14.5px;
-    border: 0;
-    background: none;
-    color: var(--muted);
-    padding: 6px 18px;
-    border-radius: 20px;
-    white-space: nowrap;
-  }
-  .mode-switch button.active {
-    background: var(--crimson);
-    color: #fff;
-    font-weight: 600;
-  }
-  .dog-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 48px;
-    padding: 0 18px;
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    background: #fff;
-    color: var(--crimson);
-    font-size: 14.5px;
-    font-weight: 500;
-    white-space: nowrap;
-    text-decoration: none;
-  }
-  .dog-chip:hover {
-    background: var(--crimson-soft);
-    border-color: #efd6d9;
-  }
   .mobile-link {
     display: inline-flex;
     align-items: center;
@@ -422,19 +345,36 @@
     background: var(--sand);
     color: var(--brown-warm);
   }
-  .home-button {
-    display: grid;
-    place-items: center;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--crimson);
+  /* 헤더 맨 오른쪽 로그인 버튼 */
+  .login-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 48px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 24px;
+    background: var(--brand);
     color: #fff;
-    flex-shrink: 0;
-    box-shadow: 0 4px 14px #9e2b3b33;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 4px 14px #b5704e3d;
+    transition: background 0.15s;
   }
-  .home-button:hover {
-    background: var(--crimson-deep);
+  .login-cta:hover {
+    background: var(--brand-deep);
+  }
+  .login-cta.signed-in {
+    background: #fff;
+    color: var(--brand);
+    border: 1px solid var(--line);
+    box-shadow: none;
+  }
+  .login-cta.signed-in:hover {
+    background: var(--brand-soft);
   }
 
   /* ---------- 좁은 PC 화면 ---------- */
@@ -445,8 +385,7 @@
     }
   }
   @media (max-width: 1180px) {
-    .city-badge,
-    .dog-chip {
+    .city-badge {
       display: none;
     }
   }

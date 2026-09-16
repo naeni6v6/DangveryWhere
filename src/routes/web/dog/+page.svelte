@@ -11,7 +11,8 @@
     MapPin,
     ArrowRight,
     Info,
-    LogIn
+    LogIn,
+    Sparkles
   } from '@lucide/svelte';
   import {
     categoryNames,
@@ -20,6 +21,8 @@
     type Place
   } from '$lib/domain/place';
   import { validateProfile } from '$lib/domain/profile';
+  import { findBreed, breedImage } from '$lib/domain/breeds';
+  import BreedPicker from '$lib/components/web/BreedPicker.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
 
@@ -40,6 +43,26 @@
     { value: 'large', label: '대형견', hint: '대략 25kg 이상', icon: 32 }
   ];
   const sizeNames: Record<DogSize, string> = { small: '소형견', medium: '중형견', large: '대형견' };
+
+  /**
+   * 왼쪽 무대 미리보기 — 저장 전에도 폼에서 고른 견종·체급이 바로 반영됩니다.
+   * 견종 목록·이미지는 $lib/domain/breeds.ts 와 static/dogs/ 에서 관리해요.
+   */
+  const previewBreed = $derived(findBreed(breed));
+  // 체급에 따라 캐릭터가 점점 커져요. (발끝 기준으로 확대)
+  const sizeScale: Record<DogSize, number> = { small: 0.66, medium: 0.83, large: 1 };
+  const modelLabel = $derived(
+    `${previewBreed?.label ?? (breed.trim() || '기본 캐릭터')} · ${sizeNames[size]}`
+  );
+  const modelAlt = $derived(
+    `${name.trim() || '우리 강아지'} ${previewBreed?.label ?? ''} 3D 캐릭터`.replace(/\s+/g, ' ')
+  );
+  // 이미지 파일을 못 불러오면 임시 자리로 대체합니다.
+  let modelReady = $state(true);
+  $effect(() => {
+    previewBreed;
+    modelReady = true;
+  });
 
   const summary = $derived.by(() => {
     const dog = store.dog;
@@ -81,37 +104,70 @@
 </script>
 
 <svelte:head>
-  <title>우리 강아지 — 댕브리웨어</title>
+  <title>{store.dog ? '우리 강아지' : '우리 강아지 등록'} — 댕브리웨어</title>
 </svelte:head>
 
 <div class="page-scroll">
   <div class="page">
     <header class="page-head">
       <span class="page-eyebrow"><PawPrint size={16} fill="currentColor" />MY LITTLE COMPANION</span>
-      <h1>우리 강아지</h1>
+      <!-- 등록 전에는 등록 안내, 등록 후에는 우리 강아지 정보 페이지 -->
+      <h1>{store.dog ? '우리 강아지' : '우리 강아지 등록'}</h1>
       <p>우리 강아지 정보를 등록하면 장소마다 체중·체급 동반 조건과 비교해서 보여드려요.</p>
     </header>
 
     <div class="dog-layout">
-      <!-- 왼쪽: 프로필 + 입력 폼 -->
-      <div class="left-col">
-        <section class="profile-card" class:empty={!store.dog}>
-          <span class="profile-avatar"><Dog size={46} strokeWidth={1.4} /></span>
-          {#if store.dog}
-            <div class="profile-info">
-              <small>{store.mode === 'dog' ? '지금 탐색 기준으로 적용 중' : '등록된 강아지'}</small>
-              <strong>{store.dog.name}</strong>
-              <span>{store.dog.breed} · {sizeNames[store.dog.size]} · {store.dog.weight}kg</span>
-            </div>
-          {:else}
-            <div class="profile-info">
-              <small>아직 등록 전</small>
-              <strong>누구와 함께 떠나나요?</strong>
-              <span>아래에 정보를 입력해 주세요.</span>
-            </div>
-          {/if}
-        </section>
+      <!-- 왼쪽: 3D 강아지 -->
+      <section class="dog-stage">
+        <div class="stage-top">
+          <span class="stage-badge"><Sparkles size={14} />3D 미리보기</span>
+          <span class="stage-breed">{modelLabel}</span>
+        </div>
 
+        <div class="stage-figure">
+          <div
+            class="figure-scale"
+            class:has-model={previewBreed && modelReady}
+            style:--dog-scale={sizeScale[size]}
+          >
+            {#key previewBreed?.key}
+              {#if previewBreed && modelReady}
+                <img
+                  class="dog-model"
+                  src={breedImage(previewBreed)}
+                  alt={modelAlt}
+                  draggable="false"
+                  onerror={() => (modelReady = false)}
+                />
+              {:else}
+                <!-- 견종을 고르기 전 · 캐릭터가 없는 견종의 임시 자리 -->
+                <div class="dog-placeholder"><Dog size={92} strokeWidth={1.1} /></div>
+                <span class="stage-shadow" aria-hidden="true"></span>
+              {/if}
+            {/key}
+          </div>
+          <div class="size-meter" aria-hidden="true">
+            {#each sizes as option (option.value)}<span class:on={size === option.value}
+                >{option.label}</span
+              >{/each}
+          </div>
+        </div>
+
+        <div class="stage-caption">
+          {#if store.dog}
+            <strong>{store.dog.name}</strong>
+            <span>{store.dog.breed} · {sizeNames[store.dog.size]} · {store.dog.weight}kg</span>
+          {:else}
+            <strong>누구와 함께 떠나나요?</strong>
+            <span>오른쪽에 정보를 입력하면 여기에 나타나요.</span>
+          {/if}
+        </div>
+
+        <p class="stage-note">견종을 고르면 캐릭터가 바뀌고, 체급을 바꾸면 크기가 달라져요.</p>
+      </section>
+
+      <!-- 오른쪽: 등록 폼 -->
+      <div class="form-col">
         <form class="dog-form" onsubmit={submit}>
           <h2>{store.dog ? '정보 수정하기' : '강아지 등록하기'}</h2>
           <div class="field-row">
@@ -119,10 +175,10 @@
               <span>강아지 이름</span>
               <input bind:value={name} placeholder="예: 두부" required maxlength="20" autocomplete="off" />
             </label>
-            <label>
-              <span>견종 <em>선택</em></span>
-              <input bind:value={breed} placeholder="예: 말티푸, 진돗개, 믹스" maxlength="40" />
-            </label>
+            <div class="field">
+              <span id="dog-breed-label">견종 <em>선택</em></span>
+              <BreedPicker bind:value={breed} labelId="dog-breed-label" />
+            </div>
           </div>
 
           <fieldset>
@@ -175,9 +231,10 @@
           </div>
         </form>
       </div>
+    </div>
 
-      <!-- 오른쪽: 우리 강아지 기준 요약 -->
-      <div class="right-col">
+    <!-- 아래: 우리 강아지 기준 요약 -->
+    <div class="dog-insight">
         {#if store.dog && summary}
           <section class="panel">
             <div class="panel-head">
@@ -261,8 +318,7 @@
             <li>이동장·유모차 · 실내 동반 시 요구하는 곳이 있어요</li>
             <li>예방접종 기록 · 숙소에서 확인하는 경우가 있어요</li>
           </ul>
-        </section>
-      </div>
+      </section>
     </div>
   </div>
 </div>
@@ -288,7 +344,7 @@
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
-    color: var(--crimson);
+    color: var(--brand);
   }
   .page-head h1 {
     font-size: 38px;
@@ -302,60 +358,210 @@
   }
   .dog-layout {
     display: grid;
-    grid-template-columns: minmax(420px, 520px) 1fr;
+    /* 왼쪽 3D 강아지 · 오른쪽 등록 폼 */
+    grid-template-columns: minmax(380px, 460px) 1fr;
     gap: 28px;
-    align-items: start;
+    align-items: stretch;
   }
-  .left-col,
-  .right-col {
+  .form-col {
     display: flex;
     flex-direction: column;
     gap: 22px;
     min-width: 0;
   }
+  .dog-insight {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
+    margin-top: 28px;
+  }
 
-  /* ---------- 프로필 카드 ---------- */
-  .profile-card {
+  /* ---------- 왼쪽: 3D 강아지 ---------- */
+  .dog-stage {
+    display: flex;
+    flex-direction: column;
+    padding: 22px 24px 26px;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background:
+      radial-gradient(120% 70% at 50% 8%, #fff 0%, transparent 60%),
+      linear-gradient(170deg, var(--brand-tint) 0%, var(--brand-soft) 100%);
+    box-shadow: 0 16px 40px #4a342814;
+  }
+  .stage-top {
     display: flex;
     align-items: center;
-    gap: 22px;
-    padding: 30px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, var(--crimson-deep) 0%, var(--crimson) 60%, #b5553f 100%);
-    color: #fff;
+    justify-content: space-between;
+    gap: 10px;
   }
-  .profile-card.empty {
-    background: linear-gradient(135deg, var(--brown-warm) 0%, #8e604a 100%);
+  .stage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--brand);
+    font-size: 12.5px;
+    font-weight: 700;
   }
-  .profile-avatar {
+  .stage-breed {
+    font-size: 13px;
+    color: var(--brown-warm);
+    font-weight: 600;
+  }
+
+  /* 강아지가 서 있는 무대 */
+  .stage-figure {
+    position: relative;
+    flex: 1;
+    min-height: 360px;
     display: grid;
     place-items: center;
-    width: 88px;
-    height: 88px;
-    flex-shrink: 0;
-    border-radius: 28px;
-    background: #ffffff26;
-    border: 1px solid #ffffff4d;
+    padding: 6px 0 44px;
   }
-  .profile-info {
+  /* 체급별 크기 — 발이 닿는 바닥선(이미지 높이 88%)을 기준으로 커지고 작아집니다 */
+  .figure-scale {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(100%, 380px);
+    aspect-ratio: 1;
+    transform: scale(var(--dog-scale, 1));
+    transform-origin: 50% 88%;
+    transition: transform 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  /* 이미지의 흰 배경을 무대 색에 녹이고, 그려진 바닥 그림자만 남깁니다.
+     transform 이 있는 요소 안쪽에서는 합성이 격리되므로 이 래퍼에 적용해요. */
+  .figure-scale.has-model {
+    mix-blend-mode: multiply;
+  }
+  .dog-model {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: 50% 88%;
+    user-select: none;
+    animation:
+      dog-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+      dog-breathe 3.8s ease-in-out 0.5s infinite;
+  }
+  .dog-placeholder {
+    display: grid;
+    place-items: center;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: #ffffffb0;
+    color: var(--brand);
+    animation: dog-float 4.2s ease-in-out infinite;
+  }
+  /* 임시 자리용 바닥 그림자 — 떠오를 때 같이 줄었다 커집니다 */
+  .stage-shadow {
+    position: absolute;
+    bottom: 8%;
+    width: 180px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, #4a34282e, transparent);
+    animation: dog-shadow 4.2s ease-in-out infinite;
+  }
+  .size-meter {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: #ffffffc4;
+  }
+  .size-meter span {
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    transition:
+      background 0.25s,
+      color 0.25s;
+  }
+  .size-meter span.on {
+    background: var(--brand);
+    color: #fff;
+  }
+  @keyframes dog-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.86) translateY(10px);
+    }
+  }
+  @keyframes dog-breathe {
+    0%,
+    100% {
+      transform: scale(1, 1);
+    }
+    50% {
+      transform: scale(1.012, 0.988);
+    }
+  }
+  @keyframes dog-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+  @keyframes dog-shadow {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(0.82);
+      opacity: 0.65;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .figure-scale {
+      transition: none;
+    }
+    .dog-model,
+    .dog-placeholder,
+    .stage-shadow {
+      animation: none;
+    }
+  }
+
+  .stage-caption {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    min-width: 0;
+    text-align: center;
   }
-  .profile-info small {
-    font-size: 13.5px;
-    color: #ffe1cb;
+  .stage-caption strong {
+    font-size: 21px;
+    letter-spacing: -0.6px;
+    color: var(--ink);
   }
-  .profile-info strong {
-    font-size: 28px;
-    letter-spacing: -1px;
+  .stage-caption span {
+    font-size: 14px;
+    color: var(--brown-warm);
   }
-  .profile-info span {
-    font-size: 15.5px;
-    color: #ffffffd9;
+  .stage-note {
+    margin: 14px 0 0;
+    padding-top: 14px;
+    border-top: 1px dashed #d9c3b0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
   }
-
   /* ---------- 폼 ---------- */
   .dog-form {
     padding: 32px;
@@ -371,16 +577,19 @@
   .field-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    align-items: start;
     gap: 14px;
   }
   .dog-form label > span,
+  .dog-form .field > span,
   legend {
     display: block;
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 9px;
   }
-  .dog-form label em {
+  .dog-form label em,
+  .dog-form .field em {
     font-style: normal;
     font-weight: 400;
     font-size: 13px;
@@ -398,7 +607,7 @@
     outline: none;
   }
   .dog-form input:not([type='radio']):focus {
-    border-color: var(--crimson);
+    border-color: var(--brand);
     background: #fff;
   }
   fieldset {
@@ -436,20 +645,20 @@
     font-size: 12.5px;
   }
   .size-options label.active {
-    border-color: var(--crimson);
-    background: var(--crimson-soft);
-    color: var(--crimson);
-    box-shadow: 0 0 0 2px #9e2b3b22;
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    color: var(--brand);
+    box-shadow: 0 0 0 2px #b5704e33;
   }
   .size-options label.active strong {
-    color: var(--crimson);
+    color: var(--brand);
   }
   .size-options input {
     position: absolute;
     opacity: 0;
   }
   .size-options label:has(input:focus-visible) {
-    outline: 2px solid var(--crimson);
+    outline: 2px solid var(--brand);
     outline-offset: 3px;
   }
   .weight-input {
@@ -628,8 +837,8 @@
     width: 72px;
     height: 72px;
     border-radius: 22px;
-    background: var(--crimson-soft);
-    color: var(--crimson);
+    background: var(--brand-soft);
+    color: var(--brand);
     margin-bottom: 20px;
   }
   .intro ul,
@@ -668,13 +877,22 @@
     width: 16px;
     height: 16px;
     border-radius: 5px;
-    border: 2px solid var(--crimson);
+    border: 2px solid var(--brand);
     transform: translateY(-50%);
   }
   @media (max-width: 1280px) {
     .dog-layout,
     .list-columns {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 1080px) {
+    .dog-layout {
+      grid-template-columns: 1fr;
+    }
+    .stage-figure {
+      min-height: 240px;
     }
   }
 </style>

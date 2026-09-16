@@ -212,7 +212,7 @@
     <section class="app-toolbar" aria-label="장소 검색과 필터">
       <div class="app-topline">
         <a class="compact-brand" href="/" aria-label="댕브리웨어 홈"
-          ><PawPrint size={20} fill="currentColor" strokeWidth={1} /><strong>댕브리웨어</strong></a
+          ><img class="brand-logo" src="/logo.png" alt="" width="22" height="22" /><strong>댕브리웨어</strong></a
         >
         <span class="city-label">강릉</span>
         <button

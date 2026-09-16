@@ -1,0 +1,18 @@
+# 메인 랜딩 산책 영상 자리
+
+메인 화면(/web) 상단 16:9 칸에 들어갈 영상·GIF 를 이 폴더에 넣습니다.
+(강아지와 주인이 산책하는 영상)
+
+## 넣는 법
+
+1. 파일을 이 폴더에 둡니다.
+   - walk.mp4        : 영상 본편 (권장: H.264 mp4, 16:9, 소리 없이 재생됨)
+   - walk-poster.jpg : 영상이 뜨기 전 보여줄 첫 화면 (선택)
+2. src/routes/web/+page.svelte 의 <section class="film"> 안에 있는
+   <video> 주석을 풀어줍니다.
+
+GIF 를 쓸 경우에는 <video> 대신 아래처럼 바꿉니다.
+
+  <img class="film-media" src="/media/walk.gif" alt="반려견과 산책하는 모습" />
+
+영상이 없는 동안에는 검은 화면으로 비워둡니다.

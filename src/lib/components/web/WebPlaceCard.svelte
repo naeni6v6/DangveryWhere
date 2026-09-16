@@ -66,7 +66,7 @@
     border-color: var(--line);
   }
   .web-card.chosen {
-    background: var(--crimson-soft);
+    background: var(--brand-soft);
     border-color: #e7c3c7;
   }
   .card-main {
@@ -141,7 +141,7 @@
     gap: 5px;
     margin-top: 5px;
     font-size: 13px;
-    color: var(--crimson);
+    color: var(--brand);
     background: #fff;
     border: 1px solid #efd6d9;
     border-radius: 8px;
@@ -149,8 +149,8 @@
     white-space: nowrap;
   }
   .card-pill.weight {
-    background: var(--crimson);
-    border-color: var(--crimson);
+    background: var(--brand);
+    border-color: var(--brand);
     color: #fff;
   }
   .card-save {
@@ -161,6 +161,6 @@
   }
   .card-save:hover,
   .card-save[aria-pressed='true'] {
-    color: var(--crimson);
+    color: var(--brand);
   }
 </style>

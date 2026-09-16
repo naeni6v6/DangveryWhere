@@ -203,7 +203,7 @@
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
-    color: var(--crimson);
+    color: var(--brand);
   }
   .page-head h1 {
     font-size: 38px;
@@ -232,8 +232,8 @@
     height: 90px;
     flex-shrink: 0;
     border-radius: 28px;
-    background: var(--crimson-soft);
-    color: var(--crimson);
+    background: var(--brand-soft);
+    color: var(--brand);
   }
   .login-card h2 {
     font-size: 25px;
@@ -275,7 +275,7 @@
   .summary-item strong {
     font-size: 36px;
     letter-spacing: -1px;
-    color: var(--crimson);
+    color: var(--brand);
   }
   .summary-item span {
     font-size: 15px;
@@ -288,7 +288,7 @@
   .summary-item a {
     font-size: 15.5px;
     line-height: 1.6;
-    color: var(--crimson);
+    color: var(--brand);
     font-weight: 600;
   }
 
@@ -315,8 +315,8 @@
     color: var(--muted);
   }
   .tabs button.active {
-    background: var(--crimson);
-    border-color: var(--crimson);
+    background: var(--brand);
+    border-color: var(--brand);
     color: #fff;
     font-weight: 600;
   }
@@ -339,11 +339,11 @@
     transition: box-shadow 0.18s;
   }
   .fav-card:hover {
-    box-shadow: 0 14px 36px #4a30241a;
+    box-shadow: 0 14px 36px #4a34281a;
   }
   .fav-card.chosen {
-    border-color: var(--crimson);
-    box-shadow: 0 0 0 3px #9e2b3b22;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px #b5704e33;
   }
   .fav-main {
     flex: 1;
@@ -426,8 +426,8 @@
     font-size: 13px;
     padding: 6px 10px;
     border-radius: 8px;
-    background: var(--crimson-soft);
-    color: var(--crimson);
+    background: var(--brand-soft);
+    color: var(--brand);
   }
   .tag.warn {
     background: #fdebe4;
@@ -463,8 +463,8 @@
     height: 44px;
     border-radius: 50%;
     border: 0;
-    background: var(--crimson-soft);
-    color: var(--crimson);
+    background: var(--brand-soft);
+    color: var(--brand);
   }
   .fav-heart:hover {
     background: #f1d2d6;

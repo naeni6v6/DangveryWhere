@@ -66,7 +66,7 @@
 </script>
 
 <svelte:head>
-  <title>지도 탐색 — 댕브리웨어</title>
+  <title>가게 찾기 — 댕브리웨어</title>
 </svelte:head>
 <svelte:window
   onkeydown={(event) => {
@@ -206,8 +206,8 @@
     background: var(--cream);
   }
   .category-row button.active {
-    background: var(--crimson);
-    border-color: var(--crimson);
+    background: var(--brand);
+    border-color: var(--brand);
     color: #fff;
     font-weight: 600;
   }
@@ -231,12 +231,12 @@
     min-height: 46px;
   }
   .filter-toggle.active {
-    background: var(--crimson-soft);
+    background: var(--brand-soft);
     border-color: #efd6d9;
-    color: var(--crimson);
+    color: var(--brand);
   }
   .filter-toggle > span {
-    background: var(--crimson);
+    background: var(--brand);
     color: #fff;
     border-radius: 50%;
     font-size: 12px;
@@ -262,7 +262,7 @@
     line-height: 1.6;
   }
   .filter-options input {
-    accent-color: var(--crimson);
+    accent-color: var(--brand);
     width: 18px;
     height: 18px;
     margin-top: 3px;
@@ -275,7 +275,7 @@
     color: var(--muted);
   }
   .filter-hint a {
-    color: var(--crimson);
+    color: var(--brand);
     font-weight: 600;
   }
   .list-heading {
@@ -288,7 +288,7 @@
     margin: 0;
   }
   .list-heading h2 span {
-    color: var(--crimson);
+    color: var(--brand);
     margin-left: 4px;
   }
   .list-heading p {
@@ -321,7 +321,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: var(--crimson);
+    color: var(--brand);
     text-decoration: none;
     white-space: nowrap;
   }
@@ -344,7 +344,7 @@
     font-size: 15px;
     padding: 13px 20px;
     border-radius: 14px;
-    box-shadow: 0 4px 16px #4a30240f;
+    box-shadow: 0 4px 16px #4a34280f;
   }
   @media (max-width: 1280px) {
     .web-sidebar {

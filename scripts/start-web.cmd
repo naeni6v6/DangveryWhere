@@ -38,6 +38,17 @@ if not exist ".env" (
   echo.
 )
 
+rem If a dev server is already running, just open the browser.
+rem A second server would move to port 5174 (Naver Maps auth fails there)
+rem and the .svelte-kit cleanup below would break the running server.
+netstat -ano | findstr /R /C:":5173 .*LISTENING" >nul
+if errorlevel 1 goto start_server
+echo [안내] 서버가 이미 실행 중이라 브라우저만 엽니다. ^(주소: http://localhost:5173/web^)
+start "" http://localhost:5173/web
+timeout /t 3 >nul
+exit /b 0
+:start_server
+
 rem 한글 경로 + Node.js 24.13.0 이하의 fs.rmSync 버그 우회 (scripts/start.cmd 와 동일)
 if exist ".svelte-kit\" rmdir /s /q ".svelte-kit"
 
