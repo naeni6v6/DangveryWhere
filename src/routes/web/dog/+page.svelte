@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import {
     PawPrint,
-    Dog,
+    Dog as DogIcon,
     Scale,
     TriangleAlert,
     CircleCheck,
@@ -10,17 +10,23 @@
     Map,
     MapPin,
     ArrowRight,
+    ChevronRight,
     Info,
-    LogIn,
-    Sparkles
+    Sparkles,
+    Plus,
+    Pencil,
+    Trash2
   } from '@lucide/svelte';
   import {
-    categoryNames,
+    placeTheme,
+    themeNames,
     profileNotice,
+    type Dog,
     type DogSize,
     type Place
   } from '$lib/domain/place';
-  import { validateProfile } from '$lib/domain/profile';
+  import { MAX_DOGS, validateProfile } from '$lib/domain/profile';
+  import { josa } from '$lib/domain/korean';
   import { findBreed, breedImage } from '$lib/domain/breeds';
   import BreedPicker from '$lib/components/web/BreedPicker.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
@@ -30,12 +36,53 @@
   const store = getWebStore();
 
   const unknownBreed = '믹스 / 모름';
-  let name = $state(store.dog?.name ?? '');
-  let breed = $state(store.dog && store.dog.breed !== unknownBreed ? store.dog.breed : '');
-  let size = $state<DogSize>(store.dog?.size ?? 'small');
-  let weight = $state<number | undefined>(store.dog?.weight);
+  /**
+   * 폼이 지금 무엇을 하고 있는지.
+   * - Dog 의 id: 그 아이를 수정 중
+   * - null: 새로 등록 중
+   */
+  let editingId = $state<string | null>(store.dog?.id ?? null);
+  let tab = $state<'profile' | 'manage'>('profile');
+  let name = $state('');
+  let breed = $state('');
+  let size = $state<DogSize>('small');
+  let weight = $state<number | undefined>(undefined);
   let formError = $state('');
   let submitting = $state(false);
+  let removingId = $state<string | null>(null);
+
+  const editing = $derived(store.dogs.find((dog) => dog.id === editingId) ?? null);
+  const atLimit = $derived(store.dogs.length >= MAX_DOGS);
+
+  /** 폼에 한 마리를 올려 둡니다. dog 가 없으면 새 등록용 빈 폼이 돼요. */
+  function loadForm(dog: Dog | null) {
+    editingId = dog?.id ?? null;
+    name = dog?.name ?? '';
+    breed = dog && dog.breed !== unknownBreed ? dog.breed : '';
+    size = dog?.size ?? 'small';
+    weight = dog?.weight;
+    formError = '';
+  }
+  loadForm(store.dog);
+
+  function openDetail(dog: Dog) {
+    loadForm(dog);
+    store.selectDog(dog.id);
+    tab = 'profile';
+  }
+
+  function startNew() {
+    loadForm(null);
+    tab = 'profile';
+  }
+
+  async function remove(dog: Dog) {
+    removingId = dog.id;
+    await store.removeDog(dog.id);
+    removingId = null;
+    // 지금 고치고 있던 아이가 사라졌으면 기준이 된 아이로 폼을 되돌립니다.
+    if (editingId === dog.id) loadForm(store.dog);
+  }
 
   const sizes: { value: DogSize; label: string; hint: string; icon: number }[] = [
     { value: 'small', label: '소형견', hint: '대략 10kg 미만', icon: 20 },
@@ -90,10 +137,17 @@
       formError = '이름(20자 이내)과 몸무게(0.1~120kg, 소수점 한 자리까지)를 확인해 주세요.';
       return;
     }
+    if (!editingId && atLimit) {
+      formError = `강아지는 ${MAX_DOGS}마리까지 등록할 수 있어요.`;
+      return;
+    }
     formError = '';
     submitting = true;
-    await store.applyDog(profile);
+    const before = store.dogs.length;
+    await store.applyDog(profile, editingId ?? undefined);
     submitting = false;
+    // 새로 등록한 경우 그 아이가 폼에 올라오도록 맞춰 줍니다.
+    if (!editingId && store.dogs.length > before) editingId = store.dog?.id ?? null;
   }
 
   function exploreWithDog() {
@@ -101,10 +155,16 @@
     store.hideKnownMismatch = true;
     goto('/web/explore');
   }
+
+  /** 주 버튼으로 넘어갈 때도 이 아이 조건이 켜진 채로 도착하게 합니다. */
+  function rememberDogFilter() {
+    store.mode = 'dog';
+    store.hideKnownMismatch = true;
+  }
 </script>
 
 <svelte:head>
-  <title>{store.dog ? '우리 강아지' : '우리 강아지 등록'} — 댕브리웨어</title>
+  <title>{store.dogs.length ? '우리 강아지' : '우리 강아지 등록'} — 댕브리웨어</title>
 </svelte:head>
 
 <div class="page-scroll">
@@ -112,10 +172,91 @@
     <header class="page-head">
       <span class="page-eyebrow"><PawPrint size={16} fill="currentColor" />MY LITTLE COMPANION</span>
       <!-- 등록 전에는 등록 안내, 등록 후에는 우리 강아지 정보 페이지 -->
-      <h1>{store.dog ? '우리 강아지' : '우리 강아지 등록'}</h1>
+      <h1>{store.dogs.length ? '우리 강아지' : '우리 강아지 등록'}</h1>
       <p>우리 강아지 정보를 등록하면 장소마다 체중·체급 동반 조건과 비교해서 보여드려요.</p>
     </header>
 
+    {#if store.dogs.length}
+      <div class="dog-tabs" role="tablist" aria-label="우리 강아지 화면">
+        <button
+          role="tab"
+          aria-selected={tab === 'profile'}
+          class:on={tab === 'profile'}
+          onclick={() => (tab = 'profile')}
+          ><PawPrint size={16} />{editing ? `${editing.name} 정보` : '새로 등록'}</button
+        >
+        <button
+          role="tab"
+          aria-selected={tab === 'manage'}
+          class:on={tab === 'manage'}
+          onclick={() => (tab = 'manage')}
+          ><DogIcon size={17} />우리 강아지 관리<em>{store.dogs.length}</em></button
+        >
+      </div>
+    {/if}
+
+    {#if tab === 'manage'}
+      <!-- 우리 강아지 관리: 여러 마리를 한눈에 보고, 상세로 들어가 고칩니다 -->
+      <section class="manage">
+        <div class="manage-head">
+          <div>
+            <h2>등록한 강아지 {store.dogs.length}마리</h2>
+            <p>
+              선택한 아이의 체중·체급으로 장소 동반 조건을 비교하고, 지도 기록에도 이 아이 이름이
+              남아요.
+            </p>
+          </div>
+          <button class="primary-button" onclick={startNew} disabled={atLimit}>
+            <Plus size={18} />강아지 추가
+          </button>
+        </div>
+        {#if atLimit}
+          <p class="manage-limit">등록은 {MAX_DOGS}마리까지예요. 지운 뒤 다시 추가할 수 있어요.</p>
+        {/if}
+
+        <div class="dog-grid">
+          {#each store.dogs as dog (dog.id)}
+            {@const current = store.dog?.id === dog.id}
+            {@const card = findBreed(dog.breed)}
+            <article class="dog-card" class:current>
+              <div class="card-figure">
+                {#if card}
+                  <img src={breedImage(card)} alt={`${dog.name} ${card.label}`} draggable="false" />
+                {:else}
+                  <DogIcon size={44} strokeWidth={1.2} />
+                {/if}
+              </div>
+              <div class="card-copy">
+                <strong>{dog.name}{#if current}<span class="card-flag">선택됨</span>{/if}</strong>
+                <span>{dog.breed} · {sizeNames[dog.size]} · {dog.weight}kg</span>
+              </div>
+              <div class="card-actions">
+                <button class="card-detail" onclick={() => openDetail(dog)}
+                  ><Pencil size={15} />상세</button
+                >
+                {#if !current}
+                  <button class="card-pick" onclick={() => store.selectDog(dog.id)}
+                    >이 아이 선택</button
+                  >
+                {/if}
+                <button
+                  class="card-remove"
+                  disabled={removingId === dog.id}
+                  aria-label={`${dog.name} 지우기`}
+                  onclick={() => remove(dog)}><Trash2 size={15} /></button
+                >
+              </div>
+            </article>
+          {/each}
+        </div>
+
+        {#if !store.loggedIn}
+          <p class="manage-note">
+            <Info size={15} />로그인 전에는 이 브라우저에만 저장돼요. 로그인하면 계정에 저장돼 다른 기기에서도 보여요.
+          </p>
+        {/if}
+      </section>
+    {:else}
     <div class="dog-layout">
       <!-- 왼쪽: 3D 강아지 -->
       <section class="dog-stage">
@@ -141,7 +282,7 @@
                 />
               {:else}
                 <!-- 견종을 고르기 전 · 캐릭터가 없는 견종의 임시 자리 -->
-                <div class="dog-placeholder"><Dog size={92} strokeWidth={1.1} /></div>
+                <div class="dog-placeholder"><DogIcon size={92} strokeWidth={1.1} /></div>
                 <span class="stage-shadow" aria-hidden="true"></span>
               {/if}
             {/key}
@@ -154,9 +295,9 @@
         </div>
 
         <div class="stage-caption">
-          {#if store.dog}
-            <strong>{store.dog.name}</strong>
-            <span>{store.dog.breed} · {sizeNames[store.dog.size]} · {store.dog.weight}kg</span>
+          {#if editing}
+            <strong>{editing.name}</strong>
+            <span>{editing.breed} · {sizeNames[editing.size]} · {editing.weight}kg</span>
           {:else}
             <strong>누구와 함께 떠나나요?</strong>
             <span>오른쪽에 정보를 입력하면 여기에 나타나요.</span>
@@ -169,7 +310,7 @@
       <!-- 오른쪽: 등록 폼 -->
       <div class="form-col">
         <form class="dog-form" onsubmit={submit}>
-          <h2>{store.dog ? '정보 수정하기' : '강아지 등록하기'}</h2>
+          <h2>{editing ? `${editing.name} 정보 수정하기` : '강아지 등록하기'}</h2>
           <div class="field-row">
             <label>
               <span>강아지 이름</span>
@@ -217,30 +358,50 @@
           {#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
           <p class="form-note">
             <Info size={15} />체급 기준은 장소마다 달라요. 실제 체중과 원문 규정을 함께 확인해요.
-            {store.loggedIn ? '로그인 상태라 계정에 저장돼요.' : '로그인 전에는 이번 방문에서만 적용돼요.'}
+            {store.loggedIn ? '로그인 상태라 계정에 저장돼요.' : '로그인 전에는 이 브라우저에 저장돼요.'}
           </p>
-          <div class="form-actions">
-            <button class="primary-button" type="submit" disabled={submitting}
-              >{store.dog ? '수정한 정보 저장' : '이 정보로 등록'}<ArrowRight size={18} /></button
-            >
-            {#if !store.loggedIn}<button
-                type="button"
-                class="secondary-button"
-                onclick={() => store.requestLogin()}><LogIn size={17} />로그인하고 저장</button
-              >{/if}
+          <!-- 등록을 마친 뒤 가장 하고 싶은 일은 '갈 곳 찾기' 라서, 그걸 폼의 주 버튼으로 둡니다.
+               이미 저장된 아이를 고치는 중이면 저장은 오른쪽 끝 연필 버튼이 맡아요. -->
+          <div class="form-actions" class:has-go={Boolean(editing)}>
+            {#if editing}
+              <a class="go-explore" href="/web/explore" onclick={rememberDogFilter}>
+                <span class="go-figure" aria-hidden="true"><PawPrint size={24} strokeWidth={1.4} /></span>
+                <span class="go-copy">
+                  <strong>{editing.name}{josa(editing.name, '와/과')} 함께 갈 곳 찾기</strong>
+                  <span
+                    >{editing.weight}kg · {sizeNames[editing.size]} 조건에 맞는 곳만 골라서
+                    보여드려요</span
+                  >
+                </span>
+                <span class="go-arrow" aria-hidden="true"><ChevronRight size={20} /></span>
+              </a>
+              <button
+                class="save-edit"
+                type="submit"
+                disabled={submitting}
+                aria-label={`${editing.name} 수정한 정보 저장`}
+                title="수정한 정보 저장"><Pencil size={19} /></button
+              >
+            {:else}
+              <button class="primary-button" type="submit" disabled={submitting}
+                >이 정보로 등록<ArrowRight size={18} /></button
+              >
+            {/if}
           </div>
         </form>
       </div>
     </div>
+    {/if}
 
     <!-- 아래: 우리 강아지 기준 요약 -->
     <div class="dog-insight">
         {#if store.dog && summary}
           <section class="panel">
             <div class="panel-head">
-              <h2>{store.dog.name} 기준으로 본 강릉</h2>
-              <button class="primary-button" onclick={exploreWithDog}
-                ><Map size={18} />이 기준으로 지도 보기</button
+              <h2>{store.dog.name} 조건으로 본 장소들</h2>
+              <!-- 위의 주 버튼과 같은 일을 하므로, 색을 채우지 않아 위계를 낮춥니다. -->
+              <button class="secondary-button" onclick={exploreWithDog}
+                ><Map size={18} />이 조건으로 지도 보기</button
               >
             </div>
             <div class="stat-row">
@@ -272,7 +433,7 @@
                       <a href={`/web/explore?place=${place.id}`}>
                         <div>
                           <strong>{place.name}</strong>
-                          <span><MapPin size={13} />{categoryNames[place.category]}</span>
+                          <span><MapPin size={13} />{themeNames[placeTheme(place)]}</span>
                         </div>
                         <em>{profileNotice(place, store.dog).label}</em>
                       </a>
@@ -288,7 +449,7 @@
                       <a href={`/web/explore?place=${place.id}`}>
                         <div>
                           <strong>{place.name}</strong>
-                          <span><MapPin size={13} />{categoryNames[place.category]}</span>
+                          <span><MapPin size={13} />{themeNames[placeTheme(place)]}</span>
                         </div>
                         <em class="ok">{place.sourceWeight}kg까지</em>
                       </a>
@@ -356,6 +517,277 @@
     color: var(--muted);
     margin: 0;
   }
+
+  /* ---------- 등록 직후 다음 걸음 ---------- */
+  /* 이 화면의 주 버튼.
+     흰 폼 카드 위에 흰 버튼을 두니 구분이 안 돼서, 브랜드 브라운을 단색으로 채웠습니다.
+     이 화면의 다른 버튼들과 같은 색이지만 폭과 글자가 커서 위계가 분명해요.
+     예전처럼 그라데이션이나 큰 색 그림자는 쓰지 않아 여전히 차분합니다. */
+  .go-explore {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--brand);
+    box-shadow: 0 6px 16px #b5704e3d;
+    text-decoration: none;
+    transition:
+      background 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+  .go-explore:hover {
+    background: var(--brand-deep);
+    box-shadow: 0 8px 20px #b5704e52;
+  }
+  .go-figure {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #ffffff2b;
+    color: #fff;
+  }
+  .go-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .go-copy strong {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    word-break: keep-all;
+  }
+  /* 부제만 — 제목 안의 다른 요소까지 작아지지 않게 직계 자식으로 좁힙니다. */
+  .go-copy > span {
+    font-size: 13.5px;
+    letter-spacing: -0.2px;
+    color: #ffffffc4;
+  }
+  .go-arrow {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+    color: #ffffffb3;
+    transition: color 0.16s ease;
+  }
+  .go-explore:hover .go-arrow {
+    color: #fff;
+  }
+
+  /* ---------- 탭 ---------- */
+  .dog-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .dog-tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--brown-warm);
+    font-size: 15px;
+    cursor: pointer;
+    transition:
+      background 0.16s,
+      border-color 0.16s,
+      color 0.16s;
+  }
+  .dog-tabs button:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .dog-tabs button.on {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+    font-weight: 600;
+  }
+  .dog-tabs em {
+    font-style: normal;
+    font-size: 12.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #00000014;
+  }
+  .dog-tabs button.on em {
+    background: #ffffff33;
+  }
+
+  /* ---------- 우리 강아지 관리 ---------- */
+  .manage {
+    padding: 26px 28px 30px;
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    background: #fff;
+  }
+  .manage-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .manage-head h2 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -0.8px;
+  }
+  .manage-head p {
+    margin: 6px 0 0;
+    font-size: 14.5px;
+    color: var(--muted);
+  }
+  .manage-limit {
+    margin: -8px 0 16px;
+    font-size: 13.5px;
+    color: var(--brand);
+  }
+  .manage-note {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 18px 0 0;
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .dog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .dog-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 18px 16px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--ivory);
+    transition:
+      border-color 0.16s,
+      box-shadow 0.16s;
+  }
+  /* 지금 선택되어 있는 아이 */
+  .dog-card.current {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px #b5704e26;
+    background: #fff;
+  }
+  .card-figure {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 118px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fff 0%, var(--brand-tint) 100%);
+    color: var(--brown-warm);
+    overflow: hidden;
+  }
+  /* 캐릭터 원본이 640px 라 칸 안에 맞춰 넣습니다.
+     그리드 칸 안에서는 height:100% 가 auto 로 풀려 이미지가 커지기 때문에,
+     절대 배치로 크기를 확실히 묶고 비율은 object-fit 이 지키게 했어요.
+     캐릭터 파일은 알파 없는 순백 배경이라, 무대·견종 목록과 같은 multiply 합성으로 배경을 지웁니다.
+     (static/dogs/안내.txt 참고) */
+  .card-figure img {
+    position: absolute;
+    inset: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    object-fit: contain;
+    mix-blend-mode: multiply;
+  }
+  .card-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .card-copy strong {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .card-flag {
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  /* 바로 아래 자식만 — 이름 옆 뱃지(strong 안의 span)까지 회색으로 덮이지 않게 합니다. */
+  .card-copy > span {
+    font-size: 13.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: auto;
+  }
+  .card-actions button {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #fff;
+    color: var(--brown-warm);
+    font-size: 13.5px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  .card-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .card-detail:hover,
+  .card-pick:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .card-pick {
+    flex: 1;
+  }
+  .card-remove {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    margin-left: auto;
+    color: #bcaa9e;
+  }
+  .card-remove:hover:not(:disabled) {
+    border-color: #d9a3a3;
+    color: #b35b5b;
+  }
+  .card-remove:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
   .dog-layout {
     display: grid;
     /* 왼쪽 3D 강아지 · 오른쪽 등록 폼 */
@@ -695,6 +1127,36 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+  /* 갈 곳 찾기(주) + 연필 저장(보조)을 한 줄에. 연필은 오른쪽 끝에 붙습니다. */
+  .form-actions.has-go {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .save-edit {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+    color: var(--brown-warm);
+    cursor: pointer;
+    transition:
+      border-color 0.16s,
+      color 0.16s,
+      background 0.16s;
+  }
+  .save-edit:hover:not(:disabled) {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-tint);
+  }
+  .save-edit:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
 
   /* ---------- 오른쪽 패널 ---------- */
