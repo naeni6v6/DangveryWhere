@@ -1,4 +1,4 @@
-# 전국 16개 시도 단순화 지도 데이터 생성기
+# 전국 17개 시도 단순화 지도 데이터 생성기
 # 실행: 프로젝트 루트에서  python assets/korea-maps/build_regions.py   (필요: pip install shapely pillow)
 # 결과: src/lib/domain/koreaRegions.ts  +  assets/korea-maps/regions_preview.png
 # 원본: https://github.com/swcho/korea-maps  svg/simple/전국_시도_경계.svg  (MIT, LICENSE 참고)
@@ -11,10 +11,10 @@ s = open('assets/korea-maps/전국_시도_경계_simple.svg', encoding='utf-8').
 ds = re.findall(r'<path[^>]*?d="([^"]+)"', s)
 ORDER = ['seoul','busan','daegu','incheon','gwangju','daejeon','ulsan','sejong','gyeonggi','gangwon',
          'chungbuk','chungnam','jeonbuk','jeonnam','gyeongbuk','gyeongnam','jeju']
-NAMES = {'seoul':'서울','busan':'부산','daegu':'대구','incheon':'인천','gwangju':'광주','daejeon':'대전','ulsan':'울산',
+NAMES = {'seoul':'서울','busan':'부산','daegu':'대구','incheon':'인천','gwangju':'광주','daejeon':'대전','ulsan':'울산','sejong':'세종',
          'gyeonggi':'경기','gangwon':'강원','chungbuk':'충북','chungnam':'충남','jeonbuk':'전북','jeonnam':'전남',
          'gyeongbuk':'경북','gyeongnam':'경남','jeju':'제주'}
-METRO = {'seoul','busan','daegu','incheon','gwangju','daejeon','ulsan'}
+METRO = {'seoul','busan','daegu','incheon','gwangju','daejeon','ulsan','sejong'}
 
 def parse(d):
     geom = None
@@ -29,9 +29,7 @@ def parse(d):
     return geom
 
 raw = {k: parse(d) for k, d in zip(ORDER, ds)}
-# 세종 → 충남 (16개 시도)
-raw['chungnam'] = unary_union([raw['chungnam'], raw.pop('sejong')]).buffer(0.3).buffer(-0.3)
-# 도 영역에서 안쪽 광역시를 파냄 (겹쳐 그려져 있던 부분 정리)
+# 도 영역에서 안쪽 광역시·세종을 파냄 (겹쳐 그려져 있던 부분 정리)
 for k in list(raw):
     smaller = [g for j, g in raw.items() if j != k and g.area < raw[k].area and g.intersects(raw[k])]
     if smaller: raw[k] = raw[k].difference(unary_union(smaller))
@@ -76,7 +74,7 @@ def path_d(polys):
 
 # 도 → 광역시 순서로 그려야 광역시가 위에 올라와 클릭하기 쉬워요
 ids = ['gyeonggi','gangwon','chungbuk','chungnam','jeonbuk','jeonnam','gyeongbuk','gyeongnam','jeju',
-       'seoul','incheon','daejeon','daegu','gwangju','ulsan','busan']
+       'seoul','incheon','sejong','daejeon','daegu','gwangju','ulsan','busan']
 LABEL_NUDGE = {'gyeonggi': (6, 16), 'incheon': (-20, 8), 'chungnam': (-4, 0), 'gyeongbuk': (-14, 0), 'jeonnam': (4, 30), 'gyeongnam': (-6, -6)}
 regions = []
 for k in ids:
@@ -89,13 +87,12 @@ ul = [p for p in out['gyeongbuk'][0] if p.bounds[0] > KEEP_EAST + EAST_SHIFT and
 captions = [{'text': '울릉도', 'x': round(ul.centroid.x - ox, 1), 'y': round(ul.bounds[3] - oy + 11, 1)}, {'text': '독도', 'x': round(797.6 + EAST_SHIFT - ox, 1), 'y': round(184.8 - oy + 11, 1)}]
 W = max(W, max(c['x'] for c in captions) + 16)
 TS_HEADER = '''/**
- * 전국 16개 시도 경계 (지도 기록 페이지용 단순화 지도)
+ * 전국 17개 시도 경계 (지도 기록 페이지용 단순화 지도)
  *
  * 원본: swcho/korea-maps — svg/simple/전국_시도_경계.svg
  *       https://github.com/swcho/korea-maps  (MIT License, Copyright (c) 2022 StatGarten)
  *       통계청 SGIS 오픈 API 2020년 행정구역 경계
  * 가공: assets/korea-maps/build_regions.py 로 생성했어요. 손으로 고치지 말고 스크립트를 다시 실행하세요.
- *   - 세종을 충남에 합쳐 16개 시도로 구성
  *   - 작은 섬·서해 먼 섬 생략, 경계선 단순화
  *   - 울릉도·독도는 유지하되 본토 쪽으로 당겨 배치 (원본 데이터에 없는 독도는 경위도로 환산해 추가)
  */
