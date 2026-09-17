@@ -1,6 +1,15 @@
 <script lang="ts">
-  import { ArrowUpRight, Coffee, House, Trees, Sparkles, Heart, MapPin } from '@lucide/svelte';
-  import { categoryNames, type Place } from '$lib/domain/place';
+  import {
+    ArrowUpRight,
+    Coffee,
+    House,
+    Trees,
+    Sparkles,
+    Heart,
+    MapPin,
+    Landmark
+  } from '@lucide/svelte';
+  import { categoryNames, placeArea, shortAddress, type Place } from '$lib/domain/place';
   let {
     place,
     selected = false,
@@ -15,15 +24,18 @@
     onsave: () => void;
   } = $props();
   // hospital 은 웹(PC) 전용 분류라 이 화면에는 오지 않지만, 타입을 채워 둡니다.
-  const icons = { food: Coffee, stay: House, outdoor: Trees, activity: Sparkles, hospital: MapPin };
+  const icons = {
+    food: Coffee,
+    stay: House,
+    outdoor: Trees,
+    activity: Sparkles,
+    hospital: MapPin,
+    culture: Landmark
+  };
   const Icon = $derived(icons[place.category]);
+  // 전국을 함께 볼 수 있어서 시군구는 남깁니다. 시도만 떼고 동네 두 마디까지 보여 줘요.
   const area = $derived(
-    place.address
-      .replace(/^강원(?:특별자치도|도)?\s*/, '')
-      .replace(/^강릉시\s*/, '')
-      .split(' ')
-      .slice(0, 2)
-      .join(' ')
+    [placeArea(place).city, ...shortAddress(place).split(' ').slice(0, 2)].filter(Boolean).join(' ')
   );
 </script>
 
@@ -31,7 +43,7 @@
   <button class="place-main" onclick={onselect} aria-label={`${place.name} 동반 규정 보기`}>
     <div class="category-art {place.category}" aria-hidden="true">
       <div class="art-halo"></div>
-      <Icon size={32} strokeWidth={1.35} /><span>GANGNEUNG</span>
+      <Icon size={32} strokeWidth={1.35} /><span>{placeArea(place).city || 'DANGVERYWHERE'}</span>
     </div>
     <div class="place-copy">
       <span class="eyebrow">{categoryNames[place.category]}</span>

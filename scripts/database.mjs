@@ -19,7 +19,8 @@ try {
       '001_initial.sql',
       '002_places.sql',
       '003_food_kind.sql',
-      '004_multiple_dogs.sql'
+      '004_multiple_dogs.sql',
+      '005_region_favorites.sql'
     ]) {
       const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
       // These checked-in migrations contain no functions or semicolons in literals.

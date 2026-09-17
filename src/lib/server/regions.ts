@@ -1,5 +1,7 @@
 /**
- * 지역 확장 준비 데이터. 현재 getPlaces(), 화면, DB에는 연결하지 않습니다.
+ * 지역 확장 준비 데이터의 원본 저장본을 읽습니다. 출처별 원문(sources[].raw)이 그대로 들어 있어요.
+ * 화면이 쓰는 Place 로 옮기는 일은 regionPlaces.ts 가 하고, 이 파일은 저장본만 돌려줍니다.
+ * DB 에는 넣지 않습니다. db:setup 은 지금도 강릉 스냅샷만 적재해요.
  * 인수인계 및 사용법: docs/REGION_DATA_GUIDE.txt
  */
 import index from './data/regions/index.json';

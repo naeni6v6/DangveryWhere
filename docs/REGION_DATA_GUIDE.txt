@@ -1,12 +1,33 @@
 댕브리웨어 지역 확장 준비 데이터
 작성·수집 기준: 2026-09-17
+연결 기준: 2026-09-18 (8개 지역 모두 화면에 연결됨)
 
 1. 현재 상태
 
 상위 8개 지역, 총 508개 후보의 저장 데이터와 서버용 로더를 준비했다.
-현재 화면, 지도, 지역 선택, API 라우트, getPlaces(), DB 적재에는 연결하지 않았다.
-실시간 외부 API를 호출하는 기능이 아니라 이미 수집한 JSON을 지역별로 읽는 준비 코드다.
+이제 8개 지역 모두 웹 지역 선택·지도·목록·검색·필터에 연결되어 있다. 아래 2절의 요청 예시는
+이미 반영된 상태이며, 남은 작업은 5절(미수집 API)과 6절 중 '업체 확인'뿐이다.
+지역을 고르지 않으면 강릉까지 합친 '전국'(지역코드 all, 601건)이 기본으로 보인다.
+all 은 저장본이 따로 없는 가상 지역이라 regionCatalog 에서 status='mixed' 로 구분한다.
+DB 적재는 여전히 하지 않는다. db:setup 은 강릉 스냅샷만 places 테이블에 넣는다.
+실시간 외부 API를 호출하는 기능이 아니라 이미 수집한 JSON을 지역별로 읽는다.
 이 파일은 Git에 보관되는 인수인계 문서다. 새 대화에서도 먼저 읽으면 이어서 작업할 수 있다.
+
+연결된 곳:
+- 지역 선택 UI: src/lib/components/web/RegionPicker.svelte (헤더·랜딩 상단, 첫 항목이 전국)
+  차례는 전국 → 구분선 → 시도 묶음(강원·경기·충남·제주)이고, 시도와 지역 모두 북 → 남 순이다.
+  순서는 regionCatalog 에 적어 둔 차례 그대로이며, 어긋나면 regionPlaces.test.ts 가 잡는다.
+- 지역 선택 저장: src/lib/server/regionSelection.ts (?region= → 쿠키 dangverywhere-region)
+- 준비 데이터 → Place 변환: src/lib/server/regionPlaces.ts
+- 지도 중심·확대 단계·출처: src/lib/domain/region.ts (regionCatalog)
+- 찜 목록의 지역 확장: db/005_region_favorites.sql, findPlacesByIds()
+
+변환하면서 지킨 것(6절 요구사항):
+- 체중 원문이 비면 무제한으로 보지 않는다. '미만'과 '이하'는 sourceWeightBound 로 구분한다.
+- 장소(실내) 여부 / inOutFlag 는 실내 동반 근거로 쓰지 않는다. 규정은 원문 문장만 옮긴다.
+- 출처가 둘이면 '[강원 반려동반관광]' / '[한국문화정보원]' 을 붙여 양쪽을 모두 남긴다.
+- category=culture 는 Place 에 '문화시설' 분류로 추가했다(강릉 데이터에는 없다).
+- 수집일(importedAt)과 규정 확인일(verifiedAt=null)을 화면에서도 구분해 표시한다.
 
 순위  지역             고정 지역코드      후보 수
 1     강원 춘천시      chuncheon          93
@@ -45,6 +66,7 @@
 
 3. 코드 위치와 사용법 (향후 작업하는 개발자/에이전트용)
 
+- 지역 선택·변환 코드: src/lib/server/regionPlaces.ts, src/lib/domain/region.ts
 - 지역 목록 및 상태: src/lib/server/data/regions/index.json
 - 지역별 저장본: src/lib/server/data/regions/{지역코드}.json
 - 서버용 로더·타입: src/lib/server/regions.ts
@@ -60,10 +82,18 @@ SvelteKit 서버 코드에서만 사용:
   const dataset = await loadPreparedRegion('chuncheon');
   const candidates = dataset.places;
 
+화면에 쓸 Place 로 받으려면 원본 로더 대신 변환기를 쓴다:
+
+  import { getRegionPlaces, listRegions } from '$lib/server/regionPlaces';
+
+  const places = await getRegionPlaces('chuncheon');  // Place[]
+  const everywhere = await getRegionPlaces('all');    // 전국 601건 (강릉 먼저)
+  const regionList = listRegions();                   // 전국 + 강릉 + 준비 8개
+
 로더는 지역별로 지연 로딩하며 네트워크·DB 요청을 만들지 않는다.
 loadPreparedRegion은 매번 독립 사본을 반환한다. 반환 데이터를 수정해도 원본은 변하지 않는다.
 src/lib/server 모듈을 브라우저 컴포넌트에서 직접 import하지 않는다.
-현재 getPlaces()에 이 로더를 연결하지 않은 것은 의도된 상태다.
+getPlaces()는 지금도 강릉 전용이다. 지역별 목록은 getRegionPlaces()가 담당한다.
 
 4. 데이터 계약
 
@@ -101,18 +131,25 @@ index.json의 providers 상태에도 미수집임을 명시했다.
 강원 원본에는 규정 확인일이 없어 updatedAt=null로 남겼다.
 이번 준비로 업체 정책을 새로 확인한 것은 아니므로 모든 verifiedAt은 null이다.
 
-6. 실제 지역 연결 전에 필요한 작업
+6. 실제 지역 연결 전에 필요한 작업 (대부분 반영 완료)
 
-- PreparedRegionalPlace는 현재 앱의 Place와 다르다. 명시적인 변환을 구현해야 한다.
-- 체중 원문이 비었으면 무제한으로 판정하지 않는다. '미만'과 '이하'도 구분한다.
-- 장소(실내)=Y 또는 inOutFlag=IN은 반려견 실내 허용 근거로 바로 사용하지 않는다.
-  원문에 실외만 허용이라고 적힌 사례가 실제로 있다.
-- 출처 간 충돌을 보존하고, 수집일과 업체 정책 확인일을 구분한다.
-- 현재 places DB의 ID 제약 및 카테고리 제약을 확인한다. 준비 데이터 JSON을
-  db:setup에 그대로 넣거나 타입 단언으로 Place로 바꾸지 않는다.
-- 지역별 지도 중심/목록 필터를 구현하되 기존 강릉과 계정별 찜 데이터는 유지한다.
-- 강원 원본 HTTPS 인증서 검증이 조사 시점에 실패했다. 이 저장 데이터 로더에는
-  인증서 우회 코드가 없다. 미래 실시간 갱신은 원본 연결 상태부터 확인한다.
+[완료] PreparedRegionalPlace는 현재 앱의 Place와 다르다. 명시적인 변환을 구현해야 한다.
+       → regionPlaces.ts 의 toPlace(). 타입 단언을 쓰지 않는다.
+[완료] 체중 원문이 비었으면 무제한으로 판정하지 않는다. '미만'과 '이하'도 구분한다.
+       → parseSourceWeight() 와 Place.sourceWeightBound.
+[완료] 장소(실내)=Y 또는 inOutFlag=IN은 반려견 실내 허용 근거로 바로 사용하지 않는다.
+       원문에 실외만 허용이라고 적힌 사례가 실제로 있다. → 두 플래그를 읽지 않는다.
+[완료] 출처 간 충돌을 보존하고, 수집일과 업체 정책 확인일을 구분한다.
+[완료] 현재 places DB의 ID 제약 및 카테고리 제약을 확인한다. 준비 데이터 JSON을
+       db:setup에 그대로 넣거나 타입 단언으로 Place로 바꾸지 않는다.
+       → places 테이블은 건드리지 않았다. 찜만 담을 수 있게 favorites.place_id 제약을
+         db/005_region_favorites.sql 에서 넓혔다(외래키 없음).
+[완료] 지역별 지도 중심/목록 필터를 구현하되 기존 강릉과 계정별 찜 데이터는 유지한다.
+       → 찜 목록은 지금 보는 지역 밖의 장소도 favoritePlaces 로 함께 내려준다.
+[남음] 업체에 규정을 다시 확인하는 일. 지금 8개 지역은 화면에서 '준비 데이터'로 표시되고
+       모든 verifiedAt 은 null 이다. 확인을 마치기 전에는 이 표시를 떼지 않는다.
+[남음] 강원 원본 HTTPS 인증서 검증이 조사 시점에 실패했다. 이 저장 데이터 로더에는
+       인증서 우회 코드가 없다. 미래 실시간 갱신은 원본 연결 상태부터 확인한다.
 
 7. 저장본 재생성
 

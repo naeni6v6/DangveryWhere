@@ -20,6 +20,7 @@
     type Place,
     type DogProfile
   } from '$lib/domain/place';
+  import { providerInfo, providerOfUrl } from '$lib/domain/region';
   // 장소 대표 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
   import ThemeIcon from './ThemeIcon.svelte';
@@ -42,6 +43,10 @@
   // 지역명은 이 장소의 주소에서 그대로 가져옵니다.
   const area = $derived(placeArea(place).city);
   const lines = $derived(policyLines(place.policy));
+  // 제공처 이름은 원문 주소에서 되짚습니다. 지역마다 출처가 달라 문구에 박아 둘 수 없어요.
+  const sourceName = $derived(
+    providerInfo[providerOfUrl(place.sourceUrl) ?? 'gangwon-pettravel'].name
+  );
   const notice = $derived(dog ? profileNotice(place, dog) : null);
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
   const photoSrc = $derived((placeImages as Record<string, string>)[place.id] ?? null);
@@ -145,7 +150,7 @@
         </div>{/if}
       <a class="source-link" href={place.sourceUrl} target="_blank" rel="noreferrer"
         ><div>
-          <span>{hasPhoto ? '정보·사진 출처' : '정보 출처'}</span><strong>강원 반려동물 동반관광</strong><small
+          <span>{hasPhoto ? '정보·사진 출처' : '정보 출처'}</span><strong>{sourceName}</strong><small
             >데이터 수집 {place.importedAt} · 규정 확인일 미제공</small
           >
         </div>

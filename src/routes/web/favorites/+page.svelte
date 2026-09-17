@@ -30,7 +30,10 @@
   let selected = $state<Place | null>(null);
   let category = $state<ThemeFilter>('all');
 
-  const byId = $derived(new globalThis.Map(data.places.map((place) => [place.id, place])));
+  // 찜한 곳은 지금 보고 있는 지역 밖일 수도 있어, 서버가 지역을 가리지 않고 찾아 준 목록을 씁니다.
+  const byId = $derived(
+    new globalThis.Map([...data.places, ...data.favoritePlaces].map((place) => [place.id, place]))
+  );
   // 최근에 찜한 순서대로 보여줍니다.
   const saved = $derived(
     store.savedIds.map((id) => byId.get(id)).filter((place): place is Place => Boolean(place))
@@ -40,7 +43,16 @@
   );
   // 찜한 곳이 하나도 없는 분류는 탭에서 빼, 빈 탭이 줄줄이 늘어서지 않게 합니다.
   const tabs = $derived(
-    (['all', 'cafe', 'restaurant', 'stay', 'outdoor', 'activity', 'hospital'] as ThemeFilter[])
+    ([
+      'all',
+      'cafe',
+      'restaurant',
+      'stay',
+      'outdoor',
+      'activity',
+      'culture',
+      'hospital'
+    ] as ThemeFilter[])
       .map((id) => ({
         id,
         label: themeNames[id],

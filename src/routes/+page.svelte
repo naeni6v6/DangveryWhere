@@ -33,8 +33,20 @@
     type DogProfile,
     type Place
   } from '$lib/domain/place';
+  import { providerInfo } from '$lib/domain/region';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
+  // 지역명·출처를 문구에 박아 두지 않습니다. 어느 지역을 보는지는 웹(PC)에서 고른 값이에요.
+  const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
+  const city = $derived(region.city);
+  const sources = $derived(region.sources.map((source) => providerInfo[source]));
+  const collectedAt = $derived(
+    data.places
+      .map((place) => place.importedAt)
+      .sort()
+      .at(-1)
+      ?.replaceAll('-', '.') ?? ''
+  );
   let query = $state('');
   let category = $state<Category>('all');
   let selected = $state<Place | null>(null);
@@ -188,9 +200,9 @@
 </script>
 
 <svelte:head
-  ><title>댕브리웨어 — 강아지와 함께, 강릉</title><meta
+  ><title>댕브리웨어 — 강아지와 함께, {city}</title><meta
     name="description"
-    content="강릉에서 강아지와 함께 갈 수 있는 카페, 숙소, 관광지. 체중 제한부터 실내외 동반 규정까지, 떠나기 전에 확인하세요."
+    content={`${city}에서 강아지와 함께 갈 수 있는 카페, 숙소, 관광지. 체중 제한부터 실내외 동반 규정까지, 떠나기 전에 확인하세요.`}
   /></svelte:head
 >
 <svelte:window
@@ -203,10 +215,16 @@
 />
 
 <div class="map-app">
-  <main class="map-workspace" aria-label="강릉 반려견 동반 장소 탐색">
-    <h1 class="sr-only">댕브리웨어 · 강릉 반려견 동반 지도</h1>
+  <main class="map-workspace" aria-label={`${city} 반려견 동반 장소 탐색`}>
+    <h1 class="sr-only">댕브리웨어 · {city} 반려견 동반 지도</h1>
     <div class="map-stage">
-      <MapView places={filtered} selectedId={selected?.id ?? null} onselect={pick} appLayout />
+      <MapView
+        places={filtered}
+        selectedId={selected?.id ?? null}
+        onselect={pick}
+        appLayout
+        regionId={data.regionId}
+      />
     </div>
 
     <section class="app-toolbar" aria-label="장소 검색과 필터">
@@ -214,7 +232,7 @@
         <a class="compact-brand" href="/" aria-label="댕브리웨어 홈"
           ><img class="brand-logo" src="/logo.png" alt="" width="22" height="22" /><strong>댕브리웨어</strong></a
         >
-        <span class="city-label">강릉</span>
+        <span class="city-label">{city}</span>
         <button
           class="toolbar-account icon-button"
           onclick={accountAction}
@@ -225,7 +243,7 @@
         <div class="app-search">
           <Search size={20} /><input
             aria-label="장소 검색"
-            placeholder="강릉에서 어디로 갈까요?"
+            placeholder={`${city}에서 어디로 갈까요?`}
             bind:value={query}
             oninput={(event) => {
               selected = null;
@@ -324,7 +342,7 @@
           <p>
             {mode === 'dog' && dog
               ? dog.name + '의 체중·체급 조건 적용 중'
-              : '강릉 · 동반 규정을 확인해 보세요'}
+              : `${city} · 동반 규정을 확인해 보세요`}
           </p>
         </div>
         <button
@@ -427,11 +445,12 @@
   <div class="dialog-icon"><Info size={27} /></div>
   <h2 id="info-title">어떤 정보를 보여주나요?</h2>
   <p class="dialog-description">
-    강원 반려동물 동반관광 공공데이터에서<br />강릉의 동반 장소 81건을 가져왔어요.
+    {sources.map((source) => source.shortName).join(' · ')} 공공데이터에서<br />{city}의 동반 장소
+    {data.places.length}건을 가져왔어요.
   </p>
   <div class="info-copy">
     <p>
-      수집일은 2026년 9월 10일이에요. 개별 규정의 최근 확인일은 제공되지 않아, 방문 전 시설에 다시
+      수집일은 {collectedAt} 이에요. 개별 규정의 최근 확인일은 제공되지 않아, 방문 전 시설에 다시
       확인하는 것이 좋아요.
     </p>
     <p>
@@ -439,11 +458,8 @@
       허용 구역도 함께 살펴보세요.
     </p>
   </div>
-  <a
-    href="https://www.pettravel.kr/petapi/data/total"
-    target="_blank"
-    rel="noreferrer"
-    class="secondary-button">공식 데이터 보기<ArrowUpRight size={16} /></a
+  <a href={sources[0].url} target="_blank" rel="noreferrer" class="secondary-button"
+    >공식 데이터 보기<ArrowUpRight size={16} /></a
   >
 </dialog>
 {#if toast}<div class="toast" role="status"><PawPrint size={16} />{toast}</div>{/if}

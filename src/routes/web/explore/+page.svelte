@@ -1,18 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
   import { Map, Search, ArrowUpRight, SlidersHorizontal, RotateCcw } from '@lucide/svelte';
   import MapView from '$lib/components/MapView.svelte';
   import WebPlaceCard from '$lib/components/web/WebPlaceCard.svelte';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
-  import {
-    areaLabel,
-    themeNames,
-    type Theme,
-    type ThemeFilter,
-    type Place
-  } from '$lib/domain/place';
+  import { themeNames, type Theme, type ThemeFilter, type Place } from '$lib/domain/place';
+  import { providerInfo } from '$lib/domain/region';
   import { josa } from '$lib/domain/korean';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
@@ -25,10 +20,27 @@
   let listElement: HTMLDivElement;
 
   // 원본 API 는 식음료를 한 묶음으로 주지만, 카페와 식당은 찾는 목적이 달라 나눠 놨습니다.
-  const themes: Theme[] = ['cafe', 'restaurant', 'stay', 'outdoor', 'activity', 'hospital'];
+  // 문화시설(박물관·미술관)은 문화정보원 자료에만 있어, 그 지역에서만 탭을 띄웁니다.
+  const allThemes: Theme[] = [
+    'cafe',
+    'restaurant',
+    'stay',
+    'outdoor',
+    'activity',
+    'culture',
+    'hospital'
+  ];
+  const themes = $derived(
+    allThemes.filter(
+      (theme) =>
+        !['culture', 'hospital'].includes(theme) ||
+        data.places.some((place) => place.category === theme)
+    )
+  );
   const filtered = $derived(store.filter(data.places));
-  // 지역명은 문구에 박아 두지 않고 지금 보고 있는 목록에서 끌어옵니다.
-  const area = $derived(areaLabel(filtered.length ? filtered : data.places));
+  const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
+  const area = $derived(region.label);
+  const sources = $derived(region.sources.map((id) => providerInfo[id]));
   const areaText = (suffix: string) => (area ? `${area} ${suffix}` : suffix);
   // 동물병원은 동반 장소가 아니라서, 지도에 섞여 있으면 문구를 그에 맞게 바꿉니다.
   const hospitalsShown = $derived(filtered.filter((place) => place.category === 'hospital').length);
@@ -39,6 +51,14 @@
         ? areaText('동물병원')
         : '동반 장소와 동물병원'
   );
+  // 지역을 바꾸면 이전 지역에서 고른 장소가 상세 패널에 남아 있지 않게 합니다.
+  $effect(() => {
+    const ids = new Set(data.places.map((place) => place.id));
+    untrack(() => {
+      if (selected && !ids.has(selected.id)) selected = null;
+    });
+  });
+
   // 분류마다 받아 온 날짜가 달라, 지금 보고 있는 목록의 가장 최근 수집일을 보여 줍니다.
   const collectedAt = $derived(
     (filtered.length ? filtered : data.places)
@@ -177,8 +197,11 @@
   </div>
 
   <div class="sidebar-footer">
-    <span>강원 반려동물 동반관광 데이터 · 수집 {collectedAt}</span>
-    <a href="https://www.pettravel.kr/petapi/data/total" target="_blank" rel="noreferrer"
+    <span
+      >{sources.map((source) => source.shortName).join(' · ')} · 수집 {collectedAt}{#if region.status !== 'active'}
+        · 업체 확인 전{/if}</span
+    >
+    <a href={sources[0].url} target="_blank" rel="noreferrer"
       >공식 데이터<ArrowUpRight size={14} /></a
     >
   </div>
@@ -192,6 +215,7 @@
     onselect={(place) => (selected = place)}
     caption={mapCaption}
     padding={{ top: 40, right: 40, bottom: 40, left: 40 }}
+    regionId={data.regionId}
   />
   {#if offline}<div class="web-offline" role="status">
       오프라인 · 최신 규정을 확인할 수 없어요.

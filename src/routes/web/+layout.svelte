@@ -13,11 +13,11 @@
     Search,
     X,
     Smartphone,
-    MapPin,
     ArrowUpRight
   } from '@lucide/svelte';
-  import { areaLabel } from '$lib/domain/place';
+  import { providerInfo } from '$lib/domain/region';
   import { WebStore, setWebStore } from '$lib/web/store.svelte';
+  import RegionPicker from '$lib/components/web/RegionPicker.svelte';
   import WebLoginDialog from '$lib/components/web/WebLoginDialog.svelte';
   import type { LayoutData } from './$types';
   import './web.css';
@@ -32,8 +32,17 @@
     data.places.filter((place) => place.category === 'hospital').length
   );
   const companionCount = $derived(data.places.length - hospitalCount);
-  // 다루는 지역을 문구에 박아 두지 않고 데이터에서 끌어옵니다. 지역이 늘어나면 표시도 따라와요.
-  const area = $derived(areaLabel(data.places));
+  // 다루는 지역과 출처는 지금 고른 지역에서 끌어옵니다. 지역을 바꾸면 안내 문구도 따라와요.
+  const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
+  const area = $derived(region.label);
+  const sources = $derived(region.sources.map((id) => providerInfo[id]));
+  const collectedAt = $derived(
+    data.places
+      .map((place) => place.importedAt)
+      .sort()
+      .at(-1)
+      ?.replaceAll('-', '.') ?? ''
+  );
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   const isLanding = $derived(path === '/web');
   const nav = [
@@ -91,7 +100,7 @@
             <strong>댕브리웨어</strong>
             <span>DangveryWhere · 반려견 동반 지도</span>
           </a>
-          {#if area}<span class="city-badge"><MapPin size={15} />{area}</span>{/if}
+          <RegionPicker regions={data.regions} regionId={data.regionId} />
           <form class="header-search" role="search" onsubmit={submitSearch}>
             <Search size={21} /><input
               aria-label="장소 검색"
@@ -137,25 +146,33 @@
     <div class="dialog-icon"><Info size={29} /></div>
     <h2 id="web-info-title">어떤 정보를 보여주나요?</h2>
     <p class="dialog-description">
-      강원 반려동물 동반관광 공공데이터에서<br />{area} 동반 장소 {companionCount}건과 동물병원 {hospitalCount}곳을
-      가져왔어요.
+      {sources.map((source) => source.shortName).join(' · ')} 공공데이터에서<br />{area} 동반 장소
+      {companionCount}건{#if hospitalCount}과 동물병원 {hospitalCount}곳{/if}을 가져왔어요.
     </p>
     <div class="info-copy">
       <p>
-        동반 장소는 2026년 9월 10일, 동물병원은 9월 16일에 받아 왔어요. 개별 규정의 최근 확인일은
-        제공되지 않아, 방문 전 시설에 다시 확인하는 것이 좋아요.
+        {collectedAt} 에 받아 온 자료예요. 개별 규정의 최근 확인일은 제공되지 않아, 방문 전 시설에
+        다시 확인하는 것이 좋아요.
       </p>
+      {#if region.status !== 'active'}
+        <p>
+          {region.status === 'mixed' ? '강릉을 뺀 여덟 지역은' : area + '는'} 아직
+          <strong>준비 데이터</strong>예요. 공공데이터 원문을 그대로 옮겨 둔 것이라 업체에 다시
+          확인하지 않았고, 출처가 둘인 곳은 양쪽 문장을 모두 보여줍니다.
+        </p>
+      {/if}
       <p>
         ‘우리 강아지’에서 체중을 비교할 수 있지만, 제한 체중만으로 입장을 보장하지 않아요. 준비물과
         허용 구역도 함께 살펴보세요.
       </p>
     </div>
-    <a
-      href="https://www.pettravel.kr/petapi/data/total"
-      target="_blank"
-      rel="noreferrer"
-      class="secondary-button">공식 데이터 보기<ArrowUpRight size={17} /></a
-    >
+    <div class="info-sources">
+      {#each sources as source (source.url)}
+        <a href={source.url} target="_blank" rel="noreferrer" class="secondary-button"
+          >{source.name}<ArrowUpRight size={17} /></a
+        >
+      {/each}
+    </div>
   </dialog>
 
   {#if store.toast}<div class="toast" role="status"><PawPrint size={18} />{store.toast}</div>{/if}
@@ -295,16 +312,11 @@
     color: var(--muted);
     margin-top: 3px;
   }
-  .city-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    color: var(--brown-warm);
-    background: var(--sand);
-    border-radius: 22px;
-    padding: 9px 14px;
-    white-space: nowrap;
+  .info-sources {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
   }
   .header-search {
     flex: 1;
@@ -403,7 +415,7 @@
     }
   }
   @media (max-width: 1180px) {
-    .city-badge {
+    .web-header :global(.region-picker) {
       display: none;
     }
   }

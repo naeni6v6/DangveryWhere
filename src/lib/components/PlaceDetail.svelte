@@ -15,11 +15,13 @@
   } from '@lucide/svelte';
   import {
     categoryNames,
+    placeArea,
     policyLines,
     profileNotice,
     type Place,
     type DogProfile
   } from '$lib/domain/place';
+  import { providerInfo, providerOfUrl } from '$lib/domain/region';
   let {
     place,
     dog,
@@ -36,6 +38,10 @@
     appLayout?: boolean;
   } = $props();
   const lines = $derived(policyLines(place.policy));
+  // 제공처 이름은 원문 주소에서 되짚습니다. 지역마다 출처가 달라 문구에 박아 둘 수 없어요.
+  const sourceName = $derived(
+    providerInfo[providerOfUrl(place.sourceUrl) ?? 'gangwon-pettravel'].name
+  );
   const notice = $derived(dog ? profileNotice(place, dog) : null);
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
   let panel: HTMLElement;
@@ -110,7 +116,7 @@
       <div class="cover-circle"></div>
     </div>
     <div class="detail-body">
-      <span class="eyebrow">{categoryNames[place.category]} · 강릉</span>
+      <span class="eyebrow">{categoryNames[place.category]} · {placeArea(place).city}</span>
       <div class="detail-title">
         <h2>{place.name}</h2>
         <button
@@ -155,7 +161,7 @@
         </div>{/if}
       <a class="source-link" href={place.sourceUrl} target="_blank" rel="noreferrer"
         ><div>
-          <span>정보 출처</span><strong>강원 반려동물 동반관광</strong><small
+          <span>정보 출처</span><strong>{sourceName}</strong><small
             >데이터 수집 {place.importedAt} · 규정 확인일 미제공</small
           >
         </div>

@@ -1,4 +1,12 @@
-export type Category = 'all' | 'food' | 'stay' | 'outdoor' | 'activity' | 'hospital';
+export type Category =
+  | 'all'
+  | 'food'
+  | 'stay'
+  | 'outdoor'
+  | 'activity'
+  | 'hospital'
+  // 박물관·미술관·문예회관. 한국문화정보원 원본에만 있는 분류라 강릉 데이터에는 없습니다.
+  | 'culture';
 export type DogSize = 'small' | 'medium' | 'large';
 export type DogProfile = { name: string; breed: string; size: DogSize; weight: number };
 /**
@@ -12,6 +20,12 @@ export type Dog = DogProfile & { id: string };
  * 모바일 앱(/)의 '카페·음식점' 묶음을 그대로 유지하기 위해서입니다.
  */
 export type FoodKind = 'cafe' | 'restaurant';
+/**
+ * 원본이 적어 둔 제한 체중의 경계.
+ * '10kg 미만'과 '10kg 이하'는 딱 10kg인 아이에게 정반대 답이라 구분해 둡니다.
+ * 원본이 경계를 밝히지 않았으면(강릉 스냅샷·DB) 값이 비고, 그때는 '이하'로 봅니다.
+ */
+export type WeightBound = 'under' | 'atMost';
 export type Place = {
   id: string;
   name: string;
@@ -30,6 +44,8 @@ export type Place = {
   verifiedAt: string | null;
   // Source field only: an absent value is not evidence of unrestricted entry.
   sourceWeight: number | null;
+  /** 원본이 '미만'/'이하'를 밝힌 경우에만 채웁니다. 비어 있으면 경계를 모른다는 뜻이에요. */
+  sourceWeightBound?: WeightBound;
 };
 
 export const categoryNames: Record<Category, string> = {
@@ -38,11 +54,19 @@ export const categoryNames: Record<Category, string> = {
   stay: '숙소',
   outdoor: '관광·산책',
   activity: '체험',
-  hospital: '동물병원'
+  hospital: '동물병원',
+  culture: '문화시설'
 };
 
 /** 웹(PC) 화면에서 쓰는 분류. 식음료만 카페/식당으로 한 단계 더 쪼갭니다. */
-export type Theme = 'cafe' | 'restaurant' | 'stay' | 'outdoor' | 'activity' | 'hospital';
+export type Theme =
+  | 'cafe'
+  | 'restaurant'
+  | 'stay'
+  | 'outdoor'
+  | 'activity'
+  | 'hospital'
+  | 'culture';
 export type ThemeFilter = 'all' | Theme;
 
 export const themeNames: Record<ThemeFilter, string> = {
@@ -52,7 +76,8 @@ export const themeNames: Record<ThemeFilter, string> = {
   stay: '숙소',
   outdoor: '관광·산책',
   activity: '체험',
-  hospital: '동물병원'
+  hospital: '동물병원',
+  culture: '문화시설'
 };
 
 /**
@@ -144,10 +169,19 @@ export function profileNotice(
       kind: 'restricted'
     };
   }
-  if (place.sourceWeight !== null && dog.weight > place.sourceWeight) {
+  // '10kg 미만'이면 딱 10kg인 아이도 못 들어갑니다. 경계를 모르면 '이하'로 봅니다.
+  const overWeight =
+    place.sourceWeight !== null &&
+    (place.sourceWeightBound === 'under'
+      ? dog.weight >= place.sourceWeight
+      : dog.weight > place.sourceWeight);
+  if (overWeight) {
     return {
       label: '체중 조건 확인',
-      detail: `등록한 ${dog.weight}kg이 원본의 제한 체중 ${place.sourceWeight}kg을 초과해요.`,
+      detail:
+        place.sourceWeightBound === 'under'
+          ? `원본의 제한 체중이 ${place.sourceWeight}kg 미만이라 ${dog.weight}kg은 기준을 넘어요.`
+          : `등록한 ${dog.weight}kg이 원본의 제한 체중 ${place.sourceWeight}kg을 초과해요.`,
       kind: 'restricted'
     };
   }

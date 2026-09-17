@@ -14,8 +14,9 @@
     Database
   } from '@lucide/svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
+  import RegionPicker from '$lib/components/web/RegionPicker.svelte';
+  import { providerInfo } from '$lib/domain/region';
   import {
-    areaLabel,
     placeArea,
     placeTheme,
     policyLines,
@@ -34,28 +35,45 @@
   const companionCount = $derived(companionPlaces.length);
   const weightCount = $derived(companionPlaces.filter((place) => place.sourceWeight !== null).length);
   const hospitalCount = $derived(data.places.length - companionCount);
-  // 지역명을 문구에 박아 두지 않고 데이터에서 끌어옵니다.
-  const area = $derived(areaLabel(companionPlaces));
+  // 지역명과 출처를 문구에 박아 두지 않고 지금 고른 지역에서 끌어옵니다.
+  const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
+  const area = $derived(region.label);
+  const sources = $derived(region.sources.map((id) => providerInfo[id]));
+  const collectedAt = $derived(
+    data.places
+      .map((place) => place.importedAt)
+      .sort()
+      .at(-1)
+      ?.slice(0, 7)
+      .replace('-', '.') ?? ''
+  );
 
   /**
-   * 메인 상단 산책 영상 (static/media/walk.mp4 · 1280x720 · 8초).
-   * 다른 영상으로 바꾸려면 static/media/ 에 넣고 이 경로만 바꾸면 됩니다.
+   * 메인 상단 산책 영상 (static/media/walk-2026-09-18.mp4 · 1280x720 · 8초).
+   *
+   * 영상을 바꿀 때는 **반드시 파일 이름도 같이 바꾸세요**(날짜를 붙이면 편해요).
+   * 서비스 워커가 static/ 파일을 경로 단위로 캐시해서, 같은 이름으로 덮어쓰면 이미 방문한
+   * 브라우저는 예전 영상을 계속 틀어 줍니다. ?v=2 같은 쿼리로는 비켜 갈 수 없어요.
+   *
    * 영상 비율이 16:9 가 아니면 아래 .film 의 aspect-ratio 도 같이 맞춰 주세요.
    * null 이면 검은 화면으로 비워 둡니다.
    */
-  const walkVideo: string | null = '/media/walk.mp4';
+  const walkVideo: string | null = '/media/walk-2026-09-18.mp4';
   const walkPoster: string | null = null;
   const isGif = $derived(Boolean(walkVideo && /\.gif$/i.test(walkVideo)));
 
-  const categoryCards = [
+  const allCategoryCards = [
     { id: 'cafe', copy: '테라스만? 실내도? 매장마다 다른 규정을 미리' },
     { id: 'restaurant', copy: '밥 먹는 동안 같이 있을 수 있는 곳인지 먼저' },
     { id: 'stay', copy: '체중·마릿수 제한과 추가 요금을 떠나기 전에' },
     { id: 'outdoor', copy: '목줄 규정과 출입 가능한 구역을 한눈에' },
-    { id: 'activity', copy: '반려견과 함께 즐길 수 있는 체험 프로그램' }
+    { id: 'activity', copy: '반려견과 함께 즐길 수 있는 체험 프로그램' },
+    { id: 'culture', copy: '박물관·미술관에 함께 들어갈 수 있는지부터' }
   ] as const;
   const count = (theme: Theme) =>
     data.places.filter((place) => placeTheme(place) === theme).length;
+  // 그 지역에 한 곳도 없는 분류는 빼서, 0곳짜리 카드가 서 있지 않게 합니다.
+  const categoryCards = $derived(allCategoryCards.filter((item) => count(item.id) > 0));
   const featured = $derived(
     data.places.filter((place) => policyLines(place.policy).length >= 2).slice(0, 6)
   );
@@ -121,6 +139,7 @@
       <a href="/web/dog"><PawPrint size={17} />우리 강아지</a>
     </nav>
     <div class="nav-right">
+      <RegionPicker regions={data.regions} regionId={data.regionId} />
       <a class="nav-mobile" href="/"><Smartphone size={16} />모바일 버전</a>
       {#if store.loggedIn}
         <button class="nav-account" onclick={() => store.logout()}><LogOut size={16} />로그아웃</button>
@@ -159,11 +178,11 @@
   <main class="stage">
     <!-- 서비스 소개 -->
     <section class="intro" use:reveal>
-      <span class="intro-eyebrow"><MapPin size={15} />반려견 동반 여행</span>
+      <span class="intro-eyebrow"><MapPin size={15} />{area} 반려견 동반 여행</span>
       <h1>강아지와 함께,<br /><em>헛걸음 없이</em></h1>
       <p class="intro-lead">
         “여기 강아지 들어갈 수 있나요?” 매번 전화로 묻지 않아도 되도록,<br />
-        반려견 동반 장소 <strong>{companionCount}곳</strong>의 출입 규정을 한곳에 모았어요.
+        {area} 반려견 동반 장소 <strong>{companionCount}곳</strong>의 출입 규정을 한곳에 모았어요.
       </p>
 
       <div class="cta">
@@ -176,10 +195,17 @@
   <section class="stats" aria-label="데이터 요약" use:reveal>
     <div><strong>{companionCount}<small>곳</small></strong><span>반려견 동반 장소</span></div>
     <div><strong>{weightCount}<small>곳</small></strong><span>체중 제한이 기재된 장소</span></div>
-    <div>
-      <strong>{hospitalCount}<small>곳</small></strong><span>동물병원</span>
-    </div>
-    <div><strong>2026.09</strong><span>공공데이터 수집 시점</span></div>
+    <!-- 동물병원은 강원 원본에만 있어서, 없는 지역에서는 0곳 칸을 세우지 않습니다. -->
+    {#if hospitalCount}
+      <div>
+        <strong>{hospitalCount}<small>곳</small></strong><span>동물병원</span>
+      </div>
+    {:else}
+      <div>
+        <strong>{categoryCards.length}<small>가지</small></strong><span>장소 분류</span>
+      </div>
+    {/if}
+    <div><strong>{collectedAt}</strong><span>공공데이터 수집 시점</span></div>
   </section>
 
   <!-- 기능 소개 -->
@@ -203,7 +229,10 @@
       <article class="feature" use:reveal>
         <span class="feature-icon"><Database size={28} /></span>
         <h3>출처가 분명한 공공데이터</h3>
-        <p>강원 반려동물 동반관광 데이터를 사용하고, 수집일과 원문 링크를 함께 표시해요.</p>
+        <p>
+          {sources.map((source) => source.shortName).join(' · ')} 자료를 쓰고, 수집일과 원문 링크를
+          함께 표시해요.
+        </p>
       </article>
     </div>
   </section>
@@ -277,9 +306,11 @@
       <p>2026 관광데이터 활용 공모전 · 웹·앱 구현 부문</p>
     </div>
     <div class="footer-links">
-      <a href="https://www.pettravel.kr/petapi/data/total" target="_blank" rel="noreferrer"
-        >데이터 출처: 강원 반려동물 동반관광<ArrowUpRight size={14} /></a
-      >
+      {#each sources as source (source.url)}
+        <a href={source.url} target="_blank" rel="noreferrer"
+          >데이터 출처: {source.shortName}<ArrowUpRight size={14} /></a
+        >
+      {/each}
       <span>규정은 현지 사정에 따라 바뀔 수 있어요. 방문 전 시설에 확인해 주세요.</span>
     </div>
   </footer>
