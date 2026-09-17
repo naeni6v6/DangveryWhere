@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-09-17",
+  "status": "prepared",
+  "totalCandidates": 508,
+  "providers": {
+    "gangwon-pettravel": {
+      "status": "snapshot-collected",
+      "url": "https://www.pettravel.kr/petapi/api/way"
+    },
+    "kcisa-pet-culture": {
+      "status": "csv-snapshot-collected",
+      "url": "https://www.data.go.kr/data/15111389/fileData.do"
+    },
+    "kto-pet-tour": {
+      "status": "not-collected-api-key-required",
+      "url": "https://www.data.go.kr/data/15135102/openapi.do"
+    },
+    "gocamping": {
+      "status": "not-collected-api-key-required",
+      "url": "https://www.data.go.kr/data/15101933/openapi.do"
+    }
+  },
+  "regions": {
+    "chuncheon": {
+      "id": "chuncheon",
+      "rank": 1,
+      "province": "강원",
+      "city": "춘천시",
+      "candidateCount": 93,
+      "decisionConditionCount": 74
+    },
+    "yangyang": {
+      "id": "yangyang",
+      "rank": 2,
+      "province": "강원",
+      "city": "양양군",
+      "candidateCount": 63,
+      "decisionConditionCount": 52
+    },
+    "seogwipo": {
+      "id": "seogwipo",
+      "rank": 3,
+      "province": "제주",
+      "city": "서귀포시",
+      "candidateCount": 89,
+      "decisionConditionCount": 51
+    },
+    "pyeongchang": {
+      "id": "pyeongchang",
+      "rank": 4,
+      "province": "강원",
+      "city": "평창군",
+      "candidateCount": 61,
+      "decisionConditionCount": 48
+    },
+    "jeju-si": {
+      "id": "jeju-si",
+      "rank": 5,
+      "province": "제주",
+      "city": "제주시",
+      "candidateCount": 80,
+      "decisionConditionCount": 45
+    },
+    "taean": {
+      "id": "taean",
+      "rank": 6,
+      "province": "충남",
+      "city": "태안군",
+      "candidateCount": 44,
+      "decisionConditionCount": 35
+    },
+    "hongcheon": {
+      "id": "hongcheon",
+      "rank": 7,
+      "province": "강원",
+      "city": "홍천군",
+      "candidateCount": 38,
+      "decisionConditionCount": 32
+    },
+    "gapyeong": {
+      "id": "gapyeong",
+      "rank": 8,
+      "province": "경기",
+      "city": "가평군",
+      "candidateCount": 40,
+      "decisionConditionCount": 30
+    }
+  }
+}
