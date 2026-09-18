@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { dev } from '$app/environment';
   import {
+    Sparkles,
     PawPrint,
     Map,
     Heart,
@@ -149,6 +151,12 @@
     </nav>
     <div class="nav-right">
       <RegionPicker regions={data.regions} regionId={data.regionId} />
+      {#if dev}
+        <!-- 개발용: 튜토리얼 화면 확인 링크. 배포 전 삭제 -->
+        <a class="nav-mobile dev-link" href="/web/start?replay"
+          ><Sparkles size={16} />튜토리얼 페이지 보기</a
+        >
+      {/if}
       <a class="nav-mobile" href="/"><Smartphone size={16} />모바일 버전</a>
       {#if store.loggedIn}
         <button class="nav-account" onclick={() => store.logout()}><LogOut size={16} />로그아웃</button>
@@ -382,6 +390,7 @@
     font-size: 15px;
     color: var(--brown-warm);
     text-decoration: none;
+    white-space: nowrap;
     transition: background 0.16s, color 0.16s;
   }
   .nav-links a:hover {
@@ -407,11 +416,17 @@
     color: var(--muted);
     text-decoration: none;
     cursor: pointer;
+    white-space: nowrap;
     transition: background 0.16s, color 0.16s;
   }
   .nav-mobile:hover,
   .nav-account:hover {
     background: #fff;
+    color: var(--brand);
+  }
+  /* 개발용 링크 — 눈에 띄게 점선 테두리. 배포 전 삭제 */
+  .dev-link {
+    border: 1px dashed var(--brand);
     color: var(--brand);
   }
 

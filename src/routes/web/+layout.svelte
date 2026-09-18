@@ -2,7 +2,9 @@
   import { untrack, type Snippet } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { dev } from '$app/environment';
   import {
+    Sparkles,
     PawPrint,
     Map,
     MapPinned,
@@ -115,6 +117,12 @@
               >{/if}
           </form>
           <div class="header-right">
+            {#if dev}
+              <!-- 개발용: 튜토리얼 화면 확인 링크. 배포 전 삭제 -->
+              <a class="mobile-link dev-link" href="/web/start?replay"
+                ><Sparkles size={17} /><span>튜토리얼 페이지 보기</span></a
+              >
+            {/if}
             <a class="mobile-link" href="/" title="모바일 앱 화면으로 보기"
               ><Smartphone size={17} /><span>모바일 버전</span></a
             >
@@ -375,6 +383,14 @@
   .mobile-link:hover {
     background: var(--sand);
     color: var(--brown-warm);
+  }
+  /* 개발용 링크 — 눈에 띄게 점선 테두리. 배포 전 삭제 */
+  .dev-link {
+    border: 1px dashed var(--brand);
+    color: var(--brand);
+  }
+  .dev-link span {
+    display: inline !important;
   }
   /* 헤더 맨 오른쪽 로그인 버튼 */
   .login-cta {
