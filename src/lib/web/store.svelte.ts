@@ -17,16 +17,12 @@ const LOCAL_DOGS_KEY = 'dangverywhere-dogs';
 
 /**
  * 처음 들어온 브라우저에 넣어 주는 예시 강아지.
- * 빈 화면부터 보면 무엇을 하는 서비스인지 와닿지 않아, 한 마리를 미리 넣어 둡니다.
- * 지우면 다시 생기지 않아요(아래 readLocalDogs 참고). 예시가 필요 없으면 이 값을 null 로 두면 됩니다.
+ * 예전에는 빈 화면이 낯설어 '두부'를 미리 넣어 뒀지만, 이제 첫 방문 튜토리얼(/web/start)에서
+ * 직접 한 마리를 만들기 때문에 비워 둡니다. 예시가 다시 필요하면 아래처럼 한 마리를 넣으면 돼요.
+ * (지우면 다시 생기지 않아요 — 아래 readLocalDogs 참고)
+ *   { id: '00000000-0000-4000-8000-000000000001', name: '두부', breed: '비숑 프리제', size: 'small', weight: 4 }
  */
-const SAMPLE_DOG: Dog | null = {
-  id: '00000000-0000-4000-8000-000000000001',
-  name: '두부',
-  breed: '비숑 프리제',
-  size: 'small',
-  weight: 4
-};
+const SAMPLE_DOG: Dog | null = null;
 const KEY = Symbol('dangverywhere-web');
 
 /**

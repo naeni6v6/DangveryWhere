@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     PawPrint,
     Map,
@@ -25,10 +26,18 @@
     type Theme
   } from '$lib/domain/place';
   import { getWebStore } from '$lib/web/store.svelte';
+  import { AFTER_TUTORIAL_PATH, TUTORIAL_PATH, isTutorialDone } from '$lib/web/onboarding';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const store = getWebStore();
+
+  // [시작하기]: 처음 온 브라우저는 튜토리얼로, 이미 마쳤으면 바로 지도로.
+  // 완료 여부는 브라우저에만 있어서 서버 렌더 때는 튜토리얼 주소로 두고, 마운트 뒤에 바꿉니다.
+  let startHref = $state(TUTORIAL_PATH);
+  onMount(() => {
+    if (isTutorialDone()) startHref = AFTER_TUTORIAL_PATH;
+  });
 
   // 동물병원은 '동반 장소'가 아니라 진료 시설이라, 소개 문구의 수에서 뺍니다.
   const companionPlaces = $derived(data.places.filter((place) => place.category !== 'hospital'));
@@ -186,7 +195,7 @@
       </p>
 
       <div class="cta">
-        <a class="cta-button" href="/web/dog">시작하기<ArrowRight size={19} /></a>
+        <a class="cta-button" href={startHref}>시작하기<ArrowRight size={19} /></a>
       </div>
     </section>
   </main>

@@ -44,7 +44,8 @@
       ?.replaceAll('-', '.') ?? ''
   );
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
-  const isLanding = $derived(path === '/web');
+  // 메인 랜딩과 첫 튜토리얼은 왼쪽 메뉴·헤더 없이 화면 전체를 씁니다.
+  const isLanding = $derived(path === '/web' || path === '/web/start');
   const nav = [
     { href: '/web/dog', label: '우리 강아지', icon: PawPrint },
     { href: '/web/explore', label: '가게 찾기', icon: Map },
