@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "about": "사진·설명·가격이 있는 가게 메뉴판. 채우는 방법은 docs/MENU_BOARD_GUIDE.txt 를 보세요.",
+  "places": {}
+}

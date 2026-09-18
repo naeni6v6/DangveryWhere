@@ -12,7 +12,7 @@
     ExternalLink
   } from '@lucide/svelte';
   import {
-    menuGroups,
+    placeMenu,
     placeArea,
     placeTheme,
     themeNames,
@@ -24,6 +24,8 @@
   import { providerInfo, providerOfUrl } from '$lib/domain/region';
   // 장소 대표 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
+  import { menuBoardOf } from '$lib/data/menuBoards';
+  import MenuBoard from '../MenuBoard.svelte';
   import ThemeIcon from './ThemeIcon.svelte';
   let {
     place,
@@ -52,9 +54,13 @@
   const notices = $derived(dogs.map((dog) => ({ name: dog.name, ...profileNotice(place, dog) })));
   // 메뉴는 식당·카페에만 보여 줍니다. 원본의 같은 칸이 숙소에는 객실 요금으로 들어와요.
   const isFood = $derived(place.category === 'food');
-  const menu = $derived(menuGroups(place.menu ?? ''));
+  // 사진·설명이 있는 메뉴판을 옮겨 둔 가게는 그쪽을, 없으면 공공데이터 문구를 씁니다.
+  const menu = $derived(placeMenu(place.menu ?? '', menuBoardOf(place.id)));
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
-  const photoSrc = $derived((placeImages as Record<string, string>)[place.id] ?? null);
+  // 장소마다 최대 5장. 첫 장은 표지로 쓰고 나머지는 아래 사진 줄에 이어 붙입니다.
+  const photos = $derived((placeImages as Record<string, string[]>)[place.id] ?? []);
+  const photoSrc = $derived(photos[0] ?? null);
+  const morePhotos = $derived(photos.slice(1));
   // 사진을 못 불러오면 기존 갈색 커버로 돌아가요
   let photoFailed = $state(false);
   $effect(() => {
@@ -111,40 +117,12 @@
 
   <div class="detail-scroll">
     <div class="detail-body">
-      <div class="policy-heading">
-        <PawPrint size={19} />
-        <h3>{isHospital ? '진료 전에' : '함께 가기 전에'}</h3>
-        <span>{isHospital ? '병원 정보' : '동반 규정'}</span>
-      </div>
-      {#if !isHospital}{#each notices as notice, index (index)}<div
-            class="profile-notice"
-            class:restricted={notice.kind === 'restricted'}
-          >
-            <strong>{notice.name} · {notice.label}</strong>
-            <p>{notice.detail}</p>
-          </div>{/each}{/if}
-      <div class="policy-list">
-        {#each lines as line, i}<div class="policy-row">
-            <span class="policy-number">{String(i + 1).padStart(2, '0')}</span>
-            <p>{line}</p>
-          </div>{/each}
-        <!-- 원본이 동물병원에는 진료시간·진료과목을 주지 않습니다. 없는 걸 있는 척하지 않습니다. -->
-        {#if !lines.length}<p class="policy-empty">
-            {isHospital
-              ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
-              : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
-          </p>{/if}
-      </div>
-      <div class="verification">
-        <Info size={16} />
-        <p>
-          공공데이터에 등록된 안내예요.<br /><strong
-            >{isHospital
-              ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
-              : '최근 운영 규정은 방문 전에 확인해 주세요.'}</strong
-          >
-        </p>
-      </div>
+      <!-- 가게를 먼저 보여 주고(사진 → 소개 → 메뉴), 동반 규정은 그 아래에 둡니다. -->
+      {#if hasPhoto && morePhotos.length}<div class="photo-strip">
+          {#each morePhotos as photo (photo)}
+            <img src={photo} alt={`${place.name} 사진`} loading="lazy" decoding="async" />
+          {/each}
+        </div>{/if}
       {#if place.description}<section class="about-place">
           <h3>이런 곳이에요</h3>
           <p>{place.description}</p>
@@ -153,27 +131,53 @@
           <div class="menu-head">
             <ThemeIcon {theme} size={18} strokeWidth={1.6} />
             <h3>대표 메뉴</h3>
-            {#if menu.groups.length}<span>원본 등록 기준</span>{/if}
+            {#if menu.groups.length}<span>{menu.source ? menu.source.name : '원본 등록 기준'}</span
+              >{/if}
           </div>
-          {#each menu.groups as group, i (i)}
-            {#if group.title}<strong class="menu-group">{group.title}</strong>{/if}
-            <ul class="menu-items">
-              {#each group.items as item (item)}<li>{item}</li>{/each}
-            </ul>
-          {/each}
-          {#each menu.notes as note (note)}<p class="menu-note">{note}</p>{/each}
-          <!-- 문화정보원 출처만 있는 가게에는 메뉴 칸 자체가 없습니다. 없는 걸 지어내지 않습니다. -->
-          {#if !menu.groups.length && !menu.notes.length}<p class="menu-empty">
-              원본에 메뉴가 적혀 있지 않아요. 가게에 직접 물어봐 주세요.
-            </p>{/if}
-          {#if menu.groups.length}<p class="menu-foot">
-              메뉴와 가격은 바뀔 수 있어요. 방문 전에 확인해 주세요.
-            </p>{/if}
+          <MenuBoard
+            groups={menu.groups}
+            notes={menu.notes}
+            source={menu.source}
+            emptyText="원본에 메뉴가 적혀 있지 않아요. 가게에 직접 물어봐 주세요."
+          />
         </section>{/if}
       {#if place.hours}<div class="hours">
           <Clock3 size={15} />
           <p>{place.hours}</p>
         </div>{/if}
+      <section class="policy-section">
+        <div class="policy-heading">
+          <PawPrint size={17} />
+          <h3>{isHospital ? '진료 전에' : '함께 가기 전에'}</h3>
+          <span>{isHospital ? '병원 정보' : '동반 규정'}</span>
+        </div>
+        {#if !isHospital}{#each notices as notice, index (index)}<div
+              class="profile-notice"
+              class:restricted={notice.kind === 'restricted'}
+            >
+              <p class="notice-verdict">
+                <strong>{notice.name}</strong>{notice.label}
+              </p>
+              <p class="notice-detail">{notice.detail}</p>
+            </div>{/each}{/if}
+        <ul class="policy-list">
+          {#each lines as line (line)}<li>{line}</li>{/each}
+        </ul>
+        <!-- 원본이 동물병원에는 진료시간·진료과목을 주지 않습니다. 없는 걸 있는 척하지 않습니다. -->
+        {#if !lines.length}<p class="policy-empty">
+            {isHospital
+              ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
+              : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
+          </p>{/if}
+        <p class="verification">
+          <Info size={14} />
+          <span
+            >공공데이터에 등록된 안내예요. {isHospital
+              ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
+              : '최근 운영 규정은 방문 전에 확인해 주세요.'}</span
+          >
+        </p>
+      </section>
       <a class="source-link" href={place.sourceUrl} target="_blank" rel="noreferrer"
         ><div>
           <span>{hasPhoto ? '정보·사진 출처' : '정보 출처'}</span><strong>{sourceName}</strong><small
@@ -343,95 +347,135 @@
   .detail-body {
     padding: 22px 24px 26px;
   }
+  .policy-section {
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
   .policy-heading {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: var(--brand);
-    margin-bottom: 14px;
+    color: var(--brown);
+    margin-bottom: 12px;
   }
   .policy-heading h3 {
-    font-size: 16.5px;
+    font-size: 15.5px;
     margin: 0;
+    color: var(--ink);
   }
   .policy-heading > span {
-    font-size: 12px;
+    font-size: 11.5px;
     margin-left: auto;
     color: var(--muted);
+    letter-spacing: 0.02em;
   }
+  /*
+   * 우리 아이 기준 안내. 칠한 카드 대신 왼쪽 세로줄 하나로 표시합니다.
+   * 줄 색만으로 '확인 필요'와 '제한 있음'을 가릅니다.
+   */
   .profile-notice {
-    background: var(--cream);
-    border: 1px solid var(--line);
-    padding: 13px 14px;
-    border-radius: 10px;
+    padding: 2px 0 2px 13px;
     margin-bottom: 14px;
-    font-size: 13.5px;
-  }
-  .profile-notice strong {
-    color: var(--brand);
-    font-size: 13.5px;
-  }
-  .profile-notice p {
-    margin: 5px 0 0;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--muted);
+    border-left: 2px solid var(--line);
   }
   .profile-notice.restricted {
-    background: #fdf0ec;
-    border-color: #f0d3cc;
+    border-left-color: #c2694c;
+  }
+  .notice-verdict {
+    margin: 0;
+    font-size: 13px;
+    color: var(--brown);
+  }
+  .profile-notice.restricted .notice-verdict {
+    color: #b0573a;
+  }
+  .notice-verdict strong {
+    color: var(--ink);
+    font-size: 13.5px;
+    margin-right: 8px;
+  }
+  .notice-detail {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+    word-break: keep-all;
   }
   .policy-list {
-    border-top: 1px solid var(--line);
-  }
-  .policy-row {
-    display: flex;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .policy-number {
-    font-size: 12px;
-    color: var(--brand);
-    padding-top: 3px;
-    font-weight: 600;
-  }
-  .policy-row p,
-  .policy-empty {
+    list-style: none;
     margin: 0;
-    font-size: 14px;
+    padding: 0;
+  }
+  /* 규정 한 줄마다 앞에 점을 찍어 어디서 끊기는지 눈으로 잡히게 합니다. */
+  .policy-list li {
+    position: relative;
+    padding: 10px 0 10px 16px;
+    font-size: 13.5px;
     line-height: 1.75;
     word-break: keep-all;
   }
+  .policy-list li::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 19px;
+    width: 5px;
+    height: 5px;
+    border-radius: 2px;
+    background: #d8cec2;
+  }
   .policy-empty {
-    padding: 12px 0;
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.75;
     color: var(--muted);
+    word-break: keep-all;
   }
   .verification {
     display: flex;
-    gap: 9px;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 14px 0 0;
+    font-size: 12px;
+    line-height: 1.7;
     color: var(--muted);
-    background: var(--cream);
-    padding: 13px;
-    border-radius: 10px;
-    margin: 18px 0;
+    word-break: keep-all;
   }
   .verification :global(svg) {
     flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: 3px;
   }
-  .verification p {
-    margin: 0;
-    font-size: 12.5px;
-    line-height: 1.7;
+  /*
+   * 표지에 못 실은 나머지 사진. 좌우로 밀어 보는 줄이라 detail-body 의 좌우 여백을
+   * 음수 마진으로 지우고, 안쪽 패딩으로 되돌려 사진이 화면 끝까지 흘러가게 합니다.
+   */
+  .photo-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin: 0 -24px 22px;
+    padding: 0 24px 2px;
+    scroll-snap-type: x proximity;
+    /* 오른쪽 사진이 잘려 보이는 것만으로 '더 있다'가 읽혀서 스크롤바는 숨깁니다. */
+    scrollbar-width: none;
   }
-  .verification strong {
-    font-weight: 500;
-    color: var(--ink);
+  .photo-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .photo-strip img {
+    flex: none;
+    width: 148px;
+    height: 104px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: var(--cream);
+    scroll-snap-align: start;
   }
   .about-place h3 {
     font-size: 15.5px;
-    margin: 20px 0 6px;
+    margin: 0 0 6px;
   }
   .about-place p,
   .hours p {
@@ -463,49 +507,6 @@
     font-size: 11.5px;
     margin-left: auto;
     color: var(--muted);
-  }
-  .menu-group {
-    display: block;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--muted);
-    margin: 12px 0 4px;
-  }
-  .menu-group:first-of-type {
-    margin-top: 0;
-  }
-  .menu-items {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .menu-items li {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 5px 11px;
-    font-size: 13px;
-    line-height: 1.4;
-    word-break: keep-all;
-  }
-  .menu-note,
-  .menu-empty,
-  .menu-foot {
-    margin: 10px 0 0;
-    font-size: 12.5px;
-    line-height: 1.65;
-    color: var(--muted);
-    word-break: keep-all;
-  }
-  .menu-empty {
-    margin: 0;
-  }
-  .menu-foot {
-    padding-top: 10px;
-    border-top: 1px solid var(--line);
   }
   .hours {
     display: flex;

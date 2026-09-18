@@ -41,6 +41,7 @@
 
 <article class:chosen={selected} class="place-card">
   <button class="place-main" onclick={onselect} aria-label={`${place.name} 동반 규정 보기`}>
+    <!-- 목록은 아이콘만. 실제 사진은 상세에서 봅니다. -->
     <div class="category-art {place.category}" aria-hidden="true">
       <div class="art-halo"></div>
       <Icon size={32} strokeWidth={1.35} /><span>{placeArea(place).city || 'DANGVERYWHERE'}</span>

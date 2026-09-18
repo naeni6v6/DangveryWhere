@@ -30,6 +30,7 @@
     onclick={onselect}
     aria-label={`${place.name} ${isHospital ? '정보 보기' : '동반 규정 보기'}`}
   >
+    <!-- 목록은 아이콘만. 실제 사진은 오른쪽 상세에서 봅니다. -->
     <span class="card-icon" aria-hidden="true"
       ><ThemeIcon {theme} size={28} strokeWidth={1.4} /></span
     >

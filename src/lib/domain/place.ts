@@ -130,8 +130,39 @@ export function placeTheme(place: Place): Theme {
   return place.foodKind === 'cafe' ? 'cafe' : 'restaurant';
 }
 
+/**
+ * 메뉴 한 줄. 이름 말고는 없는 경우가 대부분이라 나머지는 전부 비어 있을 수 있습니다.
+ * 빈 칸은 화면에서 그 줄을 통째로 빼는 뜻이에요. 채워 넣지 않습니다.
+ */
+export type MenuItem = {
+  name: string;
+  /** '5,000원' 처럼 원본에 적힌 글자 그대로. 가격을 적어 둔 가게가 열에 하나 정도예요. */
+  price: string | null;
+  /** 가게가 적어 둔 메뉴 설명. 공공데이터에는 없고 메뉴판(placeMenus.json)에만 있습니다. */
+  description: string | null;
+  /** 메뉴 사진 주소. 없으면 사진 칸 없이 글자만 보여 줍니다. */
+  photo: string | null;
+  /** 가게가 '대표'로 걸어 둔 메뉴 */
+  signature: boolean;
+};
 /** 메뉴 한 묶음. title 은 원본이 '[음료]' 처럼 구분을 지어 둔 경우에만 있습니다. */
-export type MenuGroup = { title: string | null; items: string[] };
+export type MenuGroup = { title: string | null; items: MenuItem[] };
+/** 메뉴판을 어디서 받아 왔는지. 사진·설명이 있는 메뉴판은 출처를 함께 밝힙니다. */
+export type MenuSource = { name: string; url: string | null };
+export type PlaceMenu = { groups: MenuGroup[]; notes: string[]; source: MenuSource | null };
+
+/**
+ * 이름 뒤에 붙은 가격을 떼어 냅니다. '아메리카노 5,000원' → 이름 / 가격.
+ * 원본에 '5.000원' 처럼 찍힌 곳도 있어 점도 함께 받고, 글자는 고치지 않고 그대로 둡니다.
+ */
+function splitPrice(text: string): { name: string; price: string | null } {
+  const match = text.match(/^(.*\S)\s+(\d[\d,.]*\s*원)$/);
+  return match ? { name: match[1], price: match[2] } : { name: text, price: null };
+}
+
+function bareItem(text: string): MenuItem {
+  return { ...splitPrice(text), description: null, photo: null, signature: false };
+}
 
 /**
  * 원본의 메뉴 문구를 화면이 쓰는 묶음으로 끊습니다.
@@ -152,12 +183,62 @@ export function menuGroups(menu: string): { groups: MenuGroup[]; notes: string[]
     if (marker === '*') notes.push(text);
     else {
       if (!groups.length) groups.push({ title: null, items: [] });
-      groups.at(-1)!.items.push(text);
+      groups.at(-1)!.items.push(bareItem(text));
     }
   }
   // 기호 없이 한 줄만 적어 둔 원본('변동' 같은)도 버리지 않고 안내로 남깁니다.
   if (!groups.length && !notes.length && menu.trim()) notes.push(menu.trim());
   return { groups: groups.filter((group) => group.items.length), notes };
+}
+
+/**
+ * 사진·설명까지 있는 메뉴판 한 장. 가게 메뉴판을 손으로 옮겨 둔 것이라
+ * 공공데이터(menu 칸)와 달리 출처를 밝혀야 해서 source 를 함께 답니다.
+ */
+export type MenuBoard = {
+  /** 어디서 옮겨 적었는지 ('네이버 플레이스' 등) */
+  source: string;
+  sourceUrl?: string;
+  /** 옮겨 적은 날. 가격이 언제 기준인지 알려 주려고 받습니다. */
+  collectedAt?: string;
+  items: {
+    name: string;
+    price?: string;
+    description?: string;
+    photo?: string;
+    signature?: boolean;
+    /** 원본이 '[음료]' 처럼 구분을 지어 둔 경우에만 */
+    group?: string;
+  }[];
+};
+
+/**
+ * 화면에 내보낼 메뉴 한 장을 고릅니다.
+ * 사진·설명이 있는 메뉴판을 따로 옮겨 둔 가게는 그쪽을 쓰고, 없으면 공공데이터 문구를 씁니다.
+ * 둘을 섞지 않는 이유는, 한 가게 메뉴가 두 출처에서 반쯤씩 나오면
+ * 화면 밑의 '어디서 온 값인지' 한 줄을 정직하게 쓸 수 없기 때문이에요.
+ */
+export function placeMenu(menu: string, board?: MenuBoard | null): PlaceMenu {
+  if (board?.items.length) {
+    const groups: MenuGroup[] = [];
+    for (const item of board.items) {
+      const title = item.group?.trim() || null;
+      if (groups.at(-1)?.title !== title) groups.push({ title, items: [] });
+      groups.at(-1)!.items.push({
+        name: item.name,
+        price: item.price?.trim() || null,
+        description: item.description?.trim() || null,
+        photo: item.photo?.trim() || null,
+        signature: item.signature === true
+      });
+    }
+    return {
+      groups,
+      notes: [],
+      source: { name: board.source, url: board.sourceUrl ?? null }
+    };
+  }
+  return { ...menuGroups(menu), source: null };
 }
 
 export function policyLines(policy: string): string[] {

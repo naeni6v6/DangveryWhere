@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   areaLabel,
   menuGroups,
+  placeMenu,
   placeArea,
   placeTheme,
   profileNotice,
@@ -106,29 +107,48 @@ describe('region shown on screen comes from the data', () => {
   });
 });
 
+/** 사진·설명이 없는 공공데이터 메뉴 한 줄의 기본 모양 */
+const plain = (name: string, price: string | null = null) => ({
+  name,
+  price,
+  description: null,
+  photo: null,
+  signature: false
+});
+
 describe('the menu the source wrote down', () => {
   it('breaks a run-on line into items at the hyphens', () => {
     // 원본은 줄바꿈 없이 이어 붙여 옵니다 (춘천 감자밭).
     expect(menuGroups('- 감자빵- 초당옥수수빵- 감자라떼')).toEqual({
-      groups: [{ title: null, items: ['감자빵', '초당옥수수빵', '감자라떼'] }],
+      groups: [{ title: null, items: [plain('감자빵'), plain('초당옥수수빵'), plain('감자라떼')] }],
       notes: []
     });
   });
-  it('keeps the sections and prices the source wrote', () => {
+  it('keeps the sections and splits the price off the name', () => {
     const { groups, notes } = menuGroups(
       '[음료]- 아메리카노 5,000원 - 카페라떼 5,500원 [대관]- 큰운동장 1시간 20,000원'
     );
     expect(groups).toEqual([
-      { title: '음료', items: ['아메리카노 5,000원', '카페라떼 5,500원'] },
-      { title: '대관', items: ['큰운동장 1시간 20,000원'] }
+      { title: '음료', items: [plain('아메리카노', '5,000원'), plain('카페라떼', '5,500원')] },
+      // 이름에 붙은 '1시간'까지 가격으로 끌고 오지 않습니다.
+      { title: '대관', items: [plain('큰운동장 1시간', '20,000원')] }
     ]);
     expect(notes).toEqual([]);
+  });
+  it('leaves a name that has no price alone', () => {
+    // 가격을 안 적은 가게가 대부분이고, '초코/고구마/녹차라떼' 처럼 숫자가 없어요.
+    const { groups } = menuGroups('- 초코/고구마/녹차라떼- 햄치즈토스트 5.000원');
+    // '5.000원' 은 원본의 오타지만 고치지 않고 그대로 보여 줍니다.
+    expect(groups[0].items).toEqual([
+      plain('초코/고구마/녹차라떼'),
+      plain('햄치즈토스트', '5.000원')
+    ]);
   });
   it("separates the shop's own note from the menu itself", () => {
     const { groups, notes } = menuGroups(
       '* 입장료가 없는 대신 1인 1음료 주문 부탁드립니다.- 아메리카노- 떡볶이'
     );
-    expect(groups).toEqual([{ title: null, items: ['아메리카노', '떡볶이'] }]);
+    expect(groups).toEqual([{ title: null, items: [plain('아메리카노'), plain('떡볶이')] }]);
     expect(notes).toEqual(['입장료가 없는 대신 1인 1음료 주문 부탁드립니다.']);
   });
   it('does not invent a menu where the source left the field empty', () => {
@@ -138,5 +158,52 @@ describe('the menu the source wrote down', () => {
   it('keeps a bare sentence the source wrote instead of a list', () => {
     // '변동', '매장으로 문의 필요' 처럼 기호 없이 한 줄만 적힌 원본이 있습니다.
     expect(menuGroups('변동')).toEqual({ groups: [], notes: ['변동'] });
+  });
+});
+
+describe('the menu board copied from the shop', () => {
+  const board = {
+    source: '네이버 플레이스',
+    sourceUrl: 'https://map.naver.com/p/entry/place/1',
+    items: [
+      {
+        name: '씨월드호떡',
+        price: '2,500원',
+        description: '꿀 + 견과류',
+        photo: '/menus/a.webp',
+        signature: true
+      },
+      { name: '아메리카노', group: '음료' },
+      { name: '카페라떼', group: '음료' }
+    ]
+  };
+  it('shows the photo board instead of the public data when we have one', () => {
+    const menu = placeMenu('- 아메리카노- 떡볶이', board);
+    expect(menu.source).toEqual({
+      name: '네이버 플레이스',
+      url: 'https://map.naver.com/p/entry/place/1'
+    });
+    expect(menu.groups[0].items[0]).toEqual({
+      name: '씨월드호떡',
+      price: '2,500원',
+      description: '꿀 + 견과류',
+      photo: '/menus/a.webp',
+      signature: true
+    });
+    // 같은 구분끼리 이어 붙습니다 (사진 없는 줄은 사진 칸 없이 글자만).
+    expect(menu.groups[1]).toEqual({
+      title: '음료',
+      items: [plain('아메리카노'), plain('카페라떼')]
+    });
+  });
+  it('falls back to the public data when no board was copied', () => {
+    const menu = placeMenu('- 아메리카노 5,000원', null);
+    expect(menu.source).toBeNull();
+    expect(menu.groups).toEqual([{ title: null, items: [plain('아메리카노', '5,000원')] }]);
+  });
+  it('does not credit a source for a board with nothing in it', () => {
+    const menu = placeMenu('- 아메리카노', { source: '네이버 플레이스', items: [] });
+    expect(menu.source).toBeNull();
+    expect(menu.groups[0].items).toEqual([plain('아메리카노')]);
   });
 });
