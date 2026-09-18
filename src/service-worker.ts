@@ -10,9 +10,16 @@ const assetPaths = new Set(assets);
  * 그래서 이쪽은 캐시를 먼저 보여 주되 뒤에서 새로 받아 두고, 다음 방문에 새 파일이 나오게 합니다.
  */
 const immutablePaths = new Set(build);
+/**
+ * 설치할 때 미리 받아 두는 목록. 장소 사진(/places/)은 1,200장이 넘고 60MB 가까워서 뺍니다.
+ * 설치 한 번에 그만큼을 내려받게 하면 데이터도 데이터지만, addAll 은 한 장만 실패해도
+ * 통째로 엎어져서 설치 자체가 안 됩니다(= 오프라인 화면까지 같이 날아가요).
+ * 대신 아래 fetch 에서 한 번 본 사진만 캐시에 남겨 둡니다.
+ */
+const precachePaths = assets.filter((path) => !path.startsWith('/places/'));
 
 worker.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(name).then((cache) => cache.addAll(assets)));
+  event.waitUntil(caches.open(name).then((cache) => cache.addAll(precachePaths)));
 });
 worker.addEventListener('activate', (event) => {
   event.waitUntil(
