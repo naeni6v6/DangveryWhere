@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   areaLabel,
+  menuGroups,
   placeArea,
   placeTheme,
   profileNotice,
@@ -102,5 +103,40 @@ describe('region shown on screen comes from the data', () => {
       '전국 2개 시도'
     );
     expect(areaLabel([])).toBe('');
+  });
+});
+
+describe('the menu the source wrote down', () => {
+  it('breaks a run-on line into items at the hyphens', () => {
+    // 원본은 줄바꿈 없이 이어 붙여 옵니다 (춘천 감자밭).
+    expect(menuGroups('- 감자빵- 초당옥수수빵- 감자라떼')).toEqual({
+      groups: [{ title: null, items: ['감자빵', '초당옥수수빵', '감자라떼'] }],
+      notes: []
+    });
+  });
+  it('keeps the sections and prices the source wrote', () => {
+    const { groups, notes } = menuGroups(
+      '[음료]- 아메리카노 5,000원 - 카페라떼 5,500원 [대관]- 큰운동장 1시간 20,000원'
+    );
+    expect(groups).toEqual([
+      { title: '음료', items: ['아메리카노 5,000원', '카페라떼 5,500원'] },
+      { title: '대관', items: ['큰운동장 1시간 20,000원'] }
+    ]);
+    expect(notes).toEqual([]);
+  });
+  it("separates the shop's own note from the menu itself", () => {
+    const { groups, notes } = menuGroups(
+      '* 입장료가 없는 대신 1인 1음료 주문 부탁드립니다.- 아메리카노- 떡볶이'
+    );
+    expect(groups).toEqual([{ title: null, items: ['아메리카노', '떡볶이'] }]);
+    expect(notes).toEqual(['입장료가 없는 대신 1인 1음료 주문 부탁드립니다.']);
+  });
+  it('does not invent a menu where the source left the field empty', () => {
+    expect(menuGroups('')).toEqual({ groups: [], notes: [] });
+    expect(menuGroups('   ')).toEqual({ groups: [], notes: [] });
+  });
+  it('keeps a bare sentence the source wrote instead of a list', () => {
+    // '변동', '매장으로 문의 필요' 처럼 기호 없이 한 줄만 적힌 원본이 있습니다.
+    expect(menuGroups('변동')).toEqual({ groups: [], notes: ['변동'] });
   });
 });

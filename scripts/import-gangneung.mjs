@@ -25,6 +25,9 @@ const places = source.details
     description: clean(row.content),
     policy: clean(row.policyCautions),
     hours: clean(row.usedTime),
+    // 원본은 이용요금 칸에 대표 메뉴를 적어 둡니다. 숙소·관광지는 객실료·입장료가 들어와서
+    // 식음료에서만 옮깁니다(같은 규칙: src/lib/server/regionPlaces.ts 의 menuOf).
+    menu: categories[row.partName] === 'food' ? clean(row.usedCost) : '',
     sourceUrl: `https://www.pettravel.kr/petapi/data/${{ food: 'food', stay: 'lodge', outdoor: 'tour', activity: 'experience' }[categories[row.partName]]}?contentSeq=${row.contentSeq}`,
     importedAt: source.retrieved,
     verifiedAt: null,

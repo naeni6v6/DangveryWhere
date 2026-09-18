@@ -16,7 +16,6 @@
     placeTheme,
     policyLines,
     shortAddress,
-    profileNotice,
     themeNames,
     type Place,
     type ThemeFilter
@@ -60,10 +59,9 @@
       }))
       .filter((tab) => tab.id === 'all' || tab.count > 0)
   );
+  // 둘을 함께 보고 있으면 한 마리라도 걸리는 곳을 셉니다.
   const restrictedCount = $derived(
-    store.dog
-      ? saved.filter((place) => profileNotice(place, store.dog!).kind === 'restricted').length
-      : 0
+    store.dog ? saved.filter((place) => store.restrictedFor(place)).length : 0
   );
   // 시도만 떼고 시군구는 남겨 둡니다. 여러 지역이 섞이면 어디인지 보여야 하니까요.
   const cityAddress = (place: Place) =>
@@ -86,7 +84,7 @@
       <div>
         <span class="page-eyebrow"><Heart size={16} fill="currentColor" />MY FAVORITES</span>
         <h1>
-          {#if store.dog}{store.dog.name}{josa(store.dog.name, '와/과')} 가고 싶은 곳{:else}찜한
+          {#if store.dog}{store.dogNames}{josa(store.dogNames, '와/과')} 가고 싶은 곳{:else}찜한
             장소{/if}
         </h1>
         <p>모아둔 곳을 떠나기 전에 다시 확인하세요. 동반 규정은 언제든 바뀔 수 있어요.</p>
@@ -122,7 +120,7 @@
         </div>
         <div class="summary-item" class:warn={restrictedCount > 0}>
           {#if store.dog}<strong>{restrictedCount}</strong><span
-              >{store.dog.name} 조건 제한 안내</span
+              >{store.dogNames} 조건 제한 안내</span
             >{:else}<a href="/web/dog">우리 강아지를 등록하면<br />제한 안내를 볼 수 있어요</a
             >{/if}
         </div>
@@ -141,7 +139,7 @@
         <div class="fav-grid">
           {#each shown as place (place.id)}
             {@const theme = placeTheme(place)}
-            {@const notice = store.dog ? profileNotice(place, store.dog) : null}
+            {@const restricted = store.restrictedFor(place)}
             <article class="fav-card" class:chosen={selected?.id === place.id}>
               <button class="fav-main" onclick={() => (selected = place)}>
                 <div class="fav-top">
@@ -159,8 +157,11 @@
                   {#if place.sourceWeight !== null}<span class="tag"
                       ><Scale size={14} />제한 체중 {place.sourceWeight}kg</span
                     >{/if}
-                  {#if notice?.kind === 'restricted'}<span class="tag warn"
-                      ><TriangleAlert size={14} />{notice.label}</span
+                  <!-- 둘을 함께 보고 있으면 누가 걸리는지까지 적어 줍니다. -->
+                  {#if restricted}<span class="tag warn"
+                      ><TriangleAlert size={14} />{store.activeDogs.length > 1
+                        ? `${restricted.dog.name} ${restricted.label}`
+                        : restricted.label}</span
                     >{/if}
                 </div>
               </button>
@@ -195,7 +196,7 @@
 
 {#if selected}<WebPlaceDetail
     place={selected}
-    dog={store.dog}
+    dogs={store.activeDogs}
     saved={store.isSaved(selected.id)}
     onclose={() => (selected = null)}
     onsave={() => selected && store.toggleSave(selected)}

@@ -10,13 +10,10 @@
     X
   } from '@lucide/svelte';
   import { getWebStore } from '$lib/web/store.svelte';
-  import {
-    koreaRegions,
-    koreaCaptions,
-    KOREA_VIEWBOX,
-    type KoreaRegion
-  } from '$lib/domain/koreaRegions';
-  import { koreaDistricts, districtCount } from '$lib/domain/koreaDistricts';
+  import { GANGWON_VIEWBOX, gangwonDistricts, type GangwonDistrict } from '$lib/domain/gangwonMap';
+  import { koreaRegions } from '$lib/domain/koreaRegions';
+  import { koreaDistricts } from '$lib/domain/koreaDistricts';
+  import { regionCatalog } from '$lib/domain/region';
   import { josa } from '$lib/domain/korean';
   import {
     groupVisitsByYear,
@@ -29,14 +26,18 @@
   const store = getWebStore();
 
   /**
-   * 전국 17개 시도 지도 + 시군구 세부 기록.
-   * 경계와 시군구 목록 모두 swcho/korea-maps(MIT, 통계청 SGIS) 에서 가져왔어요.
-   * ($lib/domain/koreaRegions.ts · $lib/domain/koreaDistricts.ts)
+   * 강원 18개 시군구 지도. 경계도 시군구 목록도 swcho/korea-maps(MIT, 통계청 SGIS) 에서 가져왔어요.
+   * ($lib/domain/gangwonMap.ts · $lib/domain/koreaDistricts.ts)
+   *
+   * 다루는 지역을 강원으로 좁히면서 이 지도도 강원만 크게 보여 줍니다.
+   * 강원 밖에 찍어 둔 예전 기록은 지우지 않고 그대로 둡니다 — 나중에 지역을 넓히면 다시 살아나야 하고,
+   * 화면이 좁아졌다고 남의 기록을 버릴 이유는 없으니까요. 대신 이 화면의 숫자에서는 빼고 셉니다.
    */
-  type Province = KoreaRegion;
-  const provinces = koreaRegions;
-  const validIds = new Set(provinces.map((p) => p.id));
+  const districts = gangwonDistricts;
+  const gangwonCodes = new Set(districts.map((district) => district.code));
+  // 저장된 기록을 거를 때만은 전국 코드로 봅니다. 강원 밖 기록을 읽다가 버리지 않으려고요.
   const validCodes = new Set(Object.values(koreaDistricts).flat().map((d) => d.code));
+  const validIds = new Set(koreaRegions.map((province) => province.id));
 
   // 예전에는 시도 단위로만 기록했어요. 그때 칠한 기록을 잃지 않으려고 키를 따로 둡니다.
   const PROVINCE_KEY = 'dangverywhere-visited-provinces';
@@ -45,7 +46,7 @@
   let visits = $state<Visit[]>([]);
   /** 예전 시도 단위 기록 중 아직 세부 지역을 안 고른 것 */
   let coarseProvinces = $state<string[]>([]);
-  let selectedId = $state<string | null>(null);
+  let selectedCode = $state<string | null>(null);
   let hovered = $state<string | null>(null);
   let loaded = $state(false);
 
@@ -90,45 +91,43 @@
     }
   }
 
-  const districtsOf = (id: string) => koreaDistricts[id] ?? [];
   const visitedCodes = $derived(new Set(visits.map((visit) => visit.code)));
-  const visitedIn = (id: string) =>
-    districtsOf(id).filter((district) => visitedCodes.has(district.code)).length;
-  /** 지도에 칠할지 여부 — 세부 기록이 하나라도 있거나, 예전 시도 단위 기록이 남아 있으면 칠합니다. */
-  const isOn = (id: string) => visitedIn(id) > 0 || coarseProvinces.includes(id);
+  /** 지도에 칠할지 여부 — 그 시군구 기록이 있거나, 예전 '강원' 통째 기록이 남아 있으면 칠합니다. */
+  const isOn = (code: string) => visitedCodes.has(code) || coarseProvinces.includes('gangwon');
 
-  function select(province: Province) {
-    selectedId = selectedId === province.id ? null : province.id;
+  function select(district: GangwonDistrict) {
+    selectedCode = selectedCode === district.code ? null : district.code;
   }
 
-  function toggleDistrict(province: Province, code: string) {
+  function toggleDistrict(code: string) {
     const on = visitedCodes.has(code);
     persist(
       on
         ? visits.filter((visit) => visit.code !== code)
         : [...visits, { code, date: today(), dog: dogName }],
-      // 세부 지역을 고르는 순간 예전의 '시도 전체' 표시는 역할이 끝나요.
-      on ? coarseProvinces : coarseProvinces.filter((id) => id !== province.id)
+      // 시군구를 하나라도 고르는 순간 예전의 '강원 전체' 표시는 역할이 끝나요.
+      on ? coarseProvinces : coarseProvinces.filter((id) => id !== 'gangwon')
     );
   }
 
-  function toggleWholeProvince(province: Province) {
-    const codes = districtsOf(province.id).map((d) => d.code);
-    const allOn = codes.length > 0 && codes.every((code) => visitedCodes.has(code));
+  /** 강원 18곳 한 번에. 다른 시도에 찍어 둔 예전 기록은 건드리지 않습니다. */
+  function toggleWholeProvince() {
+    const codes = districts.map((district) => district.code);
+    const allOn = codes.every((code) => visitedCodes.has(code));
     const day = today();
     persist(
       allOn
-        ? visits.filter((visit) => !codes.includes(visit.code))
+        ? visits.filter((visit) => !gangwonCodes.has(visit.code))
         : [
             ...visits,
             ...codes
               .filter((code) => !visitedCodes.has(code))
               .map((code) => ({ code, date: day, dog: dogName }))
           ],
-      coarseProvinces.filter((id) => id !== province.id)
+      coarseProvinces.filter((id) => id !== 'gangwon')
     );
     store.notify(
-      allOn ? `${province.name} 기록을 모두 지웠어요.` : `${province.name} 전체를 다녀온 곳으로 표시했어요.`
+      allOn ? '강원 기록을 모두 지웠어요.' : '강원 18개 시군구를 모두 다녀온 곳으로 표시했어요.'
     );
   }
 
@@ -146,23 +145,44 @@
     );
   }
 
+  /** 이 화면이 보여 준 것만 지웁니다. 화면 밖(강원 밖) 기록까지 말없이 지우지 않아요. */
   function resetAll() {
-    persist([], []);
-    store.notify('지도 기록을 모두 지웠어요.');
+    persist(
+      visits.filter((visit) => !gangwonCodes.has(visit.code)),
+      coarseProvinces.filter((id) => id !== 'gangwon')
+    );
+    store.notify('강원 지도 기록을 지웠어요.');
   }
 
-  const selected = $derived(provinces.find((p) => p.id === selectedId) ?? null);
-  const selectedDistricts = $derived(selected ? districtsOf(selected.id) : []);
-  const filledProvinces = $derived(provinces.filter((p) => isOn(p.id)).length);
-  const filled = $derived(visits.length);
-  const percent = $derived(Math.round((filled / districtCount) * 100));
-  const hoveredName = $derived(provinces.find((p) => p.id === hovered)?.name ?? null);
+  const selected = $derived(districts.find((district) => district.code === selectedCode) ?? null);
+  /** 이 화면이 세는 것은 강원 안의 기록입니다. */
+  const filled = $derived(visits.filter((visit) => gangwonCodes.has(visit.code)).length);
+  const percent = $derived(Math.round((filled / districts.length) * 100));
+  const hoveredName = $derived(districts.find((d) => d.code === hovered)?.name ?? null);
+  /** 강원 밖에 남아 있는 예전 기록. 지우지 않았다는 것만 알려 줍니다. */
+  const outside = $derived(visits.filter((visit) => !gangwonCodes.has(visit.code)).length);
   const dateOf = (code: string) => visits.find((visit) => visit.code === code)?.date ?? '';
+  /** 그 시군구의 장소 데이터를 갖고 있으면 탐색으로 건너뛸 수 있게 해 줍니다. */
+  const regionOf = (name: string) =>
+    regionCatalog.find((region) => region.status !== 'mixed' && region.city === name) ?? null;
+  /**
+   * SVG 에는 z-index 가 없어서 나중에 그린 도형이 위로 옵니다.
+   * 고른 시군구의 굵은 테두리가 이웃 도형에 잘리지 않도록 그것만 맨 뒤로 보냅니다.
+   * (마우스만 올린 경우는 건드리지 않아요. 커서 밑에서 노드가 움직이면 깜빡여 보여서요.)
+   */
+  const mapOrder = $derived(
+    [...districts].sort(
+      (a, b) => Number(a.code === selectedCode) - Number(b.code === selectedCode)
+    )
+  );
 
-  /** 코드 → 시도·시군구 이름 (타임라인 문장을 만들 때 씁니다) */
+  /**
+   * 코드 → 시도·시군구 이름 (타임라인 문장을 만들 때 씁니다).
+   * 강원 밖 예전 기록도 이름이 제대로 나오도록 전국 목록을 그대로 씁니다.
+   */
   const placeNames = new globalThis.Map<string, { province: string; district: string }>();
-  for (const province of provinces)
-    for (const district of districtsOf(province.id))
+  for (const province of koreaRegions)
+    for (const district of koreaDistricts[province.id] ?? [])
       placeNames.set(district.code, { province: province.name, district: district.name });
 
   /**
@@ -186,107 +206,142 @@
           기록{/if}
       </h1>
       <p>
-        {dogName || '강아지'}{josa(dogName || '강아지', '와/과')} 다녀온 곳을 기록해 보세요. 시도를
-        누르면 옆에 시군구가 펼쳐져서, 어느 동네까지 가 봤는지 하나씩 체크할 수 있어요.
+        {dogName || '강아지'}{josa(dogName || '강아지', '와/과')} 다녀온 곳을 기록해 보세요. 강원
+        {districts.length}개 시군구를 지도에서 바로 눌러, 어느 동네까지 가 봤는지 체크할 수 있어요.
       </p>
     </header>
 
     <div class="record-layout">
-      <!-- 왼쪽: 전국 지도 -->
+      <!-- 왼쪽: 강원 지도 -->
       <section class="map-card">
         <div class="map-top">
-          <strong>전국 {provinces.length}개 시도</strong>
-          <span>{hoveredName ? `${hoveredName} — 눌러서 열기` : '시도를 눌러 시군구를 골라요'}</span>
+          <strong>강원 {districts.length}개 시군구</strong>
+          <span
+            >{hoveredName ? `${hoveredName} — 눌러서 기록` : '시군구를 눌러 다녀온 곳을 체크해요'}</span
+          >
         </div>
 
         <svg
-          class="korea"
-          viewBox={KOREA_VIEWBOX}
+          class="gangwon"
+          viewBox={GANGWON_VIEWBOX}
           role="img"
-          aria-label={`전국 ${provinces.length}개 시도 방문 기록 지도`}
+          aria-label={`강원 ${districts.length}개 시군구 방문 기록 지도`}
         >
-          {#each provinces as province (province.id)}
-            {@const on = isOn(province.id)}
+          <!--
+            도형을 먼저 다 그리고, 핀과 이름은 그 위에 한 겹 더 올립니다.
+            SVG 에는 z-index 가 없어 나중에 그린 것이 위로 오는데, 한 묶음으로 그리면
+            이웃 시군구의 도형이 앞서 그린 이름을 덮어 버려요(속초·동해처럼 작은 곳이 그랬습니다).
+          -->
+          {#each mapOrder as district (district.code)}
+            {@const on = isOn(district.code)}
             <g
-              class="province"
+              class="area"
               class:on
-              class:metro={province.metro}
-              class:picked={selectedId === province.id}
+              class:picked={selectedCode === district.code}
               role="button"
               tabindex="0"
-              aria-pressed={selectedId === province.id}
-              aria-label={`${province.name} ${on ? '다녀옴' : '아직'} — 시군구 고르기`}
-              onclick={() => select(province)}
+              aria-pressed={on}
+              aria-label={`${district.name} ${on ? '다녀옴' : '아직'}`}
+              onclick={() => select(district)}
               onkeydown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  select(province);
+                  select(district);
                 }
               }}
-              onmouseenter={() => (hovered = province.id)}
+              onmouseenter={() => (hovered = district.code)}
               onmouseleave={() => (hovered = null)}
-              onfocus={() => (hovered = province.id)}
+              onfocus={() => (hovered = district.code)}
               onblur={() => (hovered = null)}
             >
-              <path d={province.d} />
-              <text x={province.labelX} y={province.labelY}>{province.name}</text>
+              <path class="area-shape" d={district.d} />
             </g>
           {/each}
-          {#each koreaCaptions as caption (caption.text)}
-            <text class="caption" x={caption.x} y={caption.y}>{caption.text}</text>
+          {#each districts as district (district.code)}
+            {@const on = isOn(district.code)}
+            <g
+              class="marker"
+              class:on
+              class:hot={hovered === district.code || selectedCode === district.code}
+              aria-hidden="true"
+            >
+              <!-- 핀 끝이 pinX·pinY 에 닿도록 그려요 (그 점이 도형 안쪽에서 가장 여유로운 자리) -->
+              <g transform={`translate(${district.pinX} ${district.pinY})`}>
+                <path
+                  class="pin-body"
+                  d="M0,0 C-3.8,-6.5 -9.6,-11.3 -9.6,-16.3 A9.6,9.6 0 1 1 9.6,-16.3 C9.6,-11.3 3.8,-6.5 0,0 Z"
+                />
+                <circle class="pin-hole" cx="0" cy="-16.3" r="3.6" />
+              </g>
+              <text x={district.pinX} y={district.pinY + 15}>{district.name}</text>
+            </g>
           {/each}
         </svg>
       </section>
 
-      <!-- 가운데: 고른 시도의 시군구 -->
+      <!-- 가운데: 고른 시군구 -->
       <section class="district-card" aria-live="polite">
         {#if selected}
-          {@const districts = selectedDistricts}
-          {@const done = visitedIn(selected.id)}
-          {@const allOn = districts.length > 0 && done === districts.length}
+          {@const on = visitedCodes.has(selected.code)}
+          {@const day = dateOf(selected.code)}
+          {@const region = regionOf(selected.name)}
           <div class="district-head">
-            <button class="district-back" onclick={() => (selectedId = null)} aria-label="시군구 닫기">
+            <button
+              class="district-back"
+              onclick={() => (selectedCode = null)}
+              aria-label="시군구 닫기"
+            >
               <ChevronLeft size={18} />
             </button>
             <div>
-              <h2>{selected.name}</h2>
-              <span>{done} / {districts.length} 곳</span>
+              <h2>강원 {selected.name}</h2>
+              <span
+                >{on
+                  ? day
+                    ? `${prettyDate(day)} 방문`
+                    : '다녀온 곳'
+                  : '아직 발자국이 없어요'}</span
+              >
             </div>
           </div>
 
-          {#if coarseProvinces.includes(selected.id)}
+          {#if coarseProvinces.includes('gangwon')}
             <p class="district-legacy">
-              예전에 시도 단위로 기록한 곳이에요. 다녀온 시군구를 고르면 이 표시는 사라져요.
+              예전에 '강원'을 통째로 기록해 둔 게 남아 있어요. 다녀온 시군구를 고르면 이 표시는 사라져요.
             </p>
           {/if}
 
-          <button class="district-all" onclick={() => toggleWholeProvince(selected)}>
-            {allOn ? '전체 해제' : '전체 선택'}
+          <button class="district-all" onclick={() => toggleDistrict(selected.code)}>
+            {on ? '다녀온 곳에서 빼기' : '다녀온 곳으로 표시'}
           </button>
 
-          <ul class="district-list">
-            {#each districts as district (district.code)}
-              {@const on = visitedCodes.has(district.code)}
-              {@const day = dateOf(district.code)}
-              <li>
-                <button
-                  class="district"
-                  class:on
-                  aria-pressed={on}
-                  title={on && day ? `${day} 방문` : undefined}
-                  onclick={() => toggleDistrict(selected, district.code)}
-                >
-                  <span class="dot">{#if on}<Check size={12} strokeWidth={3.2} />{/if}</span>
-                  {district.name}
-                </button>
-              </li>
-            {/each}
-          </ul>
+          {#if on}
+            <label class="district-date">
+              <span>다녀온 날</span>
+              <input
+                type="date"
+                value={day}
+                max={today()}
+                onchange={(event) => setDate(selected.code, event.currentTarget.value)}
+              />
+            </label>
+          {/if}
+
+          <!-- 장소 데이터를 갖고 있는 시군구에서만 탐색으로 건너뜁니다. 없는 링크를 만들지 않아요. -->
+          {#if region}
+            <a class="district-explore" href={`/web/explore?region=${region.id}`}>
+              <Map size={16} />{selected.name}에서 갈 곳 보기
+            </a>
+          {:else}
+            <p class="district-note">
+              이 시군구의 장소 데이터는 아직 준비 중이에요. 기록은 지금도 남길 수 있어요.
+            </p>
+          {/if}
         {:else}
           <div class="district-empty">
             <MapPinned size={30} />
-            <strong>시도를 골라 주세요</strong>
-            <p>지도나 아래 목록에서 시도를 누르면, 그 안의 시군구가 여기에 펼쳐져요.</p>
+            <strong>시군구를 골라 주세요</strong>
+            <p>지도나 아래 목록에서 시군구를 누르면, 다녀온 날짜와 갈 곳을 여기서 볼 수 있어요.</p>
           </div>
         {/if}
       </section>
@@ -294,44 +349,45 @@
       <!-- 오른쪽: 진행 상황 + 지역 목록 -->
       <div class="side">
         <section class="progress-card">
-          <span class="progress-label">다녀온 시군구</span>
-          <strong class="progress-count">{filled}<small> / {districtCount}</small></strong>
+          <span class="progress-label">다녀온 강원 시군구</span>
+          <strong class="progress-count">{filled}<small> / {districts.length}</small></strong>
           <div class="progress-bar"><span style={`width:${percent}%`}></span></div>
           <p class="progress-note">
-            {#if filled === 0 && filledProvinces === 0}
-              아직 기록이 없어요. 다녀온 시도부터 눌러 보세요.
-            {:else if filled === districtCount}
-              전국 시군구를 모두 채웠어요! 대단해요 🐾
+            {#if filled === 0 && !coarseProvinces.includes('gangwon')}
+              아직 기록이 없어요. 다녀온 시군구부터 눌러 보세요.
+            {:else if filled === districts.length}
+              강원 {districts.length}개 시군구를 모두 채웠어요! 대단해요 🐾
             {:else}
-              시도 {filledProvinces} / {provinces.length} 곳 · 전국의 {percent}% 를 함께 다녀왔어요.
+              강원의 {percent}% 를 함께 다녀왔어요.
             {/if}
           </p>
         </section>
 
         <section class="list-card">
           <div class="list-head">
-            <h2>시도 목록</h2>
-            {#if filled || coarseProvinces.length}
+            <h2>시군구 목록</h2>
+            {#if filled || coarseProvinces.includes('gangwon')}
               <button class="reset" onclick={resetAll}><RotateCcw size={15} />모두 지우기</button>
             {/if}
           </div>
+          <button class="district-all" onclick={toggleWholeProvince}>
+            {filled === districts.length ? '강원 전체 해제' : '강원 전체 선택'}
+          </button>
           <ul>
-            {#each provinces as province (province.id)}
-              {@const on = isOn(province.id)}
-              {@const done = visitedIn(province.id)}
+            {#each districts as district (district.code)}
+              {@const on = isOn(district.code)}
               <li>
                 <button
                   class="region"
                   class:on
-                  class:picked={selectedId === province.id}
-                  aria-pressed={selectedId === province.id}
-                  onclick={() => select(province)}
-                  onmouseenter={() => (hovered = province.id)}
+                  class:picked={selectedCode === district.code}
+                  aria-pressed={selectedCode === district.code}
+                  onclick={() => select(district)}
+                  onmouseenter={() => (hovered = district.code)}
                   onmouseleave={() => (hovered = null)}
                 >
                   <span class="dot">{#if on}<Check size={13} strokeWidth={3.2} />{/if}</span>
-                  {province.name}
-                  {#if done}<em>{done}</em>{/if}
+                  {district.name}
                 </button>
               </li>
             {/each}
@@ -340,6 +396,9 @@
 
         <p class="storage-note">
           지금은 이 브라우저에만 저장돼요. 다른 기기에서도 보이게 하려면 계정 저장이 필요해요.
+          <!-- 지역을 강원으로 좁히기 전에 찍어 둔 기록은 지우지 않고 그대로 두었습니다. -->
+          {#if outside}<br />강원 밖에 찍어 둔 예전 기록 {outside}곳은 지우지 않고 아래 타임라인에
+            남겨 두었어요.{/if}
         </p>
 
         <a class="secondary-button" href="/web/explore"><Map size={18} />갈 곳 찾으러 가기</a>
@@ -509,16 +568,16 @@
     font-size: 13.5px;
     color: var(--muted);
   }
-  .korea {
+  .gangwon {
     display: block;
     width: 100%;
-    max-width: 470px;
+    max-width: 560px;
     margin: 4px auto 0;
     height: auto;
     overflow: visible;
   }
 
-  .province path {
+  .area-shape {
     fill: #fff;
     stroke: #d9c2ad;
     stroke-width: 1.1px;
@@ -529,22 +588,19 @@
       fill 0.2s ease,
       stroke 0.2s ease;
   }
-  .province.metro path {
-    fill: var(--ivory);
-  }
-  .province text,
-  .caption {
-    text-anchor: middle;
-    dominant-baseline: middle;
+  /* 핀·이름표 한 겹. 도형 위에 떠 있을 뿐이라 마우스는 그대로 도형이 받습니다. */
+  .marker {
     pointer-events: none;
+  }
+  .marker text {
+    text-anchor: middle;
+    dominant-baseline: hanging;
     /* 경계선 위에 글자가 걸려도 읽히도록 글자 둘레에 바탕색 테두리 */
     paint-order: stroke;
     stroke: #fff;
-    stroke-width: 4px;
+    stroke-width: 5px;
     stroke-linejoin: round;
-  }
-  .province text {
-    font-size: 17px;
+    font-size: 21px;
     font-weight: 700;
     letter-spacing: -0.4px;
     fill: var(--brown-warm);
@@ -552,53 +608,60 @@
       fill 0.2s ease,
       stroke 0.2s ease;
   }
-  .province.metro text {
-    font-size: 12.5px;
-    font-weight: 600;
-    stroke: var(--ivory);
+  /* 핀 — 아직 안 가 본 곳은 비워 두고, 다녀온 곳만 브랜드색으로 채웁니다 */
+  .pin-body {
+    fill: #fff;
+    stroke: var(--brand);
+    stroke-width: 2.2px;
+    transition:
+      fill 0.2s ease,
+      stroke 0.2s ease;
   }
-  .caption {
-    font-size: 11px;
-    fill: var(--muted);
-    stroke: var(--brand-tint);
+  .pin-hole {
+    fill: var(--brand);
+    transition: fill 0.2s ease;
   }
-  .province {
+  .area {
     cursor: pointer;
     outline: none;
   }
-  .province:hover path,
-  .province:focus-visible path {
+  .area:hover .area-shape,
+  .area:focus-visible .area-shape {
     fill: var(--brand-soft);
     stroke: var(--brand);
   }
-  .province:hover text,
-  .province:focus-visible text {
+  .marker.hot text {
     stroke: var(--brand-soft);
   }
-  .province:focus-visible path {
+  .area:focus-visible .area-shape {
     stroke-width: 2.4px;
   }
-  /* 다녀온 지역 */
-  .province.on path {
+  /* 다녀온 시군구 */
+  .area.on .area-shape {
     fill: var(--brand);
     stroke: var(--brand-deep);
   }
-  .province.on text {
+  .marker.on text {
     fill: #fff;
     stroke: var(--brand);
   }
-  .province.on:hover path {
+  .marker.on .pin-body {
     fill: var(--brand-deep);
+    stroke: #fff;
   }
-  .province.on:hover text {
+  .marker.on .pin-hole {
+    fill: #fff;
+  }
+  .marker.on.hot text {
     stroke: var(--brand-deep);
   }
 
-  /* 지금 열어 둔 시도는 지도에서도 테두리로 표시해요 */
-  .province.picked path {
+  /* 지금 열어 둔 시군구는 지도에서도 테두리로 표시해요 */
+  .area.picked .area-shape {
     stroke: var(--brand-deep);
     stroke-width: 2.6px;
   }
+  /* 고른 시군구가 이웃 도형에 가려지지 않게 하는 일은 마크업 쪽 mapOrder 가 맡습니다. */
 
   /* ---------- 가운데: 시군구 ---------- */
   .district-card {
@@ -662,51 +725,44 @@
     border-color: var(--brand);
     color: var(--brand);
   }
-  .district-list {
+  .district-date {
     display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    /* 경기(42곳)처럼 긴 목록에서도 칸이 세로로 끝없이 늘어나지 않게 */
-    max-height: 420px;
-    overflow: auto;
-  }
-  .district {
-    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--ivory);
-    color: var(--brown-warm);
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
     font-size: 13.5px;
-    cursor: pointer;
-    transition:
-      background 0.16s,
-      color 0.16s,
-      border-color 0.16s;
+    color: var(--muted);
   }
-  .district:hover {
-    border-color: var(--brand);
-    color: var(--brand);
-  }
-  .district.on {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: #fff;
-    font-weight: 600;
-  }
-  .district .dot {
-    width: 16px;
-    height: 16px;
-  }
-  .district.on .dot {
+  .district-date input {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
     background: #fff;
-    color: var(--brand);
-    border-color: transparent;
+  }
+  .district-explore {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 13.5px;
+    text-decoration: none;
+  }
+  .district-explore:hover {
+    background: var(--brand-deep);
+  }
+  .district-note {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted);
   }
   .district-empty {
     display: grid;
@@ -858,17 +914,11 @@
     color: var(--brand);
     border-color: transparent;
   }
-  /* 지금 시군구를 열어 둔 시도 */
+  /* 지금 열어 둔 시군구 */
   .region.picked {
     border-color: var(--brand);
     box-shadow: 0 0 0 2px #b5704e2e;
   }
-  .region em {
-    font-style: normal;
-    font-size: 12px;
-    opacity: 0.75;
-  }
-
   /* ---------- 우리 아이와 함께한 기록 ---------- */
   .diary {
     margin-top: 34px;

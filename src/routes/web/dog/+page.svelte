@@ -20,7 +20,6 @@
   import {
     placeTheme,
     themeNames,
-    profileNotice,
     type Dog,
     type DogSize,
     type Place
@@ -29,7 +28,7 @@
   import { josa } from '$lib/domain/korean';
   import { findBreed, breedImage } from '$lib/domain/breeds';
   import BreedPicker from '$lib/components/web/BreedPicker.svelte';
-  import { getWebStore } from '$lib/web/store.svelte';
+  import { getWebStore, MAX_ACTIVE_DOGS } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -112,13 +111,13 @@
   });
 
   const summary = $derived.by(() => {
-    const dog = store.dog;
-    if (!dog) return null;
+    if (!store.activeDogs.length) return null;
     const restricted: Place[] = [];
     const withinWeight: Place[] = [];
     let check = 0;
     for (const place of data.places) {
-      if (profileNotice(place, dog).kind === 'restricted') restricted.push(place);
+      // 둘을 함께 고른 상태에서는 한 마리라도 걸리면 제한으로 셉니다(탐색 필터와 같은 기준).
+      if (store.restrictedFor(place)) restricted.push(place);
       else if (place.sourceWeight !== null) withinWeight.push(place);
       else check++;
     }
@@ -202,8 +201,9 @@
           <div>
             <h2>등록한 강아지 {store.dogs.length}마리</h2>
             <p>
-              선택한 아이의 체중·체급으로 장소 동반 조건을 비교하고, 지도 기록에도 이 아이 이름이
-              남아요.
+              선택한 아이의 체중·체급으로 장소 동반 조건을 비교해요. {MAX_ACTIVE_DOGS}마리까지 함께
+              고를 수 있고, 둘을 고르면 <strong>두 아이 모두에게 맞는 곳</strong>만 남겨요. 지도
+              기록에는 먼저 고른 아이 이름이 남아요.
             </p>
           </div>
           <button class="primary-button" onclick={startNew} disabled={atLimit}>
@@ -216,7 +216,7 @@
 
         <div class="dog-grid">
           {#each store.dogs as dog (dog.id)}
-            {@const current = store.dog?.id === dog.id}
+            {@const current = store.isActive(dog.id)}
             {@const card = findBreed(dog.breed)}
             <article class="dog-card" class:current>
               <div class="card-figure">
@@ -234,11 +234,14 @@
                 <button class="card-detail" onclick={() => openDetail(dog)}
                   ><Pencil size={15} />상세</button
                 >
-                {#if !current}
-                  <button class="card-pick" onclick={() => store.selectDog(dog.id)}
-                    >이 아이 선택</button
-                  >
-                {/if}
+                <!-- 마지막 한 마리는 뺄 수 없어요. 기준이 하나도 없으면 비교할 게 없어지니까요. -->
+                <button
+                  class="card-pick"
+                  class:on={current}
+                  aria-pressed={current}
+                  disabled={current && store.activeDogs.length === 1}
+                  onclick={() => store.toggleDog(dog.id)}>{current ? '선택 해제' : '선택'}</button
+                >
                 <button
                   class="card-remove"
                   disabled={removingId === dog.id}
@@ -398,7 +401,7 @@
         {#if store.dog && summary}
           <section class="panel">
             <div class="panel-head">
-              <h2>{store.dog.name} 조건으로 본 장소들</h2>
+              <h2>{store.dogNames} 조건으로 본 장소들</h2>
               <!-- 위의 주 버튼과 같은 일을 하므로, 색을 채우지 않아 위계를 낮춥니다. -->
               <button class="secondary-button" onclick={exploreWithDog}
                 ><Map size={18} />이 조건으로 지도 보기</button
@@ -429,15 +432,23 @@
               <h3 class="list-title warn"><TriangleAlert size={19} />제한 안내가 있는 곳</h3>
               {#if summary.restricted.length}
                 <ul class="place-list">
-                  {#each summary.restricted as place (place.id)}<li>
+                  {#each summary.restricted as place (place.id)}
+                    {@const restricted = store.restrictedFor(place)}
+                    <li>
                       <a href={`/web/explore?place=${place.id}`}>
                         <div>
                           <strong>{place.name}</strong>
                           <span><MapPin size={13} />{themeNames[placeTheme(place)]}</span>
                         </div>
-                        <em>{profileNotice(place, store.dog).label}</em>
+                        <!-- 둘을 함께 고른 상태에서는 누가 걸리는지까지 적어 줍니다. -->
+                        <em
+                          >{store.activeDogs.length > 1 && restricted
+                            ? `${restricted.dog.name} ${restricted.label}`
+                            : (restricted?.label ?? '')}</em
+                        >
                       </a>
-                    </li>{/each}
+                    </li>
+                  {/each}
                 </ul>
               {:else}<p class="list-empty">원본 규정상 제한 안내가 있는 곳이 없어요.</p>{/if}
             </section>
@@ -641,6 +652,10 @@
     gap: 20px;
     margin-bottom: 20px;
   }
+  /* 설명이 길어져도 '강아지 추가' 버튼이 세로로 짜부라지지 않게 */
+  .manage-head .primary-button {
+    flex-shrink: 0;
+  }
   .manage-head h2 {
     margin: 0;
     font-size: 22px;
@@ -769,6 +784,15 @@
   }
   .card-pick {
     flex: 1;
+  }
+  .card-pick.on {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-soft);
+  }
+  .card-pick:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
   .card-remove {
     display: grid;

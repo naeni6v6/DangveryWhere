@@ -39,6 +39,12 @@ export type Place = {
   description: string;
   policy: string;
   hours: string;
+  /**
+   * 원본이 적어 둔 대표 메뉴·이용요금 문구 (식당·카페에만 채웁니다).
+   * 강원 반려동반관광 원본의 '이용요금' 칸이고, 가격이 함께 적힌 곳은 열에 하나 정도예요.
+   * 문화정보원 출처만 있는 장소에는 이 칸 자체가 없어서 빈 문자열로 둡니다.
+   */
+  menu: string;
   sourceUrl: string;
   importedAt: string;
   verifiedAt: string | null;
@@ -122,6 +128,36 @@ export function placeTheme(place: Place): Theme {
   if (place.category !== 'food') return place.category;
   // 태그가 비어 있던 과거 데이터는 식당으로 둡니다(카페로 잘못 넣는 것보다 안전).
   return place.foodKind === 'cafe' ? 'cafe' : 'restaurant';
+}
+
+/** 메뉴 한 묶음. title 은 원본이 '[음료]' 처럼 구분을 지어 둔 경우에만 있습니다. */
+export type MenuGroup = { title: string | null; items: string[] };
+
+/**
+ * 원본의 메뉴 문구를 화면이 쓰는 묶음으로 끊습니다.
+ * 원본은 줄바꿈 없이 '[구분]', '- 항목', '* 안내' 를 이어 붙여 두었어요.
+ *   "[음료]- 아메리카노 5,000원- 카페라떼 5,500원* 1인 1음료 부탁드립니다"
+ * 세 기호 말고는 구분이 없어서, 그 자리에서만 끊고 글자는 원본 그대로 둡니다.
+ */
+export function menuGroups(menu: string): { groups: MenuGroup[]; notes: string[] } {
+  const groups: MenuGroup[] = [];
+  const notes: string[] = [];
+  for (const [, section, marker, body] of menu.matchAll(/\[([^\]]*)\]|([-*])([^[\-*]*)/g)) {
+    if (section !== undefined) {
+      groups.push({ title: section.trim(), items: [] });
+      continue;
+    }
+    const text = (body ?? '').trim();
+    if (!text) continue;
+    if (marker === '*') notes.push(text);
+    else {
+      if (!groups.length) groups.push({ title: null, items: [] });
+      groups.at(-1)!.items.push(text);
+    }
+  }
+  // 기호 없이 한 줄만 적어 둔 원본('변동' 같은)도 버리지 않고 안내로 남깁니다.
+  if (!groups.length && !notes.length && menu.trim()) notes.push(menu.trim());
+  return { groups: groups.filter((group) => group.items.length), notes };
 }
 
 export function policyLines(policy: string): string[] {

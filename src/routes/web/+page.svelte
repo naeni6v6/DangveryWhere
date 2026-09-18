@@ -142,7 +142,8 @@
   <header class="landing-nav">
     <a class="nav-brand" href="/web">
       <img class="nav-logo" src="/logo.png" alt="" width="42" height="42" />
-      <strong>댕브리웨어</strong>
+      <!-- 헤더와 같은 글자 로고 1번 시안 -->
+      <img class="nav-wordmark" src="/wordmark.png" alt="댕브리웨어" width="393" height="138" />
     </a>
     <nav class="nav-links" aria-label="주 메뉴">
       <a href="/web/explore"><Map size={17} />가게 찾기</a>
@@ -371,10 +372,11 @@
     transform: rotate(-8deg);
     filter: drop-shadow(0 6px 10px #b5704e40);
   }
-  .nav-brand strong {
-    font-size: 21px;
-    letter-spacing: -0.8px;
-    color: var(--brand);
+  /* 헤더(+layout.svelte)의 글자 로고와 같은 크기로 맞춰 둡니다. */
+  .nav-wordmark {
+    flex-shrink: 0;
+    height: 46px;
+    width: auto;
   }
   .nav-links {
     display: flex;

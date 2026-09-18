@@ -6,6 +6,7 @@ import {
   findPlacesByIds,
   foodKindOf,
   getRegionPlaces,
+  menuOf,
   listRegions,
   parseSourceWeight,
   policyChunks,
@@ -92,7 +93,7 @@ describe('policy text keeps what the sources actually wrote', () => {
   });
 
   it('says so plainly when a source left the rules blank', async () => {
-    const dataset = await loadPreparedRegion('seogwipo');
+    const dataset = await loadPreparedRegion('yangyang');
     const blank = dataset.places.find((place) =>
       place.sources.every((source) => !source.policyText.trim() && !source.sizeText.trim())
     );
@@ -129,12 +130,34 @@ describe('converted places fit the model the screens already use', () => {
   });
 
   it('carries the culture category the original data added', async () => {
-    const places = await getRegionPlaces('seogwipo');
+    const places = await getRegionPlaces('chuncheon');
     expect(places.some((place) => place.category === 'culture')).toBe(true);
   });
 
+  it('copies the menu the source wrote, and only for places that serve one', async () => {
+    const dataset = await loadPreparedRegion('chuncheon');
+    const byName = (name: string) => dataset.places.find((place) => place.name === name)!;
+    expect(menuOf(byName('감자밭'))).toContain('감자빵');
+    // 원본의 같은 칸이 숙소에는 객실 요금, 관광지에는 입장료로 들어옵니다. 메뉴로 부르면 안 돼요.
+    expect(menuOf(byName('남이섬'))).toBe('');
+    for (const place of dataset.places)
+      if (place.category !== 'food') expect(menuOf(place)).toBe('');
+  });
+
+  it('leaves the menu empty rather than guessing when the source has no such field', async () => {
+    // 문화정보원 출처만 있는 가게에는 이용요금 칸 자체가 없습니다.
+    const dataset = await loadPreparedRegion('yangyang');
+    const cultureOnly = dataset.places.filter(
+      (place) =>
+        place.category === 'food' &&
+        place.sources.every((source) => source.provider === 'kcisa-pet-culture')
+    );
+    expect(cultureOnly.length).toBeGreaterThan(0);
+    for (const place of cultureOnly) expect(menuOf(place)).toBe('');
+  });
+
   it('hands out the same objects instead of re-reading the snapshot', async () => {
-    expect(await getRegionPlaces('taean')).toBe(await getRegionPlaces('taean'));
+    expect(await getRegionPlaces('hongcheon')).toBe(await getRegionPlaces('hongcheon'));
   });
 });
 
@@ -163,24 +186,26 @@ describe('region catalog matches the data it describes', () => {
     }
   });
 
-  it('offers nationwide first, then the nine real regions', () => {
+  it('offers the whole province first, then the five real regions', () => {
     const regions = listRegions();
     expect(regions[0].id).toBe('all');
-    expect(regions).toHaveLength(10);
-    expect(regions.filter((region) => region.status === 'prepared')).toHaveLength(8);
-    // 전국은 나머지를 합친 값이라 두 번 세지 않습니다.
-    expect(regions[0].placeCount).toBe(508 + 93);
+    expect(regions).toHaveLength(6);
+    expect(regions.filter((region) => region.status === 'prepared')).toHaveLength(4);
+    // 강원 밖은 목록에 없습니다. 저장본이 남아 있어도 화면에 나오면 안 돼요.
+    expect(regions.every((region) => region.province === '강원')).toBe(true);
+    // 강원 전체는 나머지를 합친 값이라 두 번 세지 않습니다.
+    expect(regions[0].placeCount).toBe(255 + 93);
     expect(
       regions
         .filter((region) => region.status !== 'mixed')
         .reduce((sum, region) => sum + region.placeCount, 0)
-    ).toBe(508 + 93);
+    ).toBe(255 + 93);
   });
 
   it('uses the live count for the region currently on screen', async () => {
-    const places = await getRegionPlaces('gapyeong');
-    const summary = listRegions({ id: 'gapyeong', count: places.length }).find(
-      (region) => region.id === 'gapyeong'
+    const places = await getRegionPlaces('hongcheon');
+    const summary = listRegions({ id: 'hongcheon', count: places.length }).find(
+      (region) => region.id === 'hongcheon'
     )!;
     expect(summary.placeCount).toBe(places.length);
   });
@@ -198,7 +223,7 @@ describe('place ids point back at their region', () => {
 
   it('is listed the way the map reads, north to south', () => {
     const groups = groupedRegions(regionCatalog);
-    expect(groups.map((group) => group.province)).toEqual(['강원', '경기', '충남', '제주']);
+    expect(groups.map((group) => group.province)).toEqual(['강원']);
     expect(groups[0].regions.map((region) => region.city)).toEqual([
       '양양군',
       '춘천시',
@@ -206,8 +231,7 @@ describe('place ids point back at their region', () => {
       '홍천군',
       '평창군'
     ]);
-    expect(groups.at(-1)!.regions.map((region) => region.city)).toEqual(['제주시', '서귀포시']);
-    // 전국은 지역이 아니라 모아 보기라 어느 시도 묶음에도 들어가지 않습니다.
+    // 강원 전체 보기는 지역이 아니라 모아 보기라 어느 시도 묶음에도 들어가지 않습니다.
     expect(groups.flatMap((group) => group.regions).map((region) => region.id)).not.toContain(
       'all'
     );
@@ -231,9 +255,9 @@ describe('place ids point back at their region', () => {
 describe('favourites keep working across regions', () => {
   it('finds saved places from several regions at once, newest first', async () => {
     const [chuncheon] = await getRegionPlaces('chuncheon');
-    const [jeju] = await getRegionPlaces('jeju-si');
-    const found = await findPlacesByIds([jeju.id, 'gw-120', chuncheon.id, 'unknown-id']);
-    expect(found.map((place) => place.id)).toEqual([jeju.id, 'gw-120', chuncheon.id]);
+    const [pyeongchang] = await getRegionPlaces('pyeongchang');
+    const found = await findPlacesByIds([pyeongchang.id, 'gw-120', chuncheon.id, 'unknown-id']);
+    expect(found.map((place) => place.id)).toEqual([pyeongchang.id, 'gw-120', chuncheon.id]);
   });
 });
 
@@ -246,18 +270,20 @@ describe('the live Gangneung region is untouched', () => {
   });
 });
 
-describe('the nationwide view', () => {
+describe('the whole-province view', () => {
   it('is what you get when no region is picked', () => {
     expect(DEFAULT_REGION_ID).toBe('all');
   });
 
   it('joins every region exactly once, in the same north-to-south order', async () => {
     const places = await getRegionPlaces('all');
-    expect(places).toHaveLength(508 + 93);
+    expect(places).toHaveLength(255 + 93);
     expect(new Set(places.map((place) => place.id)).size).toBe(places.length);
-    // 목록도 지역 선택과 같은 차례로 이어 붙습니다. 양양이 맨 앞, 서귀포가 맨 뒤예요.
+    // 강원 밖 저장본은 파일로만 남아 있고, 화면에는 한 건도 올라오지 않습니다.
+    expect(places.every((place) => place.address.startsWith('강원'))).toBe(true);
+    // 목록도 지역 선택과 같은 차례로 이어 붙습니다. 양양이 맨 앞, 평창이 맨 뒤예요.
     expect(places[0].address).toContain('양양');
-    expect(places.at(-1)!.address).toContain('서귀포');
+    expect(places.at(-1)!.address).toContain('평창');
     const firstIndex = (city: string) => places.findIndex((place) => place.address.includes(city));
     const order = dataRegions().map((region) => firstIndex(region.city));
     expect(order.every((index) => index >= 0)).toBe(true);

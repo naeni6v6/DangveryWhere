@@ -127,6 +127,21 @@ function descriptionOf(place: PreparedRegionalPlace): string {
   return '';
 }
 
+/**
+ * 대표 메뉴. 강원 원본의 '이용요금'(usedCost) 칸을 그대로 옮깁니다.
+ * 이 칸은 숙소면 객실 요금, 관광지면 입장료가 들어오므로 식당·카페에서만 읽습니다.
+ * 문화정보원 출처만 있는 장소에는 칸 자체가 없어 빈 문자열이 됩니다.
+ */
+export function menuOf(place: PreparedRegionalPlace): string {
+  if (place.category !== 'food') return '';
+  for (const source of place.sources) {
+    if (source.provider !== 'gangwon-pettravel') continue;
+    const text = textOf(source.raw, 'usedCost');
+    if (text) return text;
+  }
+  return '';
+}
+
 function policyOf(place: PreparedRegionalPlace): string {
   const labelled = place.sources.length > 1;
   const lines: string[] = [];
@@ -170,6 +185,7 @@ export function toPlace(place: PreparedRegionalPlace, collectedAt: string): Plac
     description: descriptionOf(place),
     policy: policyOf(place),
     hours: place.hours,
+    menu: menuOf(place),
     sourceUrl: place.sources[0].url,
     // 수집일입니다. 업체에 규정을 확인한 날이 아니에요.
     importedAt: collectedAt,
@@ -181,7 +197,7 @@ export function toPlace(place: PreparedRegionalPlace, collectedAt: string): Plac
 /** 한 번 옮긴 지역은 그대로 다시 씁니다. 돌려받은 목록은 읽기 전용으로만 쓰세요. */
 const converted = new Map<RegionId, Place[]>();
 
-/** 저장본이 있는 지역들. 전국 보기는 이들을 지도 순서(북 → 남)대로 이어 붙여 만듭니다. */
+/** 저장본이 있는 지역들. 강원 전체 보기는 이들을 지도 순서(북 → 남)대로 이어 붙여 만듭니다. */
 const dataRegionIds = dataRegions().map((region) => region.id);
 
 export async function getRegionPlaces(regionId: RegionId): Promise<Place[]> {
@@ -231,10 +247,15 @@ export async function findPlacesByIds(placeIds: string[]): Promise<Place[]> {
   return placeIds.map((id) => found.get(id)).filter((place): place is Place => Boolean(place));
 }
 
-/** 아직 불러오지 않은 지역에 보여 줄 대략의 개수. */
+/**
+ * 아직 불러오지 않은 지역에 보여 줄 대략의 개수.
+ * index.json 은 수집 당시의 여덟 지역을 그대로 담고 있어서(강원 밖도 포함), 합계를 그대로 쓰지 않고
+ * 지금 목록에 있는 지역만 더합니다.
+ */
 function fallbackCount(regionId: RegionId): number {
   if (regionId === 'gangneung') return gangneungSnapshotCount;
-  if (regionId === 'all') return gangneungSnapshotCount + index.totalCandidates;
+  // dataRegionIds 에는 강릉도 들어 있어, 여기서 한 번만 더해집니다.
+  if (regionId === 'all') return dataRegionIds.reduce((sum, id) => sum + fallbackCount(id), 0);
   return index.regions[regionId as keyof typeof index.regions]?.candidateCount ?? 0;
 }
 

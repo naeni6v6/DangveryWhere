@@ -21,21 +21,25 @@
 
   // 원본 API 는 식음료를 한 묶음으로 주지만, 카페와 식당은 찾는 목적이 달라 나눠 놨습니다.
   // 문화시설(박물관·미술관)은 문화정보원 자료에만 있어, 그 지역에서만 탭을 띄웁니다.
-  const allThemes: Theme[] = [
-    'cafe',
-    'restaurant',
-    'stay',
-    'outdoor',
-    'activity',
-    'culture',
-    'hospital'
+  //
+  // 줄을 나눠 적어 둔 그대로 화면에서도 줄이 바뀝니다. 끼니 → 나들이 → 그 밖의 시설 순서로
+  // 묶어 둔 것이라, 창 너비에 따라 묶음이 흐트러지지 않게 줄 단위로 그립니다.
+  const themeRows: Theme[][] = [
+    ['restaurant', 'cafe'],
+    ['outdoor', 'activity', 'stay'],
+    ['culture', 'hospital']
   ];
-  const themes = $derived(
-    allThemes.filter(
-      (theme) =>
-        !['culture', 'hospital'].includes(theme) ||
-        data.places.some((place) => place.category === theme)
-    )
+  const rows = $derived(
+    themeRows
+      .map((row) =>
+        row.filter(
+          (theme) =>
+            !['culture', 'hospital'].includes(theme) ||
+            data.places.some((place) => place.category === theme)
+        )
+      )
+      // 그 지역에 문화시설도 동물병원도 없으면 빈 줄이 남지 않게 통째로 뺍니다.
+      .filter((row) => row.length)
   );
   const filtered = $derived(store.filter(data.places));
   const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
@@ -113,22 +117,26 @@
 <aside class="web-sidebar" aria-label="장소 목록과 필터">
   <div class="sidebar-top">
     <div class="category-row" aria-label="장소 유형">
-      <button
-        class:active={store.category === 'all'}
-        aria-pressed={store.category === 'all'}
-        onclick={() => {
-          store.category = 'all';
-          selected = null;
-        }}><Map size={17} />전체</button
-      >
-      {#each themes as theme (theme)}<button
-          class:active={store.category === theme}
-          aria-pressed={store.category === theme}
-          onclick={() => {
-            store.category = theme;
-            selected = null;
-          }}><ThemeIcon {theme} size={17} strokeWidth={1.7} />{themeNames[theme]}</button
-        >{/each}
+      {#each rows as row, index (index)}
+        <div class="category-line">
+          {#if index === 0}<button
+              class:active={store.category === 'all'}
+              aria-pressed={store.category === 'all'}
+              onclick={() => {
+                store.category = 'all';
+                selected = null;
+              }}><Map size={17} />전체</button
+            >{/if}
+          {#each row as theme (theme)}<button
+              class:active={store.category === theme}
+              aria-pressed={store.category === theme}
+              onclick={() => {
+                store.category = theme;
+                selected = null;
+              }}><ThemeIcon {theme} size={17} strokeWidth={1.7} />{themeNames[theme]}</button
+            >{/each}
+        </div>
+      {/each}
     </div>
     <div class="filter-row">
       <button
@@ -150,7 +158,7 @@
         >
         {#if store.mode === 'dog' && store.dog}<label
             ><input type="checkbox" bind:checked={store.hideKnownMismatch} />원본의 체중·체급 제한에
-            맞지 않는 곳 제외</label
+            {store.activeDogs.length > 1 ? '둘 중 하나라도 맞지 않는' : '맞지 않는'} 곳 제외</label
           >{:else}<p class="filter-hint">
             <a href="/web/dog">우리 강아지</a>를 등록하면 체중·체급 조건에 맞지 않는 곳을 뺄 수 있어요.
           </p>{/if}
@@ -163,7 +171,7 @@
       {#if store.category === 'hospital'}
         가까운 동물병원
       {:else if store.dog}
-        {store.dog.name}{josa(store.dog.name, '와/과')} 함께 갈 곳
+        {store.dogNames}{josa(store.dogNames, '와/과')} 함께 갈 곳
       {:else}
         함께 갈 곳
       {/if}
@@ -173,7 +181,7 @@
       {#if store.category === 'hospital'}
         진료 시간은 전화로 확인해 주세요
       {:else if store.mode === 'dog' && store.dog}
-        {store.dog.name}의 체중·체급 조건 적용 중
+        {store.dogNames}의 체중·체급 조건 적용 중
       {:else}
         방문 전 동반 규정을 확인해 보세요
       {/if}
@@ -222,7 +230,7 @@
     </div>{/if}
   {#if selected}<WebPlaceDetail
       place={selected}
-      dog={store.dog}
+      dogs={store.activeDogs}
       saved={store.isSaved(selected.id)}
       onclose={() => (selected = null)}
       onsave={() => selected && store.toggleSave(selected)}
@@ -243,7 +251,13 @@
     padding: 22px 22px 16px;
     border-bottom: 1px solid var(--line);
   }
+  /* 줄은 themeRows 가 정하고, 한 줄이 너무 좁아지면 그 안에서만 다시 접힙니다. */
   .category-row {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .category-line {
     display: flex;
     flex-wrap: wrap;
     gap: 9px;

@@ -12,6 +12,11 @@ import {
 type Account = { user: { id: string } | null; dogs: Dog[]; favorites: string[] };
 /** 어느 아이를 기준으로 볼지는 기기별 취향이라 이 브라우저에만 담아 둡니다. */
 const ACTIVE_DOG_KEY = 'dangverywhere-active-dog';
+/**
+ * 한 번에 기준으로 둘 수 있는 아이 수.
+ * 두 마리를 함께 데리고 나가는 날이 있어서 둘까지 나란히 볼 수 있게 했습니다.
+ */
+export const MAX_ACTIVE_DOGS = 2;
 /** 로그인 전에 등록한 아이들. 계정이 없으니 이 브라우저에 담아 새로고침해도 남게 합니다. */
 const LOCAL_DOGS_KEY = 'dangverywhere-dogs';
 
@@ -37,8 +42,8 @@ export class WebStore {
   hideKnownMismatch = $state(false);
   /** 등록된 아이들. 로그인 전에는 이 브라우저 세션에만 남습니다. */
   dogs = $state<Dog[]>([]);
-  /** 지금 장소 비교의 기준이 되는 아이 */
-  activeDogId = $state<string | null>(null);
+  /** 지금 장소 비교의 기준이 되는 아이들 (최대 MAX_ACTIVE_DOGS 마리) */
+  activeDogIds = $state<string[]>([]);
   savedIds = $state<string[]>([]);
   loggedIn = $state(false);
   toast = $state('');
@@ -52,34 +57,104 @@ export class WebStore {
     this.savedIds = [...account.favorites];
     // 로그인했으면 계정에 저장된 것이, 아니면 이 브라우저에 담아 둔 것이 기준입니다.
     this.dogs = this.loggedIn ? [...account.dogs] : readLocalDogs();
-    this.activeDogId = this.#restoreActiveId();
+    this.activeDogIds = this.#restoreActiveIds();
   }
 
   /**
-   * 기준이 되는 아이. 화면 대부분은 한 마리만 보면 되므로 이 값을 씁니다.
-   * 고른 아이가 사라졌으면 첫 번째 아이로 돌아갑니다.
+   * 기준이 되는 아이들. 고른 아이가 사라졌으면 첫 번째 아이로 돌아갑니다.
+   * 한 마리도 남지 않는 상태는 두지 않습니다 — 기준이 없으면 비교할 게 없어지니까요.
    */
-  get dog(): Dog | null {
-    return this.dogs.find((dog) => dog.id === this.activeDogId) ?? this.dogs[0] ?? null;
+  get activeDogs(): Dog[] {
+    const picked = this.activeDogIds
+      .map((id) => this.dogs.find((dog) => dog.id === id))
+      .filter((dog): dog is Dog => Boolean(dog));
+    return picked.length ? picked : this.dogs.slice(0, 1);
   }
 
-  #restoreActiveId(): string | null {
+  /**
+   * 대표 한 마리. 이름 한 번만 쓰면 되는 자리(지도 기록 등)에서 씁니다.
+   * 둘을 고른 상태에서는 먼저 고른 아이입니다.
+   */
+  get dog(): Dog | null {
+    return this.activeDogs[0] ?? null;
+  }
+
+  isActive(id: string) {
+    return this.activeDogs.some((dog) => dog.id === id);
+  }
+
+  /** 고른 아이들 이름을 한 줄로 ('두부·콩이'). 조사는 부르는 쪽에서 붙여 주세요. */
+  get dogNames(): string {
+    return this.activeDogs.map((dog) => dog.name).join('·');
+  }
+
+  /**
+   * 고른 아이들 중 이 장소의 제한에 걸리는 첫 아이의 안내. 걸리는 아이가 없으면 null.
+   * 카드처럼 한 줄만 보여 주는 자리에서 '누가' 걸리는지까지 알려 주려고 아이를 함께 돌려줍니다.
+   */
+  restrictedFor(place: Place): { dog: Dog; label: string; detail: string } | null {
+    for (const dog of this.activeDogs) {
+      const notice = profileNotice(place, dog);
+      if (notice.kind === 'restricted') return { dog, label: notice.label, detail: notice.detail };
+    }
+    return null;
+  }
+
+  #firstDogIds(): string[] {
+    return this.dogs.slice(0, 1).map((dog) => dog.id);
+  }
+
+  #restoreActiveIds(): string[] {
     try {
       const saved = localStorage.getItem(ACTIVE_DOG_KEY);
-      return saved && this.dogs.some((dog) => dog.id === saved) ? saved : (this.dogs[0]?.id ?? null);
+      if (!saved) return this.#firstDogIds();
+      // 예전에는 아이디 하나만 담아 뒀어요. 그때 고른 아이를 잃지 않게 두 형태 모두 읽습니다.
+      let ids: string[];
+      try {
+        const parsed: unknown = JSON.parse(saved);
+        ids = Array.isArray(parsed)
+          ? parsed.filter((value): value is string => typeof value === 'string')
+          : [saved];
+      } catch {
+        ids = [saved];
+      }
+      const kept = ids
+        .filter((id) => this.dogs.some((dog) => dog.id === id))
+        .slice(0, MAX_ACTIVE_DOGS);
+      return kept.length ? kept : this.#firstDogIds();
     } catch {
-      return this.dogs[0]?.id ?? null;
+      return this.#firstDogIds();
     }
   }
 
-  selectDog(id: string) {
-    if (!this.dogs.some((dog) => dog.id === id)) return;
-    this.activeDogId = id;
+  #setActive(ids: string[]) {
+    this.activeDogIds = ids;
     try {
-      localStorage.setItem(ACTIVE_DOG_KEY, id);
+      localStorage.setItem(ACTIVE_DOG_KEY, JSON.stringify(ids));
     } catch {
       // 저장이 막혀 있어도 이번 방문에는 그대로 적용돼요.
     }
+  }
+
+  /** 이 아이 하나만 기준으로 둡니다 (등록·수정 직후처럼 초점을 옮길 때). */
+  selectDog(id: string) {
+    if (!this.dogs.some((dog) => dog.id === id)) return;
+    this.#setActive([id]);
+  }
+
+  /**
+   * 기준에 넣거나 뺍니다. 둘까지 함께 볼 수 있고, 셋째를 고르면 먼저 고른 아이가 빠집니다.
+   * 마지막 한 마리는 빼지 않습니다 — 기준이 없는 상태로 떨어지지 않게요.
+   */
+  toggleDog(id: string) {
+    if (!this.dogs.some((dog) => dog.id === id)) return;
+    const current = this.activeDogs.map((dog) => dog.id);
+    if (!current.includes(id)) {
+      this.#setActive([...current, id].slice(-MAX_ACTIVE_DOGS));
+      return;
+    }
+    if (current.length === 1) return;
+    this.#setActive(current.filter((item) => item !== id));
   }
 
   get filterCount() {
@@ -91,14 +166,14 @@ export class WebStore {
   }
 
   filter(places: Place[]) {
-    const dog = this.dog;
+    const dogs = this.activeDogs;
     return searchPlacesByTheme(places, this.query, this.category).filter((place) => {
       if (this.weightInfoOnly && place.sourceWeight === null) return false;
+      // 둘을 함께 보고 있으면 한 마리라도 걸리는 곳은 뺍니다. 규정은 느슨한 쪽이 아니라 엄한 쪽으로.
       if (
         this.mode === 'dog' &&
-        dog &&
         this.hideKnownMismatch &&
-        profileNotice(place, dog).kind === 'restricted'
+        dogs.some((dog) => profileNotice(place, dog).kind === 'restricted')
       )
         return false;
       return true;
@@ -166,10 +241,9 @@ export class WebStore {
     }
     this.dogs = this.dogs.filter((row) => row.id !== id);
     this.#saveLocalDogs();
-    if (this.activeDogId === id) {
-      const next = this.dogs[0]?.id ?? null;
-      this.activeDogId = next;
-      if (next) this.selectDog(next);
+    if (this.activeDogIds.includes(id)) {
+      const rest = this.activeDogIds.filter((item) => item !== id);
+      this.#setActive(rest.length ? rest : this.#firstDogIds());
     }
     if (!this.dogs.length) this.mode = 'all';
     this.notify(`${dog.name}의 정보를 지웠어요.`);
@@ -222,7 +296,7 @@ export class WebStore {
       this.savedIds = [];
       // 로그아웃하면 계정 기록 대신 이 브라우저에 담아 둔 기록으로 돌아갑니다.
       this.dogs = readLocalDogs();
-      this.activeDogId = this.dogs[0]?.id ?? null;
+      this.activeDogIds = this.#firstDogIds();
       this.mode = 'all';
       this.notify('로그아웃했어요.');
     } catch {

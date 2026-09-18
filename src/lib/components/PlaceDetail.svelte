@@ -15,6 +15,7 @@
   } from '@lucide/svelte';
   import {
     categoryNames,
+    menuGroups,
     placeArea,
     policyLines,
     profileNotice,
@@ -38,6 +39,9 @@
     appLayout?: boolean;
   } = $props();
   const lines = $derived(policyLines(place.policy));
+  // 메뉴는 카페·음식점에만. 원본의 같은 칸이 숙소에는 객실 요금으로 들어와요.
+  const isFood = $derived(place.category === 'food');
+  const menu = $derived(menuGroups(place.menu ?? ''));
   // 제공처 이름은 원문 주소에서 되짚습니다. 지역마다 출처가 달라 문구에 박아 둘 수 없어요.
   const sourceName = $derived(
     providerInfo[providerOfUrl(place.sourceUrl) ?? 'gangwon-pettravel'].name
@@ -154,6 +158,23 @@
       {#if place.description}<div class="about-place">
           <h3>이런 곳이에요</h3>
           <p>{place.description}</p>
+        </div>{/if}
+      {#if isFood}<div class="menu-block">
+          <h3>대표 메뉴</h3>
+          {#each menu.groups as group, i (i)}
+            {#if group.title}<strong class="menu-group">{group.title}</strong>{/if}
+            <ul class="menu-items">
+              {#each group.items as item (item)}<li>{item}</li>{/each}
+            </ul>
+          {/each}
+          {#each menu.notes as note (note)}<p class="menu-note">{note}</p>{/each}
+          <!-- 원본에 메뉴 칸이 없는 가게도 있습니다. 없는 걸 지어내지 않습니다. -->
+          {#if !menu.groups.length && !menu.notes.length}<p class="menu-note">
+              원본에 메뉴가 적혀 있지 않아요. 가게에 직접 물어봐 주세요.
+            </p>{/if}
+          {#if menu.groups.length}<p class="menu-note">
+              메뉴와 가격은 바뀔 수 있어요. 방문 전에 확인해 주세요.
+            </p>{/if}
         </div>{/if}
       {#if place.hours}<div class="hours">
           <Clock3 size={15} />
@@ -329,9 +350,40 @@
   .verification strong {
     font-weight: 500;
   }
-  .about-place h3 {
+  .about-place h3,
+  .menu-block h3 {
     font-size: 14px;
     margin-top: 26px;
+  }
+  .menu-group {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 12px 0 5px;
+  }
+  .menu-items {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .menu-items li {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    word-break: keep-all;
+  }
+  .menu-note {
+    margin: 9px 0 0;
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: var(--muted);
+    word-break: keep-all;
   }
   .about-place p,
   .hours p {

@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { MapPin, ChevronDown, FlaskConical } from '@lucide/svelte';
+  import { MapPin, ChevronDown } from '@lucide/svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { groupedRegions, type RegionSummary } from '$lib/domain/region';
 
   let { regions, regionId }: { regions: RegionSummary[]; regionId: string } = $props();
-  const current = $derived(regions.find((region) => region.id === regionId) ?? regions[0]);
-  // 전국은 지역이 아니라 모아 보기라, 시도 묶음 위에 따로 둡니다.
+  // '강원 전체'는 지역이 아니라 모아 보기라, 시도 묶음 위에 따로 둡니다.
   const nationwide = $derived(regions.find((region) => region.status === 'mixed'));
-  // '강원' 아래 다섯 곳처럼 시도별로 묶어 보여 줍니다. 순서는 regionCatalog(북 → 남) 그대로예요.
+  // '강원' 아래 다섯 곳을 시도별로 묶어 보여 줍니다. 순서는 regionCatalog(북 → 남) 그대로예요.
   const provinces = $derived(groupedRegions(regions));
   let busy = $state(false);
 
@@ -51,12 +50,13 @@
     {/each}
   </select>
   <ChevronDown size={15} aria-hidden="true" />
-  {#if current && current.status !== 'active'}
-    <span class="prepared" title="공공데이터 저장본이며 업체 확인 전이에요">
-      <FlaskConical size={13} />준비 데이터{current.status === 'mixed' ? ' 포함' : ''}
-    </span>
-  {/if}
 </div>
+
+<!--
+  '준비 데이터' 뱃지는 지역 카드에서 뺐습니다. 다만 업체 확인 전이라는 사실 자체는 숨기지 않습니다.
+  목록 아래 출처 줄('업체 확인 전'), 장소 상세의 '규정 확인일 미제공', 왼쪽 레일의 '데이터 안내'
+  창이 같은 내용을 계속 알려 줍니다.
+-->
 
 <style>
   .region-picker {
@@ -86,16 +86,5 @@
   }
   select:disabled {
     cursor: progress;
-  }
-  .prepared {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: 2px;
-    padding-left: 9px;
-    border-left: 1px solid #f0dcde;
-    font-size: 12.5px;
-    font-weight: 500;
-    color: var(--brown-warm);
   }
 </style>

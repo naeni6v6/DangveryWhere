@@ -12,6 +12,7 @@
     ExternalLink
   } from '@lucide/svelte';
   import {
+    menuGroups,
     placeArea,
     placeTheme,
     themeNames,
@@ -26,13 +27,14 @@
   import ThemeIcon from './ThemeIcon.svelte';
   let {
     place,
-    dog,
+    dogs = [],
     saved = false,
     onclose,
     onsave
   }: {
     place: Place;
-    dog: DogProfile | null;
+    /** 기준으로 고른 아이들. 둘을 함께 보고 있으면 안내도 두 줄이 됩니다. */
+    dogs?: DogProfile[];
     saved?: boolean;
     onclose: () => void;
     onsave: () => void;
@@ -47,7 +49,10 @@
   const sourceName = $derived(
     providerInfo[providerOfUrl(place.sourceUrl) ?? 'gangwon-pettravel'].name
   );
-  const notice = $derived(dog ? profileNotice(place, dog) : null);
+  const notices = $derived(dogs.map((dog) => ({ name: dog.name, ...profileNotice(place, dog) })));
+  // 메뉴는 식당·카페에만 보여 줍니다. 원본의 같은 칸이 숙소에는 객실 요금으로 들어와요.
+  const isFood = $derived(place.category === 'food');
+  const menu = $derived(menuGroups(place.menu ?? ''));
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
   const photoSrc = $derived((placeImages as Record<string, string>)[place.id] ?? null);
   // 사진을 못 불러오면 기존 갈색 커버로 돌아가요
@@ -111,13 +116,13 @@
         <h3>{isHospital ? '진료 전에' : '함께 가기 전에'}</h3>
         <span>{isHospital ? '병원 정보' : '동반 규정'}</span>
       </div>
-      {#if notice && !isHospital}<div
-          class="profile-notice"
-          class:restricted={notice.kind === 'restricted'}
-        >
-          <strong>{dog?.name} · {notice.label}</strong>
-          <p>{notice.detail}</p>
-        </div>{/if}
+      {#if !isHospital}{#each notices as notice, index (index)}<div
+            class="profile-notice"
+            class:restricted={notice.kind === 'restricted'}
+          >
+            <strong>{notice.name} · {notice.label}</strong>
+            <p>{notice.detail}</p>
+          </div>{/each}{/if}
       <div class="policy-list">
         {#each lines as line, i}<div class="policy-row">
             <span class="policy-number">{String(i + 1).padStart(2, '0')}</span>
@@ -143,6 +148,27 @@
       {#if place.description}<section class="about-place">
           <h3>이런 곳이에요</h3>
           <p>{place.description}</p>
+        </section>{/if}
+      {#if isFood}<section class="menu-card">
+          <div class="menu-head">
+            <ThemeIcon {theme} size={18} strokeWidth={1.6} />
+            <h3>대표 메뉴</h3>
+            {#if menu.groups.length}<span>원본 등록 기준</span>{/if}
+          </div>
+          {#each menu.groups as group, i (i)}
+            {#if group.title}<strong class="menu-group">{group.title}</strong>{/if}
+            <ul class="menu-items">
+              {#each group.items as item (item)}<li>{item}</li>{/each}
+            </ul>
+          {/each}
+          {#each menu.notes as note (note)}<p class="menu-note">{note}</p>{/each}
+          <!-- 문화정보원 출처만 있는 가게에는 메뉴 칸 자체가 없습니다. 없는 걸 지어내지 않습니다. -->
+          {#if !menu.groups.length && !menu.notes.length}<p class="menu-empty">
+              원본에 메뉴가 적혀 있지 않아요. 가게에 직접 물어봐 주세요.
+            </p>{/if}
+          {#if menu.groups.length}<p class="menu-foot">
+              메뉴와 가격은 바뀔 수 있어요. 방문 전에 확인해 주세요.
+            </p>{/if}
         </section>{/if}
       {#if place.hours}<div class="hours">
           <Clock3 size={15} />
@@ -414,6 +440,72 @@
     color: var(--muted);
     word-break: keep-all;
     margin: 0;
+  }
+  .menu-card {
+    margin-top: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px 15px;
+    background: var(--cream);
+  }
+  .menu-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--brand);
+    margin-bottom: 10px;
+  }
+  .menu-head h3 {
+    font-size: 15.5px;
+    margin: 0;
+  }
+  .menu-head > span {
+    font-size: 11.5px;
+    margin-left: auto;
+    color: var(--muted);
+  }
+  .menu-group {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 12px 0 4px;
+  }
+  .menu-group:first-of-type {
+    margin-top: 0;
+  }
+  .menu-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .menu-items li {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: keep-all;
+  }
+  .menu-note,
+  .menu-empty,
+  .menu-foot {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--muted);
+    word-break: keep-all;
+  }
+  .menu-empty {
+    margin: 0;
+  }
+  .menu-foot {
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
   }
   .hours {
     display: flex;

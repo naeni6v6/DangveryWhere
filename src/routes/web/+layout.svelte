@@ -86,13 +86,9 @@
             href={item.href}><item.icon size={26} /><span>{item.label}</span></a
           >{/each}
         <div class="rail-spacer"></div>
+        <!-- 로그인/로그아웃은 헤더 오른쪽 버튼 하나로 모았습니다. -->
         <button class="rail-link" onclick={() => infoDialog.showModal()}
           ><Info size={25} /><span>데이터 안내</span></button
-        >
-        <button class="rail-link" class:signed-in={store.loggedIn} onclick={accountAction}
-          >{#if store.loggedIn}<LogOut size={25} /><span>로그아웃</span>{:else}<LogIn
-              size={25}
-            /><span>로그인</span>{/if}</button
         >
       </nav>
 
@@ -100,7 +96,8 @@
         <!-- 상단 헤더 -->
         <header class="web-header">
           <a class="header-brand" href="/web">
-            <strong>댕브리웨어</strong>
+            <!-- 글자 로고 1번 시안 (assets/글자로고_1.png 을 3배 높이로 내보낸 것) -->
+            <img src="/wordmark.png" alt="댕브리웨어" width="393" height="138" />
             <span>DangveryWhere · 반려견 동반 지도</span>
           </a>
           <RegionPicker regions={data.regions} regionId={data.regionId} />
@@ -285,9 +282,6 @@
     font-weight: 700;
     box-shadow: inset 3px 0 0 var(--gold);
   }
-  .rail-link.signed-in {
-    color: #ffd9c2;
-  }
   .rail-spacer {
     flex: 1;
     min-height: 12px;
@@ -311,15 +305,25 @@
     white-space: nowrap;
     text-decoration: none;
   }
-  .header-brand strong {
-    font-size: 24px;
-    letter-spacing: -1px;
-    color: var(--brand);
+  /* 글자 로고는 높이만 정하고 너비는 비율대로.
+     align-self 가 없으면 세로 flex 의 기본값(stretch)이 로고를 아래 부제 너비만큼
+     가로로 잡아 늘여서 글자가 찌부돼 보입니다. flex-shrink 도 꺼서 세로로도 눌리지 않게 합니다.
+     width/height 속성은 로고가 늦게 떠도 헤더가 흔들리지 않게 자리를 미리 잡아 두려고 적어 둡니다. */
+  .header-brand img {
+    align-self: flex-start;
+    flex-shrink: 0;
+    height: 46px;
+    width: auto;
+  }
+  /* 로고를 키운 만큼 지역 카드를 오른쪽으로 조금 밀어 숨통을 틔웁니다. */
+  .web-header :global(.region-picker) {
+    margin-left: 12px;
   }
   .header-brand span {
     font-size: 12.5px;
+    font-weight: 700;
     color: var(--muted);
-    margin-top: 3px;
+    margin-top: 4px;
   }
   .info-sources {
     display: flex;
