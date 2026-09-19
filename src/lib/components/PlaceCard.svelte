@@ -7,7 +7,8 @@
     Sparkles,
     Heart,
     MapPin,
-    Landmark
+    Landmark,
+    ShoppingBag
   } from '@lucide/svelte';
   import { categoryNames, placeArea, shortAddress, type Place } from '$lib/domain/place';
   let {
@@ -30,7 +31,8 @@
     outdoor: Trees,
     activity: Sparkles,
     hospital: MapPin,
-    culture: Landmark
+    culture: Landmark,
+    shopping: ShoppingBag
   };
   const Icon = $derived(icons[place.category]);
   // 전국을 함께 볼 수 있어서 시군구는 남깁니다. 시도만 떼고 동네 두 마디까지 보여 줘요.
@@ -139,6 +141,10 @@
   .category-art.activity {
     background: #ece8df;
     color: #9a8659;
+  }
+  .category-art.shopping {
+    background: #eee4e4;
+    color: #946d6d;
   }
   .place-copy {
     min-width: 0;

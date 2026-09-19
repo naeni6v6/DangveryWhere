@@ -1,11 +1,12 @@
 /**
- * 지도 기록(우리 아이와 함께한 기록)의 저장 형식과 타임라인 묶기.
+ * 댕스탬프(시군구 스탬프 기록)의 저장 형식.
  *
  * 브라우저에만 저장되는 개인 기록이라, 형식이 바뀌어도 예전 기록을 잃지 않는 것이 제일 중요해요.
- * 그래서 읽는 쪽을 너그럽게 만들고, 그 규칙을 테스트로 묶어 둡니다.
+ * 지도 기록 시절에 찍어 둔 것도 그대로 스탬프가 되도록, 읽는 쪽을 너그럽게 만들고 그 규칙을
+ * 테스트로 묶어 둡니다.
  */
 
-/** 다녀온 기록 한 줄 */
+/** 스탬프 하나 (시군구마다 하나뿐이에요) */
 export type Visit = {
   /** 시군구 코드 (koreaDistricts 의 code) */
   code: string;
@@ -46,18 +47,6 @@ function isDay(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 }
 
-/** 최근에 다녀온 것부터, 연도별로 묶어서 일기처럼 읽히게 합니다. */
-export function groupVisitsByYear(visits: Visit[]): { year: string; rows: Visit[] }[] {
-  const dated = visits.filter((visit) => visit.date).sort((a, b) => b.date.localeCompare(a.date));
-  const groups: { year: string; rows: Visit[] }[] = [];
-  for (const visit of dated) {
-    const year = visit.date.slice(0, 4);
-    if (groups.at(-1)?.year !== year) groups.push({ year, rows: [] });
-    groups.at(-1)!.rows.push(visit);
-  }
-  return groups;
-}
-
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 /** '9월 16일 수요일' */
@@ -65,6 +54,11 @@ export function prettyDate(date: string): string {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return '';
   return `${parsed.getMonth() + 1}월 ${parsed.getDate()}일 ${WEEKDAYS[parsed.getDay()]}요일`;
+}
+
+/** 도장 안에 새길 짧은 날짜 '2026.09.16' */
+export function stampDate(date: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.replaceAll('-', '.') : '';
 }
 
 /** 오늘 날짜를 현지 시각 기준 'YYYY-MM-DD' 로. (toISOString 은 UTC 라 하루가 밀릴 수 있어요) */

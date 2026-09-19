@@ -22,6 +22,7 @@
     "data:regions:prepare": "node scripts/prepare-region-data.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@lucide/svelte": "^1.43.0",
     "@neondatabase/serverless": "^1.0.0"
   },

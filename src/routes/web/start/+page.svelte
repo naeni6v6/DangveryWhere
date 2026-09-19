@@ -6,6 +6,7 @@
   import {
     ArrowLeft,
     ArrowRight,
+    Camera,
     Check,
     Dog as DogIcon,
     Map,
@@ -13,17 +14,32 @@
     PencilLine,
     X
   } from '@lucide/svelte';
-  import { breeds, breedThumb, breedImage, breedByLabel, findBreed } from '$lib/domain/breeds';
+  import {
+    breeds,
+    breedThumb,
+    breedImage,
+    breedByLabel,
+    findBreed,
+    MYSTERY_IMAGE,
+    MYSTERY_THUMB
+  } from '$lib/domain/breeds';
   import { validateProfile } from '$lib/domain/profile';
   import { josa } from '$lib/domain/korean';
-  import { MASCOT_IMAGE, MASCOT_NAME } from '$lib/domain/mascot';
+  import {
+    MASCOT_CURIOUS,
+    MASCOT_FINISH,
+    MASCOT_IMAGE,
+    MASCOT_NAME,
+    MASCOT_RUN_FRAMES,
+    MASCOT_RUN_MS
+  } from '$lib/domain/mascot';
   import type { DogSize } from '$lib/domain/place';
   import { getWebStore } from '$lib/web/store.svelte';
   import { AFTER_TUTORIAL_PATH, isTutorialDone, markTutorialDone } from '$lib/web/onboarding';
 
   /**
    * 처음 한 번만 보여 주는 튜토리얼.
-   * 마스코트가 인사한 뒤 '나만의 강아지 만들기'(이름 → 견종 → 체급·몸무게)를 거쳐
+   * 마스코트 댕브리가 멀리서 달려와 인사한 뒤 '나만의 강아지 만들기'(이름 → 견종 → 체급·몸무게)를 거쳐
    * [지도 찾기]를 누르면 강아지를 저장하고 지도(/web/explore)로 이어집니다.
    * 왼쪽 메뉴·헤더 없이 흰 화면에 카드 하나만 두고, 위쪽 막대로 진행 상황을 보여 줍니다.
    */
@@ -35,6 +51,77 @@
   /** 화면이 어느 쪽에서 들어올지 (다음 → 오른쪽에서, 이전 → 왼쪽에서) */
   let direction = $state(1);
   let saving = $state(false);
+
+  /**
+   * 첫 화면: 댕브리가 멀리서 달려오는 장면.
+   * 달려오는 동안(MASCOT_RUN_MS) 8프레임을 넘기고, 다 오면 인사 포즈로 바뀌며 말풍선이 뜹니다.
+   * 한 번 본 뒤 [이전]으로 돌아오면 기다리게 하지 않고 바로 인사 포즈를 보여 줘요.
+   */
+  let runFrame = $state(0);
+  let arrived = $state(false);
+  let helloPlayed = false;
+  /**
+   * 완료 화면 연출: 두구두구(실루엣이 떨리며 기대감) → 펑! 연기가 한참 머물다 → 걷히면서 캐릭터 등장.
+   * 연기는 REVEAL_POOF_MS 동안 머물고, 캐릭터는 연기가 걷히기 시작할 때 나와 그대로 남습니다.
+   */
+  type Reveal = 'wait' | 'poof' | 'show';
+  let reveal = $state<Reveal>('wait');
+  const REVEAL_WAIT_MS = 1600;
+  const REVEAL_POOF_MS = 2500;
+  /** 연기가 완전히 걷히는 데 더 걸리는 시간. 캐릭터가 나온 뒤에도 이만큼은 연기가 남아요. */
+  const REVEAL_CLEAR_MS = 700;
+
+  function reducedMotion() {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /**
+   * 달려오는 동안 t(0~1)에 보일 프레임.
+   * 시트의 1→8번이 '멀리 → 가까이'라 거리에 맞춰 차례로 넘기되,
+   * 한 구간 안에서는 이웃 프레임을 번갈아 보여 발이 계속 움직이는 것처럼 보이게 합니다.
+   */
+  function frameAt(t: number) {
+    const last = MASCOT_RUN_FRAMES.length - 1;
+    const seg = Math.min(last - 1, Math.floor(t * last));
+    const sub = Math.floor((t * last - seg) * 4);
+    return Math.min(last, seg + (sub % 2));
+  }
+
+  $effect(() => {
+    if (step !== 0) return;
+    if (helloPlayed || reducedMotion()) {
+      arrived = true;
+      return;
+    }
+    arrived = false;
+    runFrame = 0;
+    const start = performance.now();
+    let raf = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - start) / MASCOT_RUN_MS);
+      runFrame = frameAt(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else {
+        arrived = true;
+        helloPlayed = true;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+
+  $effect(() => {
+    if (step !== steps.length - 1) return;
+    if (reducedMotion()) {
+      reveal = 'show';
+      return;
+    }
+    reveal = 'wait';
+    const poof = setTimeout(() => (reveal = 'poof'), REVEAL_WAIT_MS);
+    const show = setTimeout(() => (reveal = 'show'), REVEAL_WAIT_MS + REVEAL_POOF_MS);
+    return () => {
+      clearTimeout(poof);
+      clearTimeout(show);
+    };
+  });
 
   let name = $state('');
   /** 목록에서 고른 견종 이름. 직접 입력 중이면 비워 둡니다. */
@@ -77,6 +164,9 @@
   ];
   const sizeNames: Record<DogSize, string> = { small: '소형견', medium: '중형견', large: '대형견' };
   const sizeScale: Record<DogSize, number> = { small: 0.7, medium: 0.85, large: 1 };
+  /** 완료 화면 효과용: 연기 뭉치 10개, 반짝이 6개 (CSS 에서 --i 로 각도를 정해요) */
+  const puffs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const stars = [0, 1, 2, 3, 4, 5];
 
   /** 마스코트가 단계마다 건네는 말 */
   const bubble = $derived.by(() => {
@@ -85,7 +175,7 @@
       case 0:
         return `안녕하세요! 저는 여러분의 반려동물 동반 여행을 도와줄 ${MASCOT_NAME}예요. 지금부터 저와 함께 서비스를 시작해볼까요?`;
       case 1:
-        return '먼저, 강아지 이름이 뭐예요? 앞으로 이 이름으로 불러 드릴게요.';
+        return '먼저, 반려견의 이름을 알려주세요. 앞으로 이 이름으로 불러 드릴게요.';
       case 2:
         return `${who}${josa(who, '은/는')} 어떤 견종이에요? 고르면 캐릭터가 함께 바뀌어요.`;
       case 3:
@@ -148,19 +238,34 @@
 
   /** [지도 찾기]: 강아지를 저장하고, 이 아이 조건이 켜진 지도로 갑니다. */
   async function finish() {
+    await finishTo(AFTER_TUTORIAL_PATH);
+  }
+  /**
+   * [내 강아지 캐릭터 만들기]: 같은 저장을 거친 뒤 사진으로 캐릭터를 만드는 화면으로.
+   * 방금 저장한 아이가 기준(store.dog)이 되므로 그 id 를 넘깁니다.
+   */
+  async function finishToCharacter() {
+    await finishTo('/web/start/character', true);
+  }
+  async function finishTo(path: string, withDog = false) {
     if (!profile) return go(3);
     saving = true;
     await store.applyDog(profile);
     markTutorialDone();
     store.mode = 'dog';
     store.hideKnownMismatch = true;
-    await goto(AFTER_TUTORIAL_PATH);
+    const dogId = withDog ? store.dog?.id : undefined;
+    await goto(dogId ? `${path}?dog=${dogId}` : path);
     saving = false;
   }
 </script>
 
 <svelte:head>
   <title>시작하기 — 댕브리웨어</title>
+  <!-- 달려오는 동안 다음 장면 그림을 미리 받아 두어 바뀔 때 깜빡이지 않게 합니다 -->
+  <link rel="preload" as="image" href={MASCOT_IMAGE} />
+  <link rel="preload" as="image" href={MASCOT_CURIOUS} />
+  <link rel="preload" as="image" href={MASCOT_FINISH} />
 </svelte:head>
 
 <div class="tutorial">
@@ -201,17 +306,49 @@
     {#key step}
       <div class="card-body" in:fly={{ x: 28 * direction, duration: 260 }}>
         {#if step === 0}
-          <!-- 마스코트 인사 -->
+          <!-- 마스코트 인사: 댕브리가 멀리서 달려온 뒤 손을 흔들며 인사합니다 -->
           <div class="hello">
-            <div class="hello-figure">
-              <img class="mascot mascot-big" src={MASCOT_IMAGE} alt={`마스코트 ${MASCOT_NAME}`} draggable="false" />
+            <div class="run-scene" class:arrived style:--run-ms={`${MASCOT_RUN_MS}ms`}>
+              <span class="run-ground" aria-hidden="true"></span>
+              {#if arrived}
+                <img
+                  class="mascot-wave"
+                  src={MASCOT_IMAGE}
+                  alt={`손을 흔드는 마스코트 ${MASCOT_NAME}`}
+                  draggable="false"
+                />
+              {:else}
+                <!-- 8프레임을 겹쳐 두고 하나만 보이게 해서, 프레임이 바뀔 때 새로 불러오느라 깜빡이지 않게 합니다 -->
+                <div class="runner" aria-hidden="true">
+                  <div class="runner-bob">
+                    {#each MASCOT_RUN_FRAMES as src, index (src)}
+                      <img class="run-frame" class:on={runFrame === index} {src} alt="" draggable="false" />
+                    {/each}
+                  </div>
+                </div>
+              {/if}
             </div>
-            <p class="speech hello-speech">{bubble}</p>
+            {#if arrived}
+              <p class="speech hello-speech">{bubble}</p>
+            {:else}
+              <p class="hello-wait" aria-live="polite">
+                {MASCOT_NAME}{josa(MASCOT_NAME, '이/가')} 달려오고 있어요<span class="dots" aria-hidden="true"
+                  ><i>.</i><i>.</i><i>.</i></span
+                >
+              </p>
+            {/if}
           </div>
         {:else}
-          <!-- 단계마다 작은 마스코트가 안내 -->
+          <!-- 단계마다 댕브리가 얼굴을 내밀고 안내. 완료 화면에서는 반짝 떠오른 얼굴로 바뀌어요 -->
           <div class="guide">
-            <img class="mascot mascot-small" src={MASCOT_IMAGE} alt="" draggable="false" />
+            <span class="head-ring" class:finish={step === steps.length - 1}>
+              <img
+                class="mascot-head"
+                src={step === steps.length - 1 ? MASCOT_FINISH : MASCOT_CURIOUS}
+                alt=""
+                draggable="false"
+              />
+            </span>
             <p class="speech">{bubble}</p>
           </div>
 
@@ -229,9 +366,12 @@
             </label>
           {:else if step === 2}
             <div class="breed-stage" class:has-model={Boolean(previewBreed)}>
-              {#key previewBreed?.key ?? breedValue}
+              {#key previewBreed?.key ?? (breedValue ? 'mystery' : '')}
                 {#if previewBreed}
                   <img class="breed-model" src={breedImage(previewBreed)} alt={previewBreed.label} draggable="false" />
+                {:else if breedValue}
+                  <!-- 기타·믹스·아직 캐릭터가 없는 견종: 미지의 실루엣 -->
+                  <img class="breed-model mystery" src={MYSTERY_IMAGE} alt="미지의 강아지" draggable="false" />
                 {:else}
                   <span class="breed-empty"><DogIcon size={54} strokeWidth={1.1} /></span>
                 {/if}
@@ -257,17 +397,7 @@
                   {#if on}<span class="option-check"><Check size={12} strokeWidth={3} /></span>{/if}
                 </button>
               {/each}
-              <button
-                type="button"
-                role="option"
-                class="breed-option etc"
-                class:on={custom}
-                aria-selected={custom}
-                onclick={pickCustom}
-              >
-                <span class="option-thumb"><PencilLine size={22} /></span>
-                <span class="option-name">기타<br />직접 입력</span>
-              </button>
+              <!-- 캐릭터가 없는 선택지 둘은 '미지의 강아지' 실루엣으로 -->
               <button
                 type="button"
                 role="option"
@@ -276,8 +406,23 @@
                 aria-selected={!custom && breedChoice === unknownBreed}
                 onclick={() => pickBreed(unknownBreed)}
               >
-                <span class="option-thumb"><DogIcon size={24} /></span>
+                <span class="option-thumb"><img src={MYSTERY_THUMB} alt="" loading="lazy" /></span>
                 <span class="option-name">믹스<br />잘 모름</span>
+              </button>
+              <button
+                type="button"
+                role="option"
+                class="breed-option etc"
+                class:on={custom}
+                aria-selected={custom}
+                onclick={pickCustom}
+              >
+                <span class="option-thumb"
+                  ><img src={MYSTERY_THUMB} alt="" loading="lazy" /><span class="thumb-badge"
+                    ><PencilLine size={12} strokeWidth={2.4} /></span
+                  ></span
+                >
+                <span class="option-name">기타<br />직접 입력</span>
               </button>
             </div>
             {#if custom}
@@ -306,6 +451,8 @@
               <div class="size-figure" class:has-model={Boolean(previewBreed)} style:--dog-scale={sizeScale[size]}>
                 {#if previewBreed}
                   <img src={breedImage(previewBreed)} alt="" draggable="false" />
+                {:else if breedValue}
+                  <img class="mystery" src={MYSTERY_IMAGE} alt="미지의 강아지" draggable="false" />
                 {:else}
                   <span class="breed-empty"><DogIcon size={54} strokeWidth={1.1} /></span>
                 {/if}
@@ -346,16 +493,36 @@
               <small>0.1~120kg, 소수점 한 자리까지</small>
             </label>
           {:else}
-            <!-- 완료: 만든 강아지 카드 -->
+            <!-- 완료: 만든 강아지 카드. 실루엣이 두구두구 떨리다 → 펑! 연기 → 걷히면서 캐릭터 등장 -->
             <div class="done-card">
-              <div class="done-figure" class:has-model={Boolean(previewBreed)}>
-                {#if previewBreed}
-                  <img src={breedImage(previewBreed)} alt="" draggable="false" />
+              <div
+                class="done-figure"
+                class:has-model={Boolean(previewBreed) && reveal === 'show'}
+                style:--wait-ms={`${REVEAL_WAIT_MS}ms`}
+                style:--poof-ms={`${REVEAL_POOF_MS + REVEAL_CLEAR_MS}ms`}
+              >
+                {#if reveal === 'wait'}
+                  <img class="tease" src={MYSTERY_IMAGE} alt="" draggable="false" />
                 {:else}
-                  <span class="breed-empty"><DogIcon size={54} strokeWidth={1.1} /></span>
+                  <!-- 연기는 캐릭터가 나온 뒤에도 남아 있다가 스스로 걷힙니다 -->
+                  <span class="poof" aria-hidden="true">
+                    {#each puffs as index (index)}<i style:--i={index}></i>{/each}
+                  </span>
+                {/if}
+                {#if reveal === 'show'}
+                  <span class="twinkle" aria-hidden="true">
+                    {#each stars as index (index)}<i style:--i={index}>✦</i>{/each}
+                  </span>
+                  <img
+                    class="reveal"
+                    class:mystery={!previewBreed}
+                    src={previewBreed ? breedImage(previewBreed) : MYSTERY_IMAGE}
+                    alt=""
+                    draggable="false"
+                  />
                 {/if}
               </div>
-              <div class="done-copy">
+              <div class="done-copy" class:revealed={reveal === 'show'}>
                 <strong>{trimmedName}</strong>
                 <span>{breedValue || unknownBreed} · {sizeNames[size]} · {weight}kg</span>
                 <small
@@ -365,6 +532,15 @@
                 >
               </div>
             </div>
+            <!-- 사진으로 우리 아이만의 캐릭터 만들기 (내 강아지 캐릭터 기능으로 이어짐) -->
+            <button type="button" class="character-cta" onclick={finishToCharacter} disabled={saving}>
+              <span class="cta-icon"><Camera size={22} /></span>
+              <span class="cta-copy">
+                <strong>사진으로 {trimmedName} 캐릭터 만들기</strong>
+                <small>사진 한 장이면 {trimmedName}의 털 색과 생김새를 살린 3D 캐릭터를 만들어 드려요.</small>
+              </span>
+              <ArrowRight size={18} />
+            </button>
           {/if}
         {/if}
       </div>
@@ -497,12 +673,7 @@
     flex-direction: column;
   }
 
-  /* ---------- 마스코트 ---------- */
-  .mascot {
-    /* 캐릭터 파일은 순백 배경이라 multiply 로 배경을 지웁니다 */
-    mix-blend-mode: multiply;
-    user-select: none;
-  }
+  /* ---------- 마스코트: 달려와서 인사 ---------- */
   .hello {
     display: flex;
     flex-direction: column;
@@ -512,29 +683,142 @@
     gap: 6px;
     text-align: center;
   }
-  .hello-figure {
+  /* 댕브리가 달려오는 무대. 마스코트 그림은 발끝이 바닥선에 맞춰진 정사각이라
+     아래를 기준으로 키우기만 하면 멀리서 다가오는 원근이 살아요. */
+  .run-scene {
     position: relative;
+    width: min(100%, 440px);
+    height: 268px;
+    user-select: none;
+  }
+  /* 바닥: 지평선 쪽으로 좁아지는 옅은 길 */
+  .run-ground {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 100%;
+    height: 180px;
+    transform: translateX(-50%);
+    clip-path: polygon(41% 0, 59% 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, #fff 0%, var(--brand-tint) 100%);
+    border-radius: 0 0 24px 24px;
+  }
+  .runner,
+  .mascot-wave {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
     width: 250px;
     height: 250px;
-    display: grid;
-    place-items: center;
+    margin-left: -125px;
+    transform-origin: 50% 100%;
   }
-  .hello-figure::after {
+  /* 멀리(작고 높게) → 가까이(크고 낮게). 다가올수록 빨리 커지는 원근 곡선 */
+  .runner {
+    animation: run-approach var(--run-ms, 3000ms) cubic-bezier(0.55, 0.02, 0.85, 0.45) forwards;
+  }
+  /* 발밑 그림자 — 몸이 통통 튀어도 바닥에 남아요 */
+  .runner::before {
     content: '';
     position: absolute;
-    inset: 22px;
+    left: 50%;
+    bottom: 3%;
+    width: 60%;
+    height: 8%;
+    transform: translateX(-50%);
     border-radius: 50%;
-    background: radial-gradient(closest-side, var(--brand-tint), transparent 80%);
-    z-index: -1;
+    background: radial-gradient(closest-side, #4a342838, transparent);
   }
-  .mascot-big {
+  .runner-bob {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 100%;
+    animation: run-bob 0.3s ease-in-out infinite alternate;
+  }
+  .run-frame {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
-    transform-origin: 50% 88%;
+    opacity: 0;
+  }
+  .run-frame.on {
+    opacity: 1;
+  }
+  @keyframes run-approach {
+    0% {
+      opacity: 0;
+      transform: translateY(-120px) scale(0.1);
+    }
+    10% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes run-bob {
+    from {
+      transform: translateY(0) scale(1, 1);
+    }
+    to {
+      transform: translateY(-7%) scale(0.97, 1.03);
+    }
+  }
+  /* 도착: 살짝 눌렸다 펴지며 서고(착지), 몸을 갸웃갸웃 흔들어 손 인사, 그 뒤엔 숨쉬기 */
+  .mascot-wave {
+    object-fit: contain;
     animation:
-      mascot-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-      mascot-breathe 3.6s ease-in-out 0.6s infinite;
+      wave-land 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+      wave-hi 0.8s ease-in-out 0.5s 3,
+      mascot-breathe 3.6s ease-in-out 3s infinite;
+  }
+  @keyframes wave-land {
+    0% {
+      transform: scale(1.08, 0.88);
+    }
+    100% {
+      transform: scale(1, 1);
+    }
+  }
+  @keyframes wave-hi {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(-4deg) translateX(-3px);
+    }
+    75% {
+      transform: rotate(4deg) translateX(3px);
+    }
+  }
+  .hello-wait {
+    margin: 0;
+    padding: 16px 0;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .dots i {
+    font-style: normal;
+    animation: dot-blink 1.2s ease-in-out infinite;
+  }
+  .dots i:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .dots i:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  @keyframes dot-blink {
+    0%,
+    60%,
+    100% {
+      opacity: 0.25;
+    }
+    30% {
+      opacity: 1;
+    }
   }
   .speech {
     position: relative;
@@ -572,13 +856,52 @@
     gap: 14px;
     margin-bottom: 22px;
   }
-  .mascot-small {
+  /* 동그란 창에서 댕브리가 얼굴만 내밀어요. 아래쪽(몸통)은 창에 가려집니다. */
+  .head-ring {
+    position: relative;
     flex-shrink: 0;
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 30%, #fff 0%, var(--brand-tint) 100%);
+    box-shadow: inset 0 0 0 1px var(--brand-soft);
+  }
+  .mascot-head {
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 92px;
+    height: 92px;
+    margin-left: -46px;
     object-fit: contain;
-    transform: scaleX(-1);
-    animation: mascot-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    object-position: bottom;
+    transform-origin: 50% 95%;
+    animation:
+      head-peek 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+      head-tilt 4s ease-in-out 0.5s infinite;
+  }
+  /* 완료 화면: 반짝 떠오른 얼굴은 더 밝은 창에 */
+  .head-ring.finish {
+    background: radial-gradient(circle at 50% 30%, #fff 0%, #fbeccb 100%);
+    box-shadow:
+      inset 0 0 0 1px #f2d9a8,
+      0 0 0 6px #fbeccb66;
+  }
+  @keyframes head-peek {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.85);
+    }
+  }
+  @keyframes head-tilt {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(-5deg);
+    }
   }
   .guide .speech {
     flex: 1;
@@ -602,18 +925,6 @@
     from {
       opacity: 0;
       transform: scale(0.8) translateY(14px);
-    }
-  }
-  .mascot-small {
-    animation-name: mascot-pop-flip;
-  }
-  @keyframes mascot-pop-flip {
-    from {
-      opacity: 0;
-      transform: scaleX(-1) scale(0.8) translateY(8px);
-    }
-    to {
-      transform: scaleX(-1);
     }
   }
   @keyframes mascot-breathe {
@@ -771,7 +1082,40 @@
     mix-blend-mode: multiply;
   }
   .etc .option-thumb {
+    position: relative;
     background: var(--brand-tint);
+  }
+  /* 실루엣은 투명 그림이라 multiply 가 필요 없지만, 있어도 해가 없어 같은 규칙을 씁니다 */
+  .thumb-badge {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--brand);
+    box-shadow: 0 1px 3px #4a342833;
+  }
+  /* 미지의 강아지: 살짝 숨 쉬듯 흐려졌다 또렷해져요 */
+  .mystery {
+    animation: mystery-breathe 3.2s ease-in-out infinite;
+  }
+  .breed-model.mystery {
+    animation:
+      mascot-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+      mystery-breathe 3.2s ease-in-out 0.45s infinite;
+  }
+  @keyframes mystery-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.78;
+    }
   }
   .option-name {
     font-size: 12px;
@@ -932,12 +1276,14 @@
     background: linear-gradient(160deg, #fff 0%, var(--brand-tint) 100%);
   }
   .done-figure {
+    position: relative;
     flex-shrink: 0;
     display: grid;
     place-items: center;
     width: 150px;
     height: 150px;
   }
+  /* 견종 캐릭터 파일은 순백 배경이라, 등장한 뒤에만 multiply 로 배경을 지웁니다 */
   .done-figure.has-model {
     mix-blend-mode: multiply;
   }
@@ -945,17 +1291,192 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    animation: mascot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .done-figure .breed-empty {
-    position: static;
-    transform: none;
+  /* 두구두구 — 정체 모를 실루엣이 점점 크게 떨립니다 (기대감) */
+  .done-figure .tease {
+    filter: brightness(0.72) saturate(0.5);
+    opacity: 0.85;
+    transform-origin: 50% 88%;
+    animation: drumroll var(--wait-ms, 1600ms) linear both;
+  }
+  @keyframes drumroll {
+    0% {
+      transform: translateX(0) rotate(0deg);
+    }
+    10% {
+      transform: translateX(-1px) rotate(-0.6deg);
+    }
+    20% {
+      transform: translateX(1px) rotate(0.6deg);
+    }
+    30% {
+      transform: translateX(-2px) rotate(-1.2deg);
+    }
+    40% {
+      transform: translateX(2px) rotate(1.2deg);
+    }
+    50% {
+      transform: translateX(-3px) rotate(-2deg);
+    }
+    60% {
+      transform: translateX(3px) rotate(2deg);
+    }
+    70% {
+      transform: translateX(-4px) rotate(-3deg) scale(1.02);
+    }
+    80% {
+      transform: translateX(4px) rotate(3deg) scale(1.03);
+    }
+    90% {
+      transform: translateX(-5px) rotate(-4deg) scale(1.05);
+    }
+    100% {
+      transform: translateX(5px) rotate(4deg) scale(1.07);
+    }
+  }
+  /* 펑! — 연기 뭉치가 확 퍼진 뒤 한참 머물며 일렁이다가, 캐릭터가 나오면 천천히 걷힙니다 */
+  .poof {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    animation: smoke-drift 1.6s ease-in-out infinite alternate;
+  }
+  .poof::before,
+  .poof i {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #fff 0%, #ede2d7 55%, #dccab8 100%);
+    opacity: 0;
+    animation: puff var(--poof-ms, 3200ms) ease-out forwards;
+  }
+  /* 가운데를 덮는 큰 뭉치 */
+  .poof::before {
+    --angle: 0deg;
+    --dist: 0px;
+    width: 120px;
+    height: 120px;
+    margin: -60px;
+  }
+  .poof i {
+    --angle: calc(var(--i) * 36deg);
+    --dist: 46px;
+    width: 64px;
+    height: 64px;
+    margin: -32px;
+    animation-delay: calc(var(--i) * 25ms);
+  }
+  .poof i:nth-child(odd) {
+    --dist: 34px;
+    width: 78px;
+    height: 78px;
+    margin: -39px;
+  }
+  .poof i:nth-child(3n) {
+    --dist: 58px;
+    width: 50px;
+    height: 50px;
+    margin: -25px;
+  }
+  @keyframes puff {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--angle)) translateX(0) scale(0.2);
+    }
+    6% {
+      opacity: 1;
+      transform: rotate(var(--angle)) translateX(var(--dist)) scale(1.15);
+    }
+    40% {
+      transform: rotate(var(--angle)) translateX(calc(var(--dist) * 1.1)) scale(1.3);
+    }
+    78% {
+      opacity: 0.95;
+      transform: rotate(var(--angle)) translateX(calc(var(--dist) * 1.05)) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(var(--angle)) translateX(calc(var(--dist) * 1.7)) scale(1.8);
+    }
+  }
+  @keyframes smoke-drift {
+    from {
+      transform: rotate(-3deg) scale(1);
+    }
+    to {
+      transform: rotate(3deg) scale(1.04);
+    }
+  }
+  /* 등장 — 연기 사이로 캐릭터가 튀어나오고, 별이 둘레에서 반짝이다 사라집니다. 캐릭터는 그대로 남아요. */
+  .done-figure .reveal {
+    position: relative;
+    animation: reveal-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  }
+  @keyframes reveal-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.15) translateY(24px) rotate(-12deg);
+    }
+    55% {
+      opacity: 1;
+    }
+    100% {
+      transform: none;
+    }
+  }
+  .twinkle {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .twinkle i {
+    --angle: calc(var(--i) * 60deg + 20deg);
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px;
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--brand);
+    opacity: 0;
+    animation: twinkle 1.1s ease-out forwards;
+    animation-delay: calc(var(--i) * 70ms + 60ms);
+  }
+  .twinkle i:nth-child(even) {
+    font-size: 12px;
+    color: #e0a94f;
+  }
+  @keyframes twinkle {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--angle)) translateX(28px) rotate(calc(-1 * var(--angle))) scale(0);
+    }
+    35% {
+      opacity: 1;
+      transform: rotate(var(--angle)) translateX(64px) rotate(calc(-1 * var(--angle))) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(var(--angle)) translateX(82px) rotate(calc(-1 * var(--angle))) scale(0.4);
+    }
   }
   .done-copy {
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 0;
+    opacity: 0;
+    transition: opacity 0.4s ease-out;
+  }
+  .done-copy.revealed {
+    opacity: 1;
   }
   .done-copy strong {
     font-size: 26px;
@@ -969,6 +1490,64 @@
     margin-top: 6px;
     font-size: 13px;
     line-height: 1.6;
+    color: var(--muted);
+    word-break: keep-all;
+  }
+  .character-cta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      background 0.15s,
+      transform 0.15s;
+  }
+  .character-cta:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--brand-tint);
+    transform: translateY(-1px);
+  }
+  .character-cta:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .character-cta > :global(svg:last-child) {
+    flex-shrink: 0;
+    color: var(--brand);
+  }
+  .cta-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .cta-copy {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .cta-copy strong {
+    font-size: 15px;
+  }
+  .cta-copy small {
+    font-size: 12.5px;
+    line-height: 1.5;
     color: var(--muted);
     word-break: keep-all;
   }
@@ -1051,14 +1630,23 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .mascot-big,
-    .mascot-small,
+    .runner,
+    .runner-bob,
+    .mascot-wave,
+    .mascot-head,
+    .dots i,
+    .done-figure .tease,
+    .poof,
+    .poof::before,
+    .poof i,
+    .done-figure .reveal,
+    .twinkle i,
     .breed-model,
-    .done-figure img,
     .hello-speech {
       animation: none;
     }
-    .size-figure {
+    .size-figure,
+    .done-copy {
       transition: none;
     }
   }

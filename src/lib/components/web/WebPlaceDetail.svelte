@@ -21,7 +21,8 @@
     type Place,
     type DogProfile
   } from '$lib/domain/place';
-  import { providerInfo, providerOfUrl } from '$lib/domain/region';
+  import { placeLink } from '$lib/domain/placeLink';
+  import { photoCredit, providerInfo, providerOfUrl } from '$lib/domain/region';
   // 장소 대표 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
   import { menuBoardOf } from '$lib/data/menuBoards';
@@ -57,9 +58,13 @@
   // 사진·설명이 있는 메뉴판을 옮겨 둔 가게는 그쪽을, 없으면 공공데이터 문구를 씁니다.
   const menu = $derived(placeMenu(place.menu ?? '', menuBoardOf(place.id)));
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
+  // '상세 정보 확인'이 여는 곳. 업소 홈페이지가 살아 있으면 그곳, 아니면 네이버 지도 검색.
+  const link = $derived(placeLink(place));
   // 장소마다 최대 5장. 첫 장은 표지로 쓰고 나머지는 아래 사진 줄에 이어 붙입니다.
   const photos = $derived((placeImages as Record<string, string[]>)[place.id] ?? []);
   const photoSrc = $derived(photos[0] ?? null);
+  // 공공누리 출처표시. 관광공사 사진이 한 장이라도 섞여 있으면 밝힙니다.
+  const credit = $derived(photoCredit(photos));
   const morePhotos = $derived(photos.slice(1));
   // 사진을 못 불러오면 기존 갈색 커버로 돌아가요
   let photoFailed = $state(false);
@@ -111,6 +116,8 @@
       <span class="cover-eyebrow">{themeNames[theme]}{area ? " · " + area : ""}</span>
       <h2>{place.name}</h2>
       <p class="cover-address"><MapPin size={15} />{place.address}</p>
+      {#if phone}<a class="cover-phone" href={`tel:${phone}`}><Phone size={15} />{place.phone}</a
+        >{/if}
     </div>
     {#if !hasPhoto}<div class="cover-circle"></div>{/if}
   </div>
@@ -123,6 +130,7 @@
             <img src={photo} alt={`${place.name} 사진`} loading="lazy" decoding="async" />
           {/each}
         </div>{/if}
+      {#if hasPhoto && credit}<p class="photo-credit">{credit}</p>{/if}
       {#if place.description}<section class="about-place">
           <h3>이런 곳이에요</h3>
           <p>{place.description}</p>
@@ -180,7 +188,7 @@
       </section>
       <a class="source-link" href={place.sourceUrl} target="_blank" rel="noreferrer"
         ><div>
-          <span>{hasPhoto ? '정보·사진 출처' : '정보 출처'}</span><strong>{sourceName}</strong><small
+          <span>{hasPhoto && !credit ? '정보·사진 출처' : '정보 출처'}</span><strong>{sourceName}</strong><small
             >데이터 수집 {place.importedAt} · 규정 확인일 미제공</small
           >
         </div>
@@ -197,13 +205,8 @@
       aria-pressed={saved}
       onclick={onsave}><Heart size={20} fill={saved ? 'currentColor' : 'none'} /></button
     >
-    {#if phone}<a class="secondary-button" href={`tel:${phone}`}><Phone size={16} />전화 문의</a
-      >{/if}
-    <a
-      class="primary-button"
-      href={`https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${place.latitude},${place.longitude}`}
-      target="_blank"
-      rel="noreferrer">길찾기<ArrowUpRight size={16} /></a
+    <a class="primary-button" href={link.url} target="_blank" rel="noreferrer"
+      >상세 정보 확인<ArrowUpRight size={16} /></a
     >
   </div>
 </div>
@@ -330,6 +333,18 @@
     flex-shrink: 0;
     margin-top: 2px;
   }
+  .cover-phone {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: 13.5px;
+    color: #ffffffd9;
+    text-decoration: none;
+  }
+  .cover-phone :global(svg) {
+    flex-shrink: 0;
+  }
   .cover-circle {
     position: absolute;
     right: -50px;
@@ -450,6 +465,11 @@
    * 표지에 못 실은 나머지 사진. 좌우로 밀어 보는 줄이라 detail-body 의 좌우 여백을
    * 음수 마진으로 지우고, 안쪽 패딩으로 되돌려 사진이 화면 끝까지 흘러가게 합니다.
    */
+  .photo-credit {
+    margin: -14px 0 20px;
+    font-size: 11px;
+    color: var(--muted);
+  }
   .photo-strip {
     display: flex;
     gap: 8px;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   areaLabel,
   menuGroups,
+  naverPlaceUrl,
   placeMenu,
   placeArea,
   placeTheme,
@@ -205,5 +206,19 @@ describe('the menu board copied from the shop', () => {
     const menu = placeMenu('- 아메리카노', { source: '네이버 플레이스', items: [] });
     expect(menu.source).toBeNull();
     expect(menu.groups[0].items).toEqual([plain('아메리카노')]);
+  });
+});
+
+describe('naverPlaceUrl', () => {
+  it('searches Naver Map by name plus district so the right branch comes first', () => {
+    expect(naverPlaceUrl({ ...place, name: '엘페로 애견리조트 펜션', address: '강원도 홍천군 서면 한치골길 1' })).toBe(
+      'https://map.naver.com/p/search/' + encodeURIComponent('엘페로 애견리조트 펜션 홍천군')
+    );
+  });
+
+  it('falls back to the name alone when the address has no district', () => {
+    expect(naverPlaceUrl({ ...place, name: ' 감자밭 ', address: '강원' })).toBe(
+      'https://map.naver.com/p/search/' + encodeURIComponent('감자밭')
+    );
   });
 });

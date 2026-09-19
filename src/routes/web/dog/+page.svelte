@@ -6,27 +6,20 @@
     Scale,
     TriangleAlert,
     CircleCheck,
-    ListChecks,
     Map,
-    MapPin,
     ArrowRight,
     ChevronRight,
     Info,
     Sparkles,
     Plus,
     Pencil,
-    Trash2
+    Trash2,
+    Camera
   } from '@lucide/svelte';
-  import {
-    placeTheme,
-    themeNames,
-    type Dog,
-    type DogSize,
-    type Place
-  } from '$lib/domain/place';
+  import { type Dog, type DogSize, type Place } from '$lib/domain/place';
   import { MAX_DOGS, validateProfile } from '$lib/domain/profile';
   import { josa } from '$lib/domain/korean';
-  import { findBreed, breedImage } from '$lib/domain/breeds';
+  import { findBreed, breedImage, MYSTERY_IMAGE } from '$lib/domain/breeds';
   import BreedPicker from '$lib/components/web/BreedPicker.svelte';
   import { getWebStore, MAX_ACTIVE_DOGS } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
@@ -95,11 +88,15 @@
    * 견종 목록·이미지는 $lib/domain/breeds.ts 와 static/dogs/ 에서 관리해요.
    */
   const previewBreed = $derived(findBreed(breed));
+  /** 사진으로 만든 이 아이의 캐릭터. 있으면 견종 캐릭터 대신 무대에 세웁니다. */
+  const character = $derived(store.characterFor(editingId));
   // 체급에 따라 캐릭터가 점점 커져요. (발끝 기준으로 확대)
   const sizeScale: Record<DogSize, number> = { small: 0.66, medium: 0.83, large: 1 };
   const modelLabel = $derived(
-    `${previewBreed?.label ?? (breed.trim() || '기본 캐릭터')} · ${sizeNames[size]}`
+    `${previewBreed?.label ?? (breed.trim() || '미지의 캐릭터')} · ${sizeNames[size]}`
   );
+  /** 견종을 적었거나(캐릭터 없는 견종·기타) 믹스로 저장된 아이 → 미지의 실루엣을 세웁니다 */
+  const mystery = $derived(!previewBreed && (breed.trim().length > 0 || editing !== null));
   const modelAlt = $derived(
     `${name.trim() || '우리 강아지'} ${previewBreed?.label ?? ''} 3D 캐릭터`.replace(/\s+/g, ' ')
   );
@@ -201,9 +198,8 @@
           <div>
             <h2>등록한 강아지 {store.dogs.length}마리</h2>
             <p>
-              선택한 아이의 체중·체급으로 장소 동반 조건을 비교해요. {MAX_ACTIVE_DOGS}마리까지 함께
-              고를 수 있고, 둘을 고르면 <strong>두 아이 모두에게 맞는 곳</strong>만 남겨요. 지도
-              기록에는 먼저 고른 아이 이름이 남아요.
+              선택한 아이의 체중·체급으로 동반 조건을 비교해요. {MAX_ACTIVE_DOGS}마리까지 함께 고를
+              수 있어요.
             </p>
           </div>
           <button class="primary-button" onclick={startNew} disabled={atLimit}>
@@ -218,12 +214,16 @@
           {#each store.dogs as dog (dog.id)}
             {@const current = store.isActive(dog.id)}
             {@const card = findBreed(dog.breed)}
+            {@const drawn = store.characterFor(dog.id)}
             <article class="dog-card" class:current>
               <div class="card-figure">
-                {#if card}
+                {#if drawn}
+                  <img src={drawn.finalImage} alt={`${dog.name} 캐릭터`} draggable="false" />
+                {:else if card}
                   <img src={breedImage(card)} alt={`${dog.name} ${card.label}`} draggable="false" />
                 {:else}
-                  <DogIcon size={44} strokeWidth={1.2} />
+                  <!-- 기타·믹스: 미지의 강아지 실루엣 -->
+                  <img src={MYSTERY_IMAGE} alt={`${dog.name} 미지의 캐릭터`} draggable="false" />
                 {/if}
               </div>
               <div class="card-copy">
@@ -264,7 +264,7 @@
       <!-- 왼쪽: 3D 강아지 -->
       <section class="dog-stage">
         <div class="stage-top">
-          <span class="stage-badge"><Sparkles size={14} />3D 미리보기</span>
+          <span class="stage-badge"><Sparkles size={14} />{character ? '내 캐릭터' : '3D 미리보기'}</span>
           <span class="stage-breed">{modelLabel}</span>
         </div>
 
@@ -274,8 +274,11 @@
             class:has-model={previewBreed && modelReady}
             style:--dog-scale={sizeScale[size]}
           >
-            {#key previewBreed?.key}
-              {#if previewBreed && modelReady}
+            {#key character?.id ?? previewBreed?.key ?? (mystery ? 'mystery' : '')}
+              {#if character}
+                <!-- 사진으로 만든 캐릭터 (투명 배경) -->
+                <img class="dog-model" src={character.finalImage} alt={modelAlt} draggable="false" />
+              {:else if previewBreed && modelReady}
                 <img
                   class="dog-model"
                   src={breedImage(previewBreed)}
@@ -283,6 +286,9 @@
                   draggable="false"
                   onerror={() => (modelReady = false)}
                 />
+              {:else if mystery}
+                <!-- 기타·믹스·캐릭터가 없는 견종: 미지의 강아지 실루엣 (투명 그림) -->
+                <img class="dog-model" src={MYSTERY_IMAGE} alt={modelAlt} draggable="false" />
               {:else}
                 <!-- 견종을 고르기 전 · 캐릭터가 없는 견종의 임시 자리 -->
                 <div class="dog-placeholder"><DogIcon size={92} strokeWidth={1.1} /></div>
@@ -308,6 +314,11 @@
         </div>
 
         <p class="stage-note">견종을 고르면 캐릭터가 바뀌고, 체급을 바꾸면 크기가 달라져요.</p>
+        {#if editing}
+          <a class="stage-character" href={`/web/start/character?dog=${editing.id}`}>
+            <Camera size={16} />{character ? '사진으로 캐릭터 다시 만들기' : '사진으로 내 강아지 캐릭터 만들기'}
+          </a>
+        {/if}
       </section>
 
       <!-- 오른쪽: 등록 폼 -->
@@ -360,8 +371,9 @@
 
           {#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
           <p class="form-note">
-            <Info size={15} />체급 기준은 장소마다 달라요. 실제 체중과 원문 규정을 함께 확인해요.
-            {store.loggedIn ? '로그인 상태라 계정에 저장돼요.' : '로그인 전에는 이 브라우저에 저장돼요.'}
+            <Info size={15} />{store.loggedIn
+              ? '계정에 저장돼요.'
+              : '로그인 전에는 이 브라우저에만 저장돼요.'}
           </p>
           <!-- 등록을 마친 뒤 가장 하고 싶은 일은 '갈 곳 찾기' 라서, 그걸 폼의 주 버튼으로 둡니다.
                이미 저장된 아이를 고치는 중이면 저장은 오른쪽 끝 연필 버튼이 맡아요. -->
@@ -396,102 +408,36 @@
     </div>
     {/if}
 
-    <!-- 아래: 우리 강아지 기준 요약 -->
-    <div class="dog-insight">
-        {#if store.dog && summary}
-          <section class="panel">
-            <div class="panel-head">
-              <h2>{store.dogNames} 조건으로 본 장소들</h2>
-              <!-- 위의 주 버튼과 같은 일을 하므로, 색을 채우지 않아 위계를 낮춥니다. -->
-              <button class="secondary-button" onclick={exploreWithDog}
-                ><Map size={18} />이 조건으로 지도 보기</button
-              >
-            </div>
-            <div class="stat-row">
-              <div class="stat warn">
-                <TriangleAlert size={22} /><strong>{summary.restricted.length}</strong><span
-                  >체중·체급 제한 안내</span
-                >
-              </div>
-              <div class="stat ok">
-                <CircleCheck size={22} /><strong>{summary.withinWeight.length}</strong><span
-                  >원본 제한 체중 이내</span
-                >
-              </div>
-              <div class="stat">
-                <Scale size={22} /><strong>{summary.check}</strong><span>체중 정보 없음 · 확인 필요</span>
-              </div>
-            </div>
-            <p class="panel-note">
-              ‘제한 체중 이내’도 입장을 보장하지 않아요. 허용 구역과 준비물을 꼭 함께 확인해 주세요.
-            </p>
-          </section>
-
-          <div class="list-columns">
-            <section class="panel">
-              <h3 class="list-title warn"><TriangleAlert size={19} />제한 안내가 있는 곳</h3>
-              {#if summary.restricted.length}
-                <ul class="place-list">
-                  {#each summary.restricted as place (place.id)}
-                    {@const restricted = store.restrictedFor(place)}
-                    <li>
-                      <a href={`/web/explore?place=${place.id}`}>
-                        <div>
-                          <strong>{place.name}</strong>
-                          <span><MapPin size={13} />{themeNames[placeTheme(place)]}</span>
-                        </div>
-                        <!-- 둘을 함께 고른 상태에서는 누가 걸리는지까지 적어 줍니다. -->
-                        <em
-                          >{store.activeDogs.length > 1 && restricted
-                            ? `${restricted.dog.name} ${restricted.label}`
-                            : (restricted?.label ?? '')}</em
-                        >
-                      </a>
-                    </li>
-                  {/each}
-                </ul>
-              {:else}<p class="list-empty">원본 규정상 제한 안내가 있는 곳이 없어요.</p>{/if}
-            </section>
-            <section class="panel">
-              <h3 class="list-title ok"><CircleCheck size={19} />제한 체중 이내인 곳</h3>
-              {#if summary.withinWeight.length}
-                <ul class="place-list">
-                  {#each summary.withinWeight as place (place.id)}<li>
-                      <a href={`/web/explore?place=${place.id}`}>
-                        <div>
-                          <strong>{place.name}</strong>
-                          <span><MapPin size={13} />{themeNames[placeTheme(place)]}</span>
-                        </div>
-                        <em class="ok">{place.sourceWeight}kg까지</em>
-                      </a>
-                    </li>{/each}
-                </ul>
-              {:else}<p class="list-empty">체중 제한이 기재된 곳 중 해당하는 장소가 없어요.</p>{/if}
-            </section>
+    <!--
+      아래: 우리 강아지 조건 요약.
+      예전에는 제한 장소·통과 장소 목록과 외출 체크리스트까지 늘어놨는데, 장소 목록은 '가게 찾기'와
+      겹치고 체크리스트는 강아지 정보와 상관이 없어 뺐습니다. 숫자 셋과 버튼 하나면 충분해요.
+    -->
+    {#if store.dog && summary}
+      <section class="dog-summary" aria-label="우리 강아지 조건 요약">
+        <div class="summary-copy">
+          <h2>{store.dogNames} 조건으로 본 장소</h2>
+          <p>‘제한 체중 이내’도 입장을 보장하지 않아요. 허용 구역과 준비물은 방문 전에 확인해 주세요.</p>
+        </div>
+        <dl class="summary-stats">
+          <div class="warn">
+            <dt><TriangleAlert size={16} />제한 안내</dt>
+            <dd>{summary.restricted.length}</dd>
           </div>
-        {:else}
-          <section class="panel intro">
-            <span class="intro-icon"><Scale size={36} strokeWidth={1.5} /></span>
-            <h2>등록하면 이런 걸 볼 수 있어요</h2>
-            <ul>
-              <li><TriangleAlert size={19} />원본 규정에 체중·체급 제한이 걸리는 장소</li>
-              <li><CircleCheck size={19} />제한 체중이 기재되어 있고 그 안에 드는 장소</li>
-              <li><Map size={19} />조건에 맞지 않는 곳을 뺀 지도</li>
-            </ul>
-          </section>
-        {/if}
-
-        <section class="panel checklist">
-          <h3 class="list-title"><ListChecks size={19} />외출 전 체크리스트</h3>
-          <ul>
-            <li>리드줄(목줄) · 대부분의 장소에서 필수예요</li>
-            <li>배변봉투와 물티슈</li>
-            <li>물과 휴대용 물그릇</li>
-            <li>이동장·유모차 · 실내 동반 시 요구하는 곳이 있어요</li>
-            <li>예방접종 기록 · 숙소에서 확인하는 경우가 있어요</li>
-          </ul>
+          <div class="ok">
+            <dt><CircleCheck size={16} />제한 체중 이내</dt>
+            <dd>{summary.withinWeight.length}</dd>
+          </div>
+          <div>
+            <dt><Scale size={16} />체중 정보 없음</dt>
+            <dd>{summary.check}</dd>
+          </div>
+        </dl>
+        <button class="primary-button summary-go" onclick={exploreWithDog}
+          ><Map size={18} />이 조건으로 지도 보기</button
+        >
       </section>
-    </div>
+    {/if}
   </div>
 </div>
 
@@ -825,13 +771,6 @@
     gap: 22px;
     min-width: 0;
   }
-  .dog-insight {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    min-width: 0;
-    margin-top: 28px;
-  }
 
   /* ---------- 왼쪽: 3D 강아지 ---------- */
   .dog-stage {
@@ -1018,6 +957,26 @@
     color: var(--muted);
     text-align: center;
   }
+  /* 사진으로 캐릭터 만들기 (내 강아지 캐릭터 기능) */
+  .stage-character {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 12px auto 0;
+    padding: 10px 16px;
+    border: 1px solid var(--brand);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--brand);
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .stage-character:hover {
+    background: var(--brand-soft);
+  }
   /* ---------- 폼 ---------- */
   .dog-form {
     padding: 32px;
@@ -1183,193 +1142,89 @@
     cursor: default;
   }
 
-  /* ---------- 오른쪽 패널 ---------- */
-  .panel {
-    padding: 30px;
-    border-radius: 24px;
-    background: #fff;
-    border: 1px solid var(--line);
-  }
-  .panel-head {
+  /* ---------- 아래: 조건 요약 한 줄 ---------- */
+  .dog-summary {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 22px;
+    gap: 28px;
+    margin-top: 28px;
+    padding: 24px 28px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: #fff;
   }
-  .panel-head h2,
-  .intro h2 {
-    font-size: 24px;
-    letter-spacing: -0.8px;
+  .summary-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .summary-copy h2 {
     margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.7px;
   }
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
+  .summary-copy p {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    word-break: keep-all;
   }
-  .stat {
+  .summary-stats {
+    display: flex;
+    gap: 10px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .summary-stats > div {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 20px 22px;
-    border-radius: 18px;
+    min-width: 128px;
+    padding: 14px 18px;
+    border-radius: 16px;
     background: var(--cream);
     color: var(--brown-warm);
   }
-  .stat strong {
-    font-size: 34px;
+  .summary-stats dt {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .summary-stats dd {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: -1px;
+    line-height: 1;
     color: var(--ink);
   }
-  .stat span {
-    font-size: 14.5px;
-    color: var(--muted);
-  }
-  .stat.warn {
+  .summary-stats .warn {
     background: #fdf0ec;
     color: #b0462c;
   }
-  .stat.ok {
+  .summary-stats .ok {
     background: #eef1e6;
     color: #5f7050;
   }
-  .panel-note {
-    margin: 16px 0 0;
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .list-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 22px;
-  }
-  .list-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 18px;
-    letter-spacing: -0.5px;
-    margin: 0 0 14px;
-    color: var(--brown-warm);
-  }
-  .list-title.warn {
-    color: #b0462c;
-  }
-  .list-title.ok {
-    color: #5f7050;
-  }
-  .place-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 420px;
-    overflow: auto;
-  }
-  .place-list a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 10px;
-    border-bottom: 1px solid var(--line);
-    border-radius: 10px;
-    color: var(--ink);
-    text-decoration: none;
-  }
-  .place-list a:hover {
-    background: var(--cream);
-  }
-  .place-list div {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .place-list strong {
-    font-size: 16px;
-  }
-  .place-list span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .place-list em {
+  .summary-go {
     flex-shrink: 0;
-    font-style: normal;
-    font-size: 13px;
-    padding: 5px 9px;
-    border-radius: 8px;
-    background: #fdebe4;
-    color: #b0462c;
-  }
-  .place-list em.ok {
-    background: #eef1e6;
-    color: #5f7050;
-  }
-  .list-empty {
-    font-size: 15px;
-    color: var(--muted);
-    margin: 0;
-  }
-  .intro {
-    text-align: left;
-  }
-  .intro-icon {
-    display: grid;
-    place-items: center;
-    width: 72px;
-    height: 72px;
-    border-radius: 22px;
-    background: var(--brand-soft);
-    color: var(--brand);
-    margin-bottom: 20px;
-  }
-  .intro ul,
-  .checklist ul {
-    list-style: none;
-    margin: 18px 0 0;
-    padding: 0;
-    display: grid;
-    gap: 12px;
-  }
-  .intro li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 16px;
-    color: var(--brown-warm);
-  }
-  .checklist ul {
-    margin-top: 0;
-    gap: 0;
-  }
-  .checklist li {
-    position: relative;
-    padding: 13px 0 13px 30px;
-    border-bottom: 1px solid var(--line);
-    font-size: 15.5px;
-  }
-  .checklist li:last-child {
-    border-bottom: 0;
-  }
-  .checklist li::before {
-    content: '';
-    position: absolute;
-    left: 2px;
-    top: 50%;
-    width: 16px;
-    height: 16px;
-    border-radius: 5px;
-    border: 2px solid var(--brand);
-    transform: translateY(-50%);
   }
   @media (max-width: 1280px) {
-    .dog-layout,
-    .list-columns {
+    .dog-layout {
       grid-template-columns: 1fr;
+    }
+    .dog-summary {
+      flex-wrap: wrap;
+    }
+    .summary-stats {
+      flex: 1;
+    }
+    .summary-stats > div {
+      flex: 1;
+      min-width: 0;
     }
   }
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { groupVisitsByYear, parseVisits, prettyDate, todayKey, type Visit } from './visitLog';
+import { parseVisits, prettyDate, stampDate, todayKey } from './visitLog';
 
 const known = (code: string) => ['11140', '32030', '32060'].includes(code);
 
-describe('visit log storage', () => {
+describe('stamp storage', () => {
   it('keeps records saved before dates existed', () => {
     // 예전 버전은 코드만 배열로 저장했어요. 이게 사라지면 사용자의 기록이 날아갑니다.
     expect(parseVisits(['11140', '32030'], known)).toEqual([
@@ -40,29 +40,16 @@ describe('visit log storage', () => {
   });
 });
 
-describe('timeline grouping', () => {
-  const visit = (code: string, date: string): Visit => ({ code, date, dog: '두부' });
-
-  it('puts the most recent year and day first', () => {
-    const groups = groupVisitsByYear([
-      visit('11140', '2024-11-23'),
-      visit('32030', '2026-09-16'),
-      visit('32060', '2026-04-05')
-    ]);
-    expect(groups.map((g) => g.year)).toEqual(['2026', '2024']);
-    expect(groups[0].rows.map((r) => r.date)).toEqual(['2026-09-16', '2026-04-05']);
-  });
-  it('leaves undated records out of the timeline', () => {
-    expect(groupVisitsByYear([visit('11140', '')])).toEqual([]);
-  });
-});
-
 describe('date formatting', () => {
   it('reads as a diary entry', () => {
     expect(prettyDate('2026-09-16')).toBe('9월 16일 수요일');
   });
   it('returns nothing for an unusable date', () => {
     expect(prettyDate('')).toBe('');
+  });
+  it('fits inside a stamp', () => {
+    expect(stampDate('2026-09-16')).toBe('2026.09.16');
+    expect(stampDate('')).toBe('');
   });
   it('uses the local day, not UTC', () => {
     // 한국 시각 자정 직후를 UTC 로 바꾸면 전날이 됩니다. 그날 기록이 어제로 찍히면 안 돼요.

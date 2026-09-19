@@ -4,6 +4,7 @@
   import { Map, Search, ArrowUpRight, SlidersHorizontal, RotateCcw } from '@lucide/svelte';
   import MapView from '$lib/components/MapView.svelte';
   import WebPlaceCard from '$lib/components/web/WebPlaceCard.svelte';
+  import { directLinkFirst } from '$lib/domain/placeLink';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
   import { themeNames, type Theme, type ThemeFilter, type Place } from '$lib/domain/place';
@@ -20,28 +21,30 @@
   let listElement: HTMLDivElement;
 
   // 원본 API 는 식음료를 한 묶음으로 주지만, 카페와 식당은 찾는 목적이 달라 나눠 놨습니다.
-  // 문화시설(박물관·미술관)은 문화정보원 자료에만 있어, 그 지역에서만 탭을 띄웁니다.
+  // 문화시설(박물관·미술관)은 문화정보원 자료에만, 쇼핑은 관광공사 자료에만 있어
+  // 해당 자료가 닿은 지역에서만 탭을 띄웁니다.
   //
   // 줄을 나눠 적어 둔 그대로 화면에서도 줄이 바뀝니다. 끼니 → 나들이 → 그 밖의 시설 순서로
   // 묶어 둔 것이라, 창 너비에 따라 묶음이 흐트러지지 않게 줄 단위로 그립니다.
   const themeRows: Theme[][] = [
     ['restaurant', 'cafe'],
     ['outdoor', 'activity', 'stay'],
-    ['culture', 'hospital']
+    ['culture', 'shopping', 'hospital']
   ];
   const rows = $derived(
     themeRows
       .map((row) =>
         row.filter(
           (theme) =>
-            !['culture', 'hospital'].includes(theme) ||
+            !['culture', 'shopping', 'hospital'].includes(theme) ||
             data.places.some((place) => place.category === theme)
         )
       )
       // 그 지역에 문화시설도 동물병원도 없으면 빈 줄이 남지 않게 통째로 뺍니다.
       .filter((row) => row.length)
   );
-  const filtered = $derived(store.filter(data.places));
+  // 업소 페이지 링크가 있는 장소를 먼저. 그 안에서는 서버가 준 순서 그대로입니다.
+  const filtered = $derived(directLinkFirst(store.filter(data.places)));
   const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
   const area = $derived(region.label);
   const sources = $derived(region.sources.map((id) => providerInfo[id]));

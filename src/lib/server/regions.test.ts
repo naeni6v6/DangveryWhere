@@ -41,13 +41,21 @@ describe('prepared region snapshots', () => {
             expect(source.raw['반려동물 동반 가능정보']).toBe('Y');
             expect(source.updatedAt).toBe(source.raw['최종작성일']);
             expect(source.policyText).toBe(source.raw['반려동물 제한사항']);
+          } else if (source.provider === 'kto-pet-tour') {
+            // 관광공사 원본은 규정을 칸 여러 개로 쪼개 줍니다. 동반 범위 칸은 반드시 있고,
+            // 나머지 칸은 비어 있을 수 있어 합쳐서 한 문단으로 남깁니다(빈 칸을 지어내지 않음).
+            expect(source.raw.pet).toBeTruthy();
+            // 원본은 줄바꿈을 섞어 적어 둡니다. 공백만 정리하고 내용은 그대로 옮겼는지 봅니다.
+            const raw = (source.raw.pet as Record<string, string>).acmpyPsblCpam ?? '';
+            expect(source.sizeText).toBe(raw.replace(/\s+/g, ' ').trim());
+            expect(source.raw.contentid).toBe(source.recordId.replace('kto-', ''));
           } else {
             expect(source.policyText).toBe(source.raw.policyCautions);
           }
         }
       }
     }
-    expect(seen.size).toBe(508);
+    expect(seen.size).toBe(593);
   });
 
   it('preserves contradictory source statements instead of declaring indoor access', async () => {
@@ -64,12 +72,12 @@ describe('prepared region snapshots', () => {
     await expect(loadPreparedRegion('../gangneung')).rejects.toThrow('Unknown prepared region');
     const first = await loadPreparedRegion('chuncheon');
     first.places.length = 0;
-    expect((await loadPreparedRegion('chuncheon')).places).toHaveLength(93);
+    expect((await loadPreparedRegion('chuncheon')).places).toHaveLength(156);
   });
 
   it('leaves the active Gangneung fallback unchanged', async () => {
     const places = await getPlaces();
-    expect(places).toHaveLength(93);
+    expect(places).toHaveLength(176);
     expect(places.every((place) => place.address.includes('강릉'))).toBe(true);
   });
 });

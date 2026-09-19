@@ -1,5 +1,5 @@
 /**
- * 강원 18개 시군구 경계 (지도 기록 페이지)
+ * 강원 18개 시군구 경계 (댕스탬프 페이지)
  *
  * 원본: swcho/korea-maps — svg/simple/강원도_시군구_경계.svg
  *       https://github.com/swcho/korea-maps  (MIT License, Copyright (c) 2022 StatGarten)

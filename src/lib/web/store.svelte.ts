@@ -9,7 +9,17 @@ import {
   type ThemeFilter
 } from '$lib/domain/place';
 
-type Account = { user: { id: string } | null; dogs: Dog[]; favorites: string[] };
+import type { DogCharacter } from '$lib/domain/character';
+
+type Account = {
+  user: { id: string } | null;
+  dogs: Dog[];
+  favorites: string[];
+  characters?: DogCharacter[];
+};
+/** 로그인 전에 만든 캐릭터. 그림이 커서 이 브라우저에만 몇 개 남깁니다. */
+const LOCAL_CHARACTERS_KEY = 'dangverywhere-characters';
+const MAX_LOCAL_CHARACTERS = 4;
 /** 어느 아이를 기준으로 볼지는 기기별 취향이라 이 브라우저에만 담아 둡니다. */
 const ACTIVE_DOG_KEY = 'dangverywhere-active-dog';
 /**
@@ -45,6 +55,8 @@ export class WebStore {
   /** 지금 장소 비교의 기준이 되는 아이들 (최대 MAX_ACTIVE_DOGS 마리) */
   activeDogIds = $state<string[]>([]);
   savedIds = $state<string[]>([]);
+  /** 사진으로 만든 캐릭터들. 최근 것이 앞에 옵니다. */
+  characters = $state<DogCharacter[]>([]);
   loggedIn = $state(false);
   toast = $state('');
   /** Set by the layout to open the login dialog. */
@@ -57,7 +69,83 @@ export class WebStore {
     this.savedIds = [...account.favorites];
     // 로그인했으면 계정에 저장된 것이, 아니면 이 브라우저에 담아 둔 것이 기준입니다.
     this.dogs = this.loggedIn ? [...account.dogs] : readLocalDogs();
+    this.characters = this.loggedIn ? [...(account.characters ?? [])] : readLocalCharacters();
     this.activeDogIds = this.#restoreActiveIds();
+  }
+
+  /** 이 아이의 캐릭터 (가장 최근 것). 없으면 null — 그때는 견종 캐릭터를 보여 주면 돼요. */
+  characterFor(dogId: string | null | undefined): DogCharacter | null {
+    if (!dogId) return null;
+    return this.characters.find((character) => character.dogId === dogId) ?? null;
+  }
+
+  /**
+   * 캐릭터 저장·수정. 로그인 전에는 이 브라우저에, 로그인 후에는 계정에 남깁니다.
+   * 저장된(id 가 붙은) 캐릭터를 돌려주고, 실패하면 null.
+   */
+  async applyCharacter(
+    input: Omit<DogCharacter, 'id' | 'createdAt' | 'updatedAt'>,
+    id?: string
+  ): Promise<DogCharacter | null> {
+    const now = new Date().toISOString();
+    if (!this.loggedIn) {
+      const existing = id ? this.characters.find((character) => character.id === id) : undefined;
+      const saved: DogCharacter = {
+        ...input,
+        id: existing?.id ?? crypto.randomUUID(),
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now
+      };
+      this.#upsertCharacter(saved);
+      return saved;
+    }
+    try {
+      const result = await send('PUT', '/api/character', id ? { ...input, id } : input);
+      const saved = result.character as DogCharacter;
+      this.#upsertCharacter(saved);
+      return saved;
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : '캐릭터를 저장하지 못했어요.');
+      return null;
+    }
+  }
+
+  async removeCharacter(id: string) {
+    if (!this.characters.some((character) => character.id === id)) return;
+    if (this.loggedIn) {
+      try {
+        await send('DELETE', '/api/character', { id });
+      } catch (error) {
+        this.notify(error instanceof Error ? error.message : '지우지 못했어요.');
+        return;
+      }
+    }
+    this.characters = this.characters.filter((character) => character.id !== id);
+    this.#saveLocalCharacters();
+    this.notify('캐릭터를 지웠어요.');
+  }
+
+  #upsertCharacter(character: DogCharacter) {
+    const rest = this.characters.filter((row) => row.id !== character.id);
+    // 같은 아이의 예전 캐릭터는 하나만 남깁니다 — 화면마다 최근 것을 쓰니까요.
+    const others = character.dogId ? rest.filter((row) => row.dogId !== character.dogId) : rest;
+    this.characters = [character, ...others];
+    this.#saveLocalCharacters();
+  }
+
+  #saveLocalCharacters() {
+    if (this.loggedIn) return;
+    try {
+      // 원본 사진·기본 그림까지 넣으면 용량이 커서, 브라우저에는 최종 그림과 값만 남깁니다.
+      const slim = this.characters.slice(0, MAX_LOCAL_CHARACTERS).map((character) => ({
+        ...character,
+        sourceImage: undefined,
+        characterImage: undefined
+      }));
+      localStorage.setItem(LOCAL_CHARACTERS_KEY, JSON.stringify(slim));
+    } catch {
+      // 용량이 넘치거나 저장이 막혀도 이번 방문에는 그대로 보여요.
+    }
   }
 
   /**
@@ -72,7 +160,7 @@ export class WebStore {
   }
 
   /**
-   * 대표 한 마리. 이름 한 번만 쓰면 되는 자리(지도 기록 등)에서 씁니다.
+   * 대표 한 마리. 이름 한 번만 쓰면 되는 자리(댕스탬프 등)에서 씁니다.
    * 둘을 고른 상태에서는 먼저 고른 아이입니다.
    */
   get dog(): Dog | null {
@@ -241,6 +329,13 @@ export class WebStore {
     }
     this.dogs = this.dogs.filter((row) => row.id !== id);
     this.#saveLocalDogs();
+    // 캐릭터는 남기되 주인 표시만 뗍니다 (서버도 ON DELETE SET NULL 로 같게 동작해요).
+    if (this.characters.some((character) => character.dogId === id)) {
+      this.characters = this.characters.map((character) =>
+        character.dogId === id ? { ...character, dogId: null } : character
+      );
+      this.#saveLocalCharacters();
+    }
     if (this.activeDogIds.includes(id)) {
       const rest = this.activeDogIds.filter((item) => item !== id);
       this.#setActive(rest.length ? rest : this.#firstDogIds());
@@ -296,6 +391,7 @@ export class WebStore {
       this.savedIds = [];
       // 로그아웃하면 계정 기록 대신 이 브라우저에 담아 둔 기록으로 돌아갑니다.
       this.dogs = readLocalDogs();
+      this.characters = readLocalCharacters();
       this.activeDogIds = this.#firstDogIds();
       this.mode = 'all';
       this.notify('로그아웃했어요.');
@@ -333,6 +429,26 @@ function readLocalDogs(): Dog[] {
   } catch {
     // 저장소를 못 쓰는 브라우저(시크릿 모드 등)에서는 이번 방문에만 예시를 보여 줍니다.
     return SAMPLE_DOG ? [SAMPLE_DOG] : [];
+  }
+}
+
+function readLocalCharacters(): DogCharacter[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_CHARACTERS_KEY);
+    if (!raw) return [];
+    const saved: unknown = JSON.parse(raw);
+    if (!Array.isArray(saved)) return [];
+    return saved.filter(
+      (row): row is DogCharacter =>
+        Boolean(row) &&
+        typeof row === 'object' &&
+        typeof (row as DogCharacter).id === 'string' &&
+        typeof (row as DogCharacter).finalImage === 'string' &&
+        Boolean((row as DogCharacter).layout) &&
+        Boolean((row as DogCharacter).params)
+    );
+  } catch {
+    return [];
   }
 }
 

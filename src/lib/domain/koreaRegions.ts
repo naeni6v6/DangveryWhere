@@ -1,5 +1,5 @@
 /**
- * 전국 17개 시도 경계 (지도 기록 페이지용 단순화 지도)
+ * 전국 17개 시도 경계 (댕스탬프 페이지용 단순화 지도)
  *
  * 원본: swcho/korea-maps — svg/simple/전국_시도_경계.svg
  *       https://github.com/swcho/korea-maps  (MIT License, Copyright (c) 2022 StatGarten)

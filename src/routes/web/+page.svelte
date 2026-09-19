@@ -11,22 +11,12 @@
     MapPin,
     LogIn,
     LogOut,
-    Smartphone,
-    Scale,
-    ShieldCheck,
-    Database
+    Smartphone
   } from '@lucide/svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
-  import RegionPicker from '$lib/components/web/RegionPicker.svelte';
+  import placeImages from '$lib/data/placeImages.json';
   import { providerInfo } from '$lib/domain/region';
-  import {
-    placeArea,
-    placeTheme,
-    policyLines,
-    shortAddress,
-    themeNames,
-    type Theme
-  } from '$lib/domain/place';
+  import { placeArea, placeTheme, themeNames, type Place, type Theme } from '$lib/domain/place';
   import { getWebStore } from '$lib/web/store.svelte';
   import { AFTER_TUTORIAL_PATH, TUTORIAL_PATH, isTutorialDone } from '$lib/web/onboarding';
   import type { PageData } from './$types';
@@ -73,21 +63,51 @@
   const walkPoster: string | null = null;
   const isGif = $derived(Boolean(walkVideo && /\.gif$/i.test(walkVideo)));
 
+  /** 가게 사진 (static/places, 장소 id → 경로 목록). 상세 화면과 같은 자료를 씁니다. */
+  const photosOf = (id: string) => (placeImages as Record<string, string[]>)[id] ?? [];
+
+  /**
+   * 사진 띠 — 사진이 있는 동반 장소를 분류별로 돌아가며 뽑습니다.
+   * 카페만 줄줄이 이어지지 않게 하려는 것이고, 열네 장이면 한 화면을 넉넉히 채워요.
+   */
+  const strip = $derived.by(() => {
+    // 위에서 lucide 의 Map 아이콘을 들여와서, 자료구조 Map 은 globalThis 로 구분해 부릅니다.
+    const queues = new globalThis.Map<Theme, Place[]>();
+    for (const place of companionPlaces) {
+      if (!photosOf(place.id).length) continue;
+      const theme = placeTheme(place);
+      if (!queues.has(theme)) queues.set(theme, []);
+      queues.get(theme)!.push(place);
+    }
+    const rounds = [...queues.values()];
+    const picked: Place[] = [];
+    for (let i = 0; picked.length < 14 && rounds.some((queue) => queue.length); i++) {
+      const next = rounds[i % rounds.length].shift();
+      if (next) picked.push(next);
+    }
+    return picked;
+  });
+
   const allCategoryCards = [
     { id: 'cafe', copy: '테라스만? 실내도? 매장마다 다른 규정을 미리' },
     { id: 'restaurant', copy: '밥 먹는 동안 같이 있을 수 있는 곳인지 먼저' },
     { id: 'stay', copy: '체중·마릿수 제한과 추가 요금을 떠나기 전에' },
     { id: 'outdoor', copy: '목줄 규정과 출입 가능한 구역을 한눈에' },
     { id: 'activity', copy: '반려견과 함께 즐길 수 있는 체험 프로그램' },
-    { id: 'culture', copy: '박물관·미술관에 함께 들어갈 수 있는지부터' }
+    { id: 'culture', copy: '박물관·미술관에 함께 들어갈 수 있는지부터' },
+    { id: 'shopping', copy: '같이 들어가 장을 볼 수 있는 매장인지 미리' }
   ] as const;
   const count = (theme: Theme) =>
     data.places.filter((place) => placeTheme(place) === theme).length;
-  // 그 지역에 한 곳도 없는 분류는 빼서, 0곳짜리 카드가 서 있지 않게 합니다.
+  // 그 지역에 한 곳도 없는 분류는 빼서, 0곳짜리 타일이 서 있지 않게 합니다.
   const categoryCards = $derived(allCategoryCards.filter((item) => count(item.id) > 0));
-  const featured = $derived(
-    data.places.filter((place) => policyLines(place.policy).length >= 2).slice(0, 6)
-  );
+  /** 분류 타일의 바탕 사진 — 그 분류에서 사진이 있는 첫 장소. 없으면 갈색 바탕에 아이콘만. */
+  const coverOf = (theme: Theme) => {
+    const place = data.places.find(
+      (item) => placeTheme(item) === theme && photosOf(item.id).length
+    );
+    return place ? photosOf(place.id)[0] : null;
+  };
 
   /**
    * 스크롤해서 화면에 들어오면 아래에서 위로 떠오르게 합니다.
@@ -138,7 +158,7 @@
 </svelte:head>
 
 <div class="landing">
-  <!-- 상단 내비게이션 -->
+  <!-- 상단 내비게이션. 지역 선택은 지도 화면 헤더에만 두고, 메인에서는 뺐습니다. -->
   <header class="landing-nav">
     <a class="nav-brand" href="/web">
       <img class="nav-logo" src="/logo.png" alt="" width="42" height="42" />
@@ -151,7 +171,6 @@
       <a href="/web/dog"><PawPrint size={17} />우리 강아지</a>
     </nav>
     <div class="nav-right">
-      <RegionPicker regions={data.regions} regionId={data.regionId} />
       {#if dev}
         <!-- 개발용: 튜토리얼 화면 확인 링크. 배포 전 삭제 -->
         <a class="nav-mobile dev-link" href="/web/start?replay"
@@ -209,112 +228,145 @@
     </section>
   </main>
 
-  <!-- 숫자 -->
-  <section class="stats" aria-label="데이터 요약" use:reveal>
-    <div><strong>{companionCount}<small>곳</small></strong><span>반려견 동반 장소</span></div>
-    <div><strong>{weightCount}<small>곳</small></strong><span>체중 제한이 기재된 장소</span></div>
-    <!-- 동물병원은 강원 원본에만 있어서, 없는 지역에서는 0곳 칸을 세우지 않습니다. -->
-    {#if hospitalCount}
-      <div>
-        <strong>{hospitalCount}<small>곳</small></strong><span>동물병원</span>
-      </div>
-    {:else}
-      <div>
-        <strong>{categoryCards.length}<small>가지</small></strong><span>장소 분류</span>
-      </div>
-    {/if}
-    <div><strong>{collectedAt}</strong><span>공공데이터 수집 시점</span></div>
-  </section>
+  <!--
+    ================================================================
+    [시작하기] 아래.
+    카드 격자 대신 실제 가게 사진과 큰 글자로 끌고 갑니다 — 사진 띠 · 짙은 선언부 · 사진 타일 · 마무리.
+    ================================================================
+  -->
 
-  <!-- 기능 소개 -->
-  <section class="section">
-    <div class="section-head" use:reveal>
-      <span class="section-eyebrow">WHY DANGVERYWHERE</span>
-      <h2>출입 조건, 도착해서 확인하지 마세요</h2>
-      <p>모호한 반려동물 동반 규정 때문에 생기는 입장 거부와 헛걸음을 줄이는 것이 목표예요.</p>
-    </div>
-    <div class="feature-grid">
-      <article class="feature" use:reveal>
-        <span class="feature-icon"><Scale size={28} /></span>
-        <h3>우리 강아지 조건으로 비교</h3>
-        <p>체급과 몸무게를 등록하면 원본 규정의 체중·체급 제한과 맞지 않는 곳을 알려드려요.</p>
-      </article>
-      <article class="feature" use:reveal>
-        <span class="feature-icon"><ShieldCheck size={28} /></span>
-        <h3>동반 규정을 한눈에</h3>
-        <p>실내·야외 허용 구역, 목줄, 배변 매너 같은 조건을 항목별로 나눠 보여드려요.</p>
-      </article>
-      <article class="feature" use:reveal>
-        <span class="feature-icon"><Database size={28} /></span>
-        <h3>출처가 분명한 공공데이터</h3>
-        <p>
-          {sources.map((source) => source.shortName).join(' · ')} 자료를 쓰고, 수집일과 원문 링크를
-          함께 표시해요.
-        </p>
-      </article>
-    </div>
-  </section>
-
-  <!-- 카테고리 -->
-  <section class="section section-sand">
-    <div class="section-head" use:reveal>
-      <span class="section-eyebrow">EXPLORE BY TYPE</span>
-      <h2>어디로 함께 갈까요?</h2>
-    </div>
-    <div class="category-grid">
-      {#each categoryCards as item (item.id)}<a
-          class="category-card {item.id}"
-          href={`/web/explore?category=${item.id}`}
-          use:reveal
-        >
-          <span class="category-icon"><ThemeIcon theme={item.id} size={30} /></span>
-          <strong>{themeNames[item.id]}</strong>
-          <p>{item.copy}</p>
-          <span class="category-count">{count(item.id)}곳 보기<ArrowRight size={16} /></span>
-        </a>{/each}
-    </div>
-  </section>
-
-  <!-- 추천 장소 -->
-  {#if featured.length}
-    <section class="section">
-      <div class="section-head row" use:reveal>
+  <!-- 사진 띠: 실제 가게 사진이 천천히 흘러갑니다. 올리면 멈추고, 누르면 그 가게로. -->
+  {#if strip.length}
+    <section class="strip" aria-label="사진으로 보는 동반 장소">
+      <div class="strip-head" use:reveal>
         <div>
-          <span class="section-eyebrow">PLACES TO GO</span>
-          <h2>규정이 자세히 적힌 장소</h2>
+          <span class="eyebrow">REAL PLACES · {area}</span>
+          <h2>사진으로 먼저 둘러보는 <em>{companionCount}곳</em></h2>
         </div>
-        <a class="secondary-button" href="/web/explore"
-          >전체 {companionCount}곳 보기<ArrowRight size={17} /></a
-        >
+        <a class="text-link" href="/web/explore">지도에서 전체 보기<ArrowRight size={17} /></a>
       </div>
-      <div class="place-grid">
-        {#each featured as place (place.id)}<a
-            class="place-tile"
-            href={`/web/explore?place=${place.id}`}
-            use:reveal
-          >
-            <small>{themeNames[placeTheme(place)]}</small>
-            <strong>{place.name}</strong>
-            <span class="tile-address"
-              ><MapPin size={14} />{[placeArea(place).city, shortAddress(place)]
-                .filter(Boolean)
-                .join(' ')}</span
-            >
-            <p>{policyLines(place.policy)[0]}</p>
-            <span class="tile-more">규정 자세히 보기<ArrowUpRight size={15} /></span>
-          </a>{/each}
+      <div class="marquee-clip">
+        <!-- 같은 목록을 두 번 이어 붙여 끝없이 흐르게 합니다. 두 번째 묶음은 보조기기에서 숨겨요. -->
+        <div class="marquee">
+          {#each [0, 1] as copy (copy)}
+            <div class="marquee-set" aria-hidden={copy === 1}>
+              {#each strip as place (place.id)}
+                <a
+                  class="shot"
+                  href={`/web/explore?place=${place.id}`}
+                  tabindex={copy === 1 ? -1 : undefined}
+                >
+                  <img src={photosOf(place.id)[0]} alt="" loading="lazy" decoding="async" />
+                  <span class="shot-tag">{themeNames[placeTheme(place)]}</span>
+                  <span class="shot-info">
+                    <strong>{place.name}</strong>
+                    <span>{placeArea(place).province} {placeArea(place).city}</span>
+                  </span>
+                </a>
+              {/each}
+            </div>
+          {/each}
+        </div>
       </div>
     </section>
   {/if}
 
-  <!-- 마무리 -->
-  <section class="closing" use:reveal>
-    <PawPrint size={44} strokeWidth={1.2} />
-    <h2>이번 주말, 강아지와 어디 가 볼까요?</h2>
-    <p>지도를 열고 함께 갈 수 있는 곳부터 찾아보세요.</p>
-    <div class="closing-actions">
-      <a class="closing-primary" href="/web/explore">지도에서 찾기<ArrowRight size={19} /></a>
-      <a class="closing-secondary" href="/web/dog">우리 강아지 등록</a>
+  <!-- 선언부: 짙은 갈색 바탕에 큰 글자. 기능 셋은 카드 대신 번호 붙은 줄로, 숫자는 아래 한 줄로. -->
+  <section class="manifesto">
+    <div class="manifesto-inner">
+      <div class="manifesto-copy" use:reveal>
+        <span class="eyebrow gold">WHY DANGVERYWHERE</span>
+        <h2>출입 조건,<br />도착해서<br />확인하지 마세요.</h2>
+        <p>
+          모호한 반려동물 동반 규정 때문에 생기는 입장 거부와 헛걸음을 줄이는 것이 댕브리웨어의
+          목표예요.
+        </p>
+      </div>
+      <ol class="reasons" use:reveal>
+        <li>
+          <span class="reason-num">01</span>
+          <div>
+            <h3>우리 강아지 조건으로 비교</h3>
+            <p>체급과 몸무게를 등록하면 원본 규정의 체중·체급 제한과 맞지 않는 곳을 알려드려요.</p>
+          </div>
+        </li>
+        <li>
+          <span class="reason-num">02</span>
+          <div>
+            <h3>동반 규정을 한눈에</h3>
+            <p>실내·야외 허용 구역, 목줄, 배변 매너 같은 조건을 항목별로 나눠 보여드려요.</p>
+          </div>
+        </li>
+        <li>
+          <span class="reason-num">03</span>
+          <div>
+            <h3>출처가 분명한 공공데이터</h3>
+            <p>
+              {sources.map((source) => source.shortName).join(' · ')} 자료를 쓰고, 수집일과 원문
+              링크를 함께 표시해요.
+            </p>
+          </div>
+        </li>
+      </ol>
+      <dl class="figures" use:reveal>
+        <div><dt>반려견 동반 장소</dt><dd>{companionCount}<small>곳</small></dd></div>
+        <div><dt>체중 제한이 기재된 곳</dt><dd>{weightCount}<small>곳</small></dd></div>
+        <!-- 동물병원은 강원 원본에만 있어서, 없는 지역에서는 0곳 칸을 세우지 않습니다. -->
+        {#if hospitalCount}
+          <div><dt>동물병원</dt><dd>{hospitalCount}<small>곳</small></dd></div>
+        {:else}
+          <div><dt>장소 분류</dt><dd>{categoryCards.length}<small>가지</small></dd></div>
+        {/if}
+        <div><dt>공공데이터 수집 시점</dt><dd class="date">{collectedAt}</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 분류: 흰 카드 대신 그 분류의 실제 가게 사진을 깐 세로 타일 -->
+  <section class="explore">
+    <div class="explore-inner">
+      <div class="explore-head" use:reveal>
+        <div>
+          <span class="eyebrow">EXPLORE BY TYPE</span>
+          <h2>어디로 함께 갈까요?</h2>
+        </div>
+        <p>분류를 고르면 그 종류의 장소만 지도에 남겨요.</p>
+      </div>
+      <div class="tiles">
+        {#each categoryCards as item (item.id)}
+          {@const cover = coverOf(item.id)}
+          <a class="tile" class:plain={!cover} href={`/web/explore?category=${item.id}`} use:reveal>
+            {#if cover}
+              <img src={cover} alt="" loading="lazy" decoding="async" />
+            {/if}
+            <span class="tile-icon"><ThemeIcon theme={item.id} size={22} strokeWidth={1.8} /></span>
+            <span class="tile-body">
+              <strong>{themeNames[item.id]}</strong>
+              <span class="tile-count">{count(item.id)}곳</span>
+              <span class="tile-copy">{item.copy}</span>
+            </span>
+          </a>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- 마무리: 댕브리가 손을 흔들며 배웅합니다 -->
+  <section class="closing">
+    <div class="closing-inner" use:reveal>
+      <div class="closing-copy">
+        <span class="eyebrow">THIS WEEKEND</span>
+        <h2>이번 주말,<br />강아지와 어디 가 볼까요?</h2>
+        <p>지도를 열고 함께 갈 수 있는 곳부터 찾아보세요.</p>
+        <div class="closing-actions">
+          <a class="closing-primary" href="/web/explore">지도에서 찾기<ArrowRight size={19} /></a>
+          <a class="closing-secondary" href="/web/dog">우리 강아지 등록</a>
+        </div>
+      </div>
+      <div class="closing-figure" aria-hidden="true">
+        <!-- 흰 배경 이미지라 multiply 로 바탕에 녹입니다 (static/mascot/안내.txt) -->
+        <img src="/mascot/dangbri-hello.webp" alt="" width="760" height="760" loading="lazy" />
+      </div>
     </div>
   </section>
 
@@ -554,268 +606,393 @@
       0 28px 58px #b5704e38;
   }
 
-
   /* ================================================================
-     아래 섹션들 — 숫자 · 기능 소개 · 카테고리 · 추천 장소 · 마무리 · 푸터
+     [시작하기] 아래 — 공통 글자 규칙
+     그라데이션·둥근 알약·흰 카드 격자를 쓰지 않고, 사진·큰 글자·가는 선으로만 구분합니다.
      ================================================================ */
-  .section,
-  .stats,
-  .landing-footer {
-    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
-    margin-inline: auto;
-  }
-
-  /* ---------- 숫자 ---------- */
-  .stats {
-    position: relative;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    margin-top: -48px;
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    box-shadow: 0 18px 50px #4a342814;
-    overflow: hidden;
-  }
-  .stats > div {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 30px 34px;
-    border-right: 1px solid var(--line);
-  }
-  .stats > div:last-child {
-    border-right: 0;
-  }
-  .stats strong {
-    font-size: 38px;
-    letter-spacing: -1.5px;
+  .eyebrow {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 2.6px;
     color: var(--brand);
   }
-  .stats small {
-    font-size: 18px;
-    margin-left: 3px;
-    color: var(--brown-warm);
+  .eyebrow.gold {
+    color: var(--gold);
   }
-  .stats span {
-    font-size: 15px;
-    color: var(--muted);
+  .text-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid currentColor;
+    color: var(--brand-deep);
+    font-size: 15.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.16s;
+  }
+  .text-link:hover {
+    color: var(--brand);
   }
 
-  /* ---------- 섹션 공통 ---------- */
-  .section {
-    padding: 100px 0;
+  /* ---------- 사진 띠 ---------- */
+  .strip {
+    padding: clamp(56px, 8vh, 96px) 0 0;
   }
-  .section-sand {
-    width: 100%;
-    background: var(--sand);
-    padding-inline: max(40px, calc((100% - 1280px) / 2));
-  }
-  .section-head {
-    margin-bottom: 44px;
-  }
-  .section-head.row {
+  .strip-head {
+    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
+    margin: 0 auto 30px;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 20px;
-  }
-  .section-eyebrow {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2.5px;
-    color: var(--gold);
-  }
-  .section-head h2 {
-    font-size: 40px;
-    letter-spacing: -1.5px;
-    margin: 12px 0 0;
-  }
-  .section-head p {
-    font-size: 18px;
-    color: var(--muted);
-    margin: 14px 0 0;
-    line-height: 1.7;
-  }
-
-  /* ---------- 기능 ---------- */
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
-  .feature {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: 34px 32px;
+  .strip-head h2 {
+    margin: 12px 0 0;
+    font-size: clamp(28px, 3.2vw, 40px);
+    letter-spacing: -1.4px;
+    line-height: 1.15;
   }
-  .feature-icon {
-    display: grid;
-    place-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: 20px;
-    background: var(--brand-soft);
+  .strip-head h2 em {
+    font-style: normal;
     color: var(--brand);
   }
-  .feature h3 {
-    font-size: 22px;
-    letter-spacing: -0.7px;
-    margin: 24px 0 10px;
+  .marquee-clip {
+    overflow: hidden;
+    /* 좌우 끝을 살짝 흐려, 띠가 화면 밖으로 이어지는 느낌만 줍니다. */
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
   }
-  .feature p {
-    font-size: 16px;
-    line-height: 1.8;
-    color: var(--muted);
-    margin: 0;
-    word-break: keep-all;
+  .marquee {
+    display: flex;
+    width: max-content;
+    padding: 6px 0 14px;
+    animation: marquee 80s linear infinite;
   }
-
-  /* ---------- 카테고리 ---------- */
-  /* 카페·식당을 나누면서 5장이 되어, 4열 고정이면 마지막 한 장이 혼자 떨어집니다. */
-  .category-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 20px;
+  .marquee-set {
+    display: flex;
+    gap: 16px;
+    padding-right: 16px;
   }
-  @media (max-width: 1240px) {
-    .category-grid {
-      grid-template-columns: repeat(3, 1fr);
+  /* 올리면 멈추고, 그 사이에 원하는 가게를 누를 수 있어요. */
+  .strip:hover .marquee,
+  .strip:focus-within .marquee {
+    animation-play-state: paused;
+  }
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
     }
   }
-  .category-card {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 30px 28px;
-    border-radius: 22px;
-    background: #fff;
-    border: 1px solid var(--line);
-    color: var(--ink);
-    text-decoration: none;
-    transition:
-      transform 0.18s,
-      box-shadow 0.18s;
-  }
-  .category-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 40px #4a34281a;
-  }
-  .category-icon {
-    display: grid;
-    place-items: center;
-    width: 62px;
-    height: 62px;
-    border-radius: 19px;
-    margin-bottom: 8px;
-    background: linear-gradient(150deg, var(--icon-brown-top), var(--icon-brown-bottom));
-    color: var(--icon-cream);
-    box-shadow: 0 8px 18px #4a34281f;
-  }
-  .category-card strong {
-    font-size: 21px;
-    letter-spacing: -0.6px;
-  }
-  .category-card p {
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--muted);
-    margin: 0;
-    flex: 1;
-    word-break: keep-all;
-  }
-  .category-count {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--brand);
-  }
-
-
-  /* ---------- 추천 장소 ---------- */
-  .place-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
-  .place-tile {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 26px;
-    border-radius: 20px;
-    background: #fff;
-    border: 1px solid var(--line);
-    color: var(--ink);
-    text-decoration: none;
-    transition: box-shadow 0.18s;
-  }
-  .place-tile:hover {
-    box-shadow: 0 14px 36px #4a34281a;
-  }
-  .place-tile small {
-    font-size: 13.5px;
-    color: var(--brand);
-    font-weight: 600;
-  }
-  .place-tile strong {
-    font-size: 20px;
-    letter-spacing: -0.6px;
-  }
-  .tile-address {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .place-tile p {
-    flex: 1;
-    margin: 8px 0 4px;
-    padding: 13px 15px;
+  .shot {
+    position: relative;
+    width: 300px;
+    aspect-ratio: 4 / 3;
+    flex-shrink: 0;
     border-radius: 12px;
-    background: var(--cream);
-    font-size: 14.5px;
-    line-height: 1.7;
-    word-break: keep-all;
+    overflow: hidden;
+    background: var(--sand);
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 10px 28px #4a342821;
+    transition: transform 0.25s ease;
   }
-  .tile-more {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14.5px;
-    font-weight: 600;
-    color: var(--brand);
+  .shot:hover,
+  .shot:focus-visible {
+    transform: translateY(-4px);
+    outline: none;
   }
-
-  /* ---------- CTA · 푸터 ---------- */
-  .closing {
+  .shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+  }
+  .shot:hover img {
+    transform: scale(1.05);
+  }
+  .shot-tag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    background: #fffffff0;
+    color: var(--brand-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  /* 글자가 사진 위에서 읽히게 하는 최소한의 어둠. 장식이 아니라 가독성용입니다. */
+  .shot-info {
+    position: absolute;
+    inset: auto 0 0 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 96px 40px;
-    background: linear-gradient(135deg, var(--brown-deep) 0%, var(--brand-deep) 100%);
+    gap: 2px;
+    padding: 44px 16px 14px;
+    background: linear-gradient(to top, #1f140ecc, transparent);
+  }
+  .shot-info strong {
+    font-size: 17px;
+    letter-spacing: -0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .shot-info > span {
+    font-size: 12.5px;
+    color: #ffffffd0;
+  }
+
+  /* ---------- 선언부 ---------- */
+  .manifesto {
+    margin-top: clamp(56px, 8vh, 96px);
+    background: #3a281d;
+    color: #fbf3ea;
+  }
+  .manifesto-inner {
+    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
+    margin: 0 auto;
+    padding: clamp(72px, 10vh, 120px) 0 clamp(56px, 8vh, 88px);
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: clamp(40px, 6vw, 96px);
+    row-gap: clamp(56px, 8vh, 88px);
+  }
+  .manifesto-copy h2 {
+    margin: 18px 0 0;
+    font-size: clamp(38px, 4.6vw, 62px);
+    line-height: 1.06;
+    letter-spacing: -2.4px;
+    font-weight: 800;
     color: #fff;
   }
-  .closing h2 {
-    font-size: 40px;
-    letter-spacing: -1.5px;
-    margin: 22px 0 12px;
+  .manifesto-copy p {
+    margin: 22px 0 0;
+    max-width: 380px;
+    font-size: 16.5px;
+    line-height: 1.8;
+    color: #e6d3c3;
+    word-break: keep-all;
   }
-  .closing p {
+  .reasons {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    align-self: center;
+  }
+  .reasons li {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 14px;
+    padding: 26px 0;
+    border-top: 1px solid #ffffff24;
+  }
+  .reasons li:last-child {
+    border-bottom: 1px solid #ffffff24;
+  }
+  .reason-num {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    padding-top: 4px;
+  }
+  .reasons h3 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -0.7px;
+    color: #fff;
+  }
+  .reasons p {
+    margin: 8px 0 0;
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: #d9c4b2;
+    word-break: keep-all;
+  }
+  .figures {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin: 0;
+    padding-top: 36px;
+    border-top: 1px solid #ffffff24;
+  }
+  .figures dt {
+    font-size: 13.5px;
+    color: #d9c4b2;
+  }
+  .figures dd {
+    margin: 8px 0 0;
+    font-size: clamp(38px, 4vw, 54px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .figures dd small {
+    margin-left: 3px;
     font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--gold);
+  }
+  .figures dd.date {
+    font-size: clamp(30px, 3vw, 40px);
+    letter-spacing: -1.2px;
+  }
+
+  /* ---------- 분류 타일 ---------- */
+  .explore {
+    padding: clamp(72px, 10vh, 120px) 0;
+  }
+  .explore-inner {
+    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
+    margin: 0 auto;
+  }
+  .explore-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .explore-head h2 {
+    margin: 12px 0 0;
+    font-size: clamp(30px, 3.4vw, 42px);
+    letter-spacing: -1.5px;
+  }
+  .explore-head p {
+    margin: 0;
+    font-size: 15.5px;
+    color: var(--muted);
+  }
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+  }
+  .tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--brand-deep);
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 10px 28px #4a342821;
+    transition: transform 0.25s ease;
+  }
+  .tile:hover,
+  .tile:focus-visible {
+    transform: translateY(-5px);
+    outline: none;
+  }
+  .tile img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+  .tile:hover img {
+    transform: scale(1.06);
+  }
+  /* 사진이 없는 분류: 갈색 바탕에 아이콘을 크게 */
+  .tile.plain .tile-icon {
+    top: 50%;
+    left: 50%;
+    width: 68px;
+    height: 68px;
+    transform: translate(-50%, -80%);
+    background: #ffffff1f;
+  }
+  .tile-icon {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #fffffff0;
+    color: var(--brand-deep);
+  }
+  .tile.plain .tile-icon {
+    color: #fff;
+  }
+  /* 아래쪽만 살짝 어둡게 — 사진 위 글자를 읽히게 하는 용도 */
+  .tile-body {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 60px 16px 18px;
+    background: linear-gradient(to top, #1f140ed6, #1f140e33 70%, transparent);
+  }
+  .tile-body strong {
+    font-size: 23px;
+    letter-spacing: -0.7px;
+  }
+  .tile-count {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .tile-copy {
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.55;
     color: #ffffffcc;
-    margin: 0 0 34px;
+    word-break: keep-all;
+  }
+
+  /* ---------- 마무리 ---------- */
+  .closing {
+    border-top: 1px solid var(--line);
+    background: #fff;
+  }
+  .closing-inner {
+    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: center;
+    gap: clamp(24px, 5vw, 72px);
+    padding: clamp(40px, 6vh, 72px) 0 0;
+  }
+  .closing-copy {
+    padding-bottom: clamp(40px, 6vh, 72px);
+  }
+  .closing-copy h2 {
+    margin: 14px 0 0;
+    font-size: clamp(34px, 4.2vw, 54px);
+    line-height: 1.1;
+    letter-spacing: -2px;
+    font-weight: 800;
+  }
+  .closing-copy p {
+    margin: 18px 0 0;
+    font-size: 17px;
+    color: var(--muted);
   }
   .closing-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
+    margin-top: 34px;
   }
   .closing-primary,
   .closing-secondary {
@@ -823,27 +1000,55 @@
     align-items: center;
     gap: 8px;
     min-height: 58px;
-    padding: 0 30px;
-    border-radius: 14px;
-    font-size: 17px;
-    font-weight: 600;
+    padding: 0 28px;
+    border-radius: 12px;
+    font-size: 16.5px;
+    font-weight: 700;
     text-decoration: none;
+    transition: background 0.16s, color 0.16s, border-color 0.16s;
   }
   .closing-primary {
-    background: var(--gold);
-    color: #3b2414;
-  }
-  .closing-primary:hover {
-    background: #e6b574;
-  }
-  .closing-secondary {
-    border: 1px solid #ffffff66;
+    background: #3a281d;
     color: #fff;
   }
-  .closing-secondary:hover {
-    background: #ffffff1a;
+  .closing-primary:hover {
+    background: var(--brand-deep);
   }
+  .closing-secondary {
+    border: 1.5px solid var(--line);
+    color: var(--brand-deep);
+  }
+  .closing-secondary:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .closing-figure {
+    align-self: end;
+    display: flex;
+    justify-content: center;
+  }
+  .closing-figure img {
+    width: min(100%, 420px);
+    height: auto;
+    display: block;
+    mix-blend-mode: multiply;
+    animation: wave 3.6s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  @keyframes wave {
+    0%,
+    100% {
+      transform: rotate(-1.5deg) translateY(0);
+    }
+    50% {
+      transform: rotate(1.5deg) translateY(-6px);
+    }
+  }
+
+  /* ---------- 푸터 ---------- */
   .landing-footer {
+    width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
+    margin-inline: auto;
     display: flex;
     justify-content: space-between;
     gap: 30px;
@@ -873,7 +1078,6 @@
     text-decoration: none;
   }
 
-
   /* ---------- 스크롤 등장 효과 ----------
      클래스를 스크립트에서 붙이므로 :global 로 둡니다. */
   :global(.reveal) {
@@ -888,59 +1092,80 @@
     opacity: 1;
     transform: none;
   }
-  /* 한 줄에 여러 칸이 있으면 살짝 시차를 둬서 차례로 올라오게 합니다. */
-  .feature-grid > :nth-child(2),
-  .category-grid > :nth-child(2),
-  .place-grid > :nth-child(2) {
-    transition-delay: 0.09s;
+  /* 타일은 살짝 시차를 둬서 차례로 올라오게 합니다. */
+  .tiles > :nth-child(2) {
+    transition-delay: 0.07s;
   }
-  .feature-grid > :nth-child(3),
-  .category-grid > :nth-child(3),
-  .place-grid > :nth-child(3) {
-    transition-delay: 0.18s;
+  .tiles > :nth-child(3) {
+    transition-delay: 0.14s;
   }
-  .category-grid > :nth-child(4),
-  .place-grid > :nth-child(4) {
-    transition-delay: 0.27s;
+  .tiles > :nth-child(4) {
+    transition-delay: 0.21s;
   }
-  .place-grid > :nth-child(5) {
-    transition-delay: 0.36s;
+  .tiles > :nth-child(5) {
+    transition-delay: 0.28s;
   }
-  .place-grid > :nth-child(6) {
-    transition-delay: 0.45s;
+  .tiles > :nth-child(6) {
+    transition-delay: 0.35s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee {
+      animation: none;
+    }
+    .marquee-clip {
+      overflow-x: auto;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+    .closing-figure img {
+      animation: none;
+    }
   }
 
-  /* ---------- 좁은 화면 (복원 섹션) ---------- */
+  /* ---------- 좁은 화면 ---------- */
   @media (max-width: 1100px) {
-    .feature-grid,
-    .place-grid,
-    .category-grid,
-    .stats {
-      grid-template-columns: 1fr 1fr;
+    .manifesto-inner {
+      grid-template-columns: 1fr;
+    }
+    .manifesto-copy p {
+      max-width: 560px;
+    }
+    .tiles {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (max-width: 980px) {
+    .nav-links {
+      display: none;
+    }
+    .closing-inner {
+      grid-template-columns: 1fr;
+    }
+    .closing-figure img {
+      width: min(100%, 320px);
     }
   }
   @media (max-width: 760px) {
-    .feature-grid,
-    .place-grid,
-    .category-grid,
-    .stats {
-      grid-template-columns: 1fr;
+    .strip-head,
+    .explore-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .figures {
+      grid-template-columns: 1fr 1fr;
+    }
+    .tiles {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .shot {
+      width: 240px;
     }
     .landing-footer {
       flex-direction: column;
     }
     .footer-links {
       align-items: flex-start;
-    }
-  }
-
-  /* ---------- 좁은 화면 ---------- */
-  @media (max-width: 980px) {
-    .nav-links {
-      display: none;
-    }
-    .points {
-      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 720px) {

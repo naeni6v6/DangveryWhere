@@ -10,7 +10,7 @@ export type PreparedRegionId = keyof typeof index.regions;
 export type PreparedRegion = (typeof index.regions)[PreparedRegionId];
 
 export type PreparedPlaceSource = {
-  provider: 'gangwon-pettravel' | 'kcisa-pet-culture';
+  provider: 'gangwon-pettravel' | 'kcisa-pet-culture' | 'kto-pet-tour';
   recordId: string;
   url: string;
   collectedAt: string;
@@ -27,7 +27,7 @@ export type PreparedRegionalPlace = {
   id: string;
   regionId: PreparedRegionId;
   name: string;
-  category: 'food' | 'stay' | 'outdoor' | 'activity' | 'culture';
+  category: 'food' | 'stay' | 'outdoor' | 'activity' | 'culture' | 'shopping';
   address: string;
   latitude: number;
   longitude: number;

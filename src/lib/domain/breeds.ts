@@ -34,6 +34,14 @@ export const breeds: Breed[] = [
 export const breedImage = (breed: Breed) => `/dogs/${breed.key}.webp`;
 export const breedThumb = (breed: Breed) => `/dogs/thumb/${breed.key}.webp`;
 
+/**
+ * '미지의 강아지' — 견종을 '기타 / 직접 입력'이나 '믹스 / 잘 모름'으로 둔 아이의 캐릭터.
+ * 세부 없이 안개 낀 실루엣만 있는 투명 그림이라 multiply 없이 어디에나 얹을 수 있어요.
+ * (scripts/mystery-dog.py 로 만듭니다)
+ */
+export const MYSTERY_IMAGE = '/dogs/mystery.webp';
+export const MYSTERY_THUMB = '/dogs/thumb/mystery.webp';
+
 const normalize = (value: string) => value.toLocaleLowerCase('ko').replace(/[\s·_-]/g, '');
 
 /** 목록에서 고른 값과 정확히 같은 견종 */

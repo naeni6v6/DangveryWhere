@@ -7,7 +7,7 @@
     Sparkles,
     PawPrint,
     Map,
-    MapPinned,
+    Stamp,
     Heart,
     Info,
     LogIn,
@@ -47,11 +47,11 @@
   );
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   // 메인 랜딩과 첫 튜토리얼은 왼쪽 메뉴·헤더 없이 화면 전체를 씁니다.
-  const isLanding = $derived(path === '/web' || path === '/web/start');
+  const isLanding = $derived(path === '/web' || path === '/web/start' || path === '/web/start/character');
   const nav = [
     { href: '/web/dog', label: '우리 강아지', icon: PawPrint },
     { href: '/web/explore', label: '가게 찾기', icon: Map },
-    { href: '/web/record', label: '지도 기록', icon: MapPinned },
+    { href: '/web/record', label: '댕스탬프', icon: Stamp },
     { href: '/web/favorites', label: '찜한 장소', icon: Heart }
   ];
 

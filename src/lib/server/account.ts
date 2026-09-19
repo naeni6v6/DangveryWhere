@@ -2,6 +2,7 @@ import { database, authConfigured } from './db';
 import { findPlacesByIds, getRegionPlaces, listRegions } from './regionPlaces';
 import { DEFAULT_REGION_ID, type RegionId } from '$lib/domain/region';
 import type { Dog } from '$lib/domain/place';
+import type { DogCharacter } from '$lib/domain/character';
 
 /**
  * Places plus the signed-in user's dogs and favorites, shared by the mobile and web screens.
@@ -12,14 +13,19 @@ import type { Dog } from '$lib/domain/place';
 export async function loadAppData(locals: App.Locals, regionId: RegionId = DEFAULT_REGION_ID) {
   let dogs: Dog[] = [];
   let favorites: string[] = [];
+  let characters: DogCharacter[] = [];
   let accountUnavailable = locals.accountUnavailable ?? false;
   if (locals.user) {
     try {
       const sql = database();
-      const [rows, saved] = await Promise.all([
+      const [rows, saved, drawn] = await Promise.all([
         sql`SELECT id,name,breed,size,weight FROM dog_profiles
             WHERE user_id=${locals.user.id} ORDER BY created_at, id`,
-        sql`SELECT place_id FROM favorites WHERE user_id=${locals.user.id} ORDER BY created_at DESC`
+        sql`SELECT place_id FROM favorites WHERE user_id=${locals.user.id} ORDER BY created_at DESC`,
+        // 캐릭터는 최종 그림만 내립니다. 원본 사진·기본 그림은 다시 꾸밀 때만 필요해서요.
+        // 표가 아직 없으면(마이그레이션 전) 빈 목록으로 두고 나머지는 그대로 씁니다.
+        sql`SELECT id, dog_id, final_image, traits, layout, params, expression, created_at, updated_at
+            FROM dog_characters WHERE user_id=${locals.user.id} ORDER BY updated_at DESC`.catch(() => [])
       ]);
       dogs = rows.map((row) => ({
         id: row.id as string,
@@ -29,6 +35,17 @@ export async function loadAppData(locals: App.Locals, regionId: RegionId = DEFAU
         weight: Number(row.weight)
       }));
       favorites = saved.map((row) => row.place_id as string);
+      characters = (drawn as Record<string, unknown>[]).map((row) => ({
+        id: row.id as string,
+        dogId: (row.dog_id as string | null) ?? null,
+        finalImage: row.final_image as string,
+        traits: row.traits as DogCharacter['traits'],
+        layout: row.layout as DogCharacter['layout'],
+        params: row.params as DogCharacter['params'],
+        expression: row.expression as DogCharacter['expression'],
+        createdAt: new Date(row.created_at as string).toISOString(),
+        updatedAt: new Date(row.updated_at as string).toISOString()
+      }));
     } catch {
       accountUnavailable = true;
     }
@@ -41,6 +58,7 @@ export async function loadAppData(locals: App.Locals, regionId: RegionId = DEFAU
     favoritePlaces: await findPlacesByIds(favorites),
     user: locals.user,
     dogs,
+    characters,
     // 한 마리만 쓰는 화면(모바일 앱)이 그대로 동작하도록 남겨 둡니다.
     profile: dogs[0] ?? null,
     favorites,

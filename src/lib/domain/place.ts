@@ -6,7 +6,9 @@ export type Category =
   | 'activity'
   | 'hospital'
   // 박물관·미술관·문예회관. 한국문화정보원 원본에만 있는 분류라 강릉 데이터에는 없습니다.
-  | 'culture';
+  | 'culture'
+  // 반려견을 데리고 들어갈 수 있는 매장. 관광공사 반려동물 동반여행 원본에만 있는 분류입니다.
+  | 'shopping';
 export type DogSize = 'small' | 'medium' | 'large';
 export type DogProfile = { name: string; breed: string; size: DogSize; weight: number };
 /**
@@ -61,7 +63,8 @@ export const categoryNames: Record<Category, string> = {
   outdoor: '관광·산책',
   activity: '체험',
   hospital: '동물병원',
-  culture: '문화시설'
+  culture: '문화시설',
+  shopping: '쇼핑'
 };
 
 /** 웹(PC) 화면에서 쓰는 분류. 식음료만 카페/식당으로 한 단계 더 쪼갭니다. */
@@ -72,7 +75,8 @@ export type Theme =
   | 'outdoor'
   | 'activity'
   | 'hospital'
-  | 'culture';
+  | 'culture'
+  | 'shopping';
 export type ThemeFilter = 'all' | Theme;
 
 export const themeNames: Record<ThemeFilter, string> = {
@@ -83,7 +87,8 @@ export const themeNames: Record<ThemeFilter, string> = {
   outdoor: '관광·산책',
   activity: '체험',
   hospital: '동물병원',
-  culture: '문화시설'
+  culture: '문화시설',
+  shopping: '쇼핑'
 };
 
 /**
@@ -104,6 +109,20 @@ export function shortAddress(place: Place): string {
     .replace(/^\S+\s*/, '')
     .replace(city ? new RegExp(`^${city}\\s*`) : /^$/, '')
     .trim();
+}
+
+/**
+ * 네이버 지도에서 이 장소를 여는 주소.
+ *
+ * 장소 ID 가 있어야 업소 페이지(map.naver.com/p/entry/place/<id>)로 바로 가는데, 원본 데이터
+ * 어디에도 네이버 ID 가 없고 네이버 검색 API 도 ID 를 주지 않습니다. 그래서 이름에 시군구를
+ * 붙인 검색 주소를 씁니다. 같은 이름의 가게가 다른 지역에 있어도 우리 지역 것이 먼저 잡혀요.
+ * 네이버 지도 검색은 자동 조회를 막아 두어(캡차) ID 를 스크립트로 모을 수도 없습니다.
+ */
+export function naverPlaceUrl(place: Place): string {
+  const { city } = placeArea(place);
+  const query = [place.name.trim(), city].filter(Boolean).join(' ');
+  return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
 }
 
 /**
@@ -242,11 +261,17 @@ export function placeMenu(menu: string, board?: MenuBoard | null): PlaceMenu {
 }
 
 export function policyLines(policy: string): string[] {
-  return policy
+  const lines = policy
     .replace(/\*\s*반려견 동반 운영[\s\S]*$/, '')
-    .split(/(?:^|\s*)-\s*|\n/)
+    // 글머리표 뒤에 공백이 있거나 한글이 바로 붙은 경우만 끊습니다. 그냥 '-' 를 다 끊으면
+    // 규정 문장에 적힌 전화번호(033-339-0000)가 토막 납니다.
+    // regionPlaces.ts 의 policyChunks 와 같은 규칙이에요.
+    .split(/\s*[-*]\s+|\s*[-*](?=[가-힣])|\n/)
     .map((s) => s.trim())
     .filter(Boolean);
+  // 화면이 이 줄을 그대로 목록 키로 씁니다. 출처가 여럿이면 같은 문장이 두 번 올 수 있어
+  // 여기서 접어 둡니다(원본에 두 번 적혀 있어도 규정이 두 번 보일 이유는 없어요).
+  return [...new Set(lines)];
 }
 
 function matchesTerm(place: Place, term: string): boolean {

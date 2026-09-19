@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-19",
+  "note": "사진이 없는 장소에 한해, 원본 데이터의 홈페이지 주소에서 대표 사진 한 장을 고른 목록. via=og:image 는 페이지의 og:image 메타, gallery 는 첫 화면 사진 줄에서 사람이 골라 확인한 것. hotlink 는 관광공사(visitkorea) CDN 처럼 원본 주소를 그대로 걸어야 하는 경우.",
+  "photos": [
+    {
+      "id": "region-chuncheon-a687ba72b46e76369f01",
+      "name": "강촌레일파크",
+      "page": "https://www.railpark.co.kr/",
+      "image": "https://www.railpark.co.kr/images/sns.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "gw-k-3536383",
+      "name": "기억스테이(ㄱstay), 메모리스테이",
+      "page": "http://memorystay.co.kr/",
+      "image": "https://storage.googleapis.com/staymg_homepage_temp_bucket/homepage_img/20250628_memorystay/1_about/slide/05.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-pyeongchang-2cff56a16595e893fbe1",
+      "name": "대관령양떼목장",
+      "page": "http://www.yangtte.co.kr/",
+      "image": "https://cdn.imweb.me/upload/S20220713a86751c2746cf/048ce82dcc40c.png",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-55313fe1e992f76637d9",
+      "name": "라임오렌지펜션",
+      "page": "https://limeorangeps.com/",
+      "image": "https://limeorangeps.com/assets/images/view/2.webp",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-d0156cec7da4ea8c067a",
+      "name": "마이웨이 애견펜션",
+      "page": "http://mywayvivaldi.kr/",
+      "image": "http://mywayvivaldi.kr/html/images/common/image.jpg?ver=1633395592",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-yangyang-15fe69e1a87415b10496",
+      "name": "바다빛무지개펜션",
+      "page": "http://www.searainbow.kr/",
+      "image": "http://www.searainbow.kr/m.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-13d2c513ce96d84742ff",
+      "name": "소노펫 클럽앤리조트 비발디파크",
+      "page": "https://www.sonohotelsresorts.com/",
+      "image": "https://www.sonohotelsresorts.com/assets/og01.png",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-yangyang-4a80633bd5595369f7bb",
+      "name": "속초애견펜션 양양해피플레이스",
+      "page": "http://happyplacepension.co.kr/",
+      "image": "http://happyplacepension.co.kr/img/common/ps_thumb.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-pyeongchang-360360e971f761d2a598",
+      "name": "아침에 새소리 펜션",
+      "page": "https://birdpension.co.kr/",
+      "image": "https://birdpension.co.kr/mwb-gb/assets/birdpension.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-72aca579189920be1412",
+      "name": "엘페로 애견리조트 펜션",
+      "page": "http://elperro.co.kr/",
+      "image": "http://elperro.co.kr/img/common/ps_thumb.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-chuncheon-f9f2e3e040b0d8eebe43",
+      "name": "의암호스카이워크",
+      "page": "https://korean.visitkorea.or.kr/detail/ms_detail.do?cotid=80d126e6-2946-49ff-84cf-65ef69dce426&big_category=A02&mid_category=A0205&big_area=32",
+      "image": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=7d8492c3-695c-463d-a218-0002110b4946",
+      "via": "og:image",
+      "hotlink": true
+    },
+    {
+      "id": "gw-k-3548869",
+      "name": "카페 가배초당",
+      "page": "https://gbmanjoo.co.kr/",
+      "image": "https://gbmanjoo.co.kr/web/upload/share-image-1-aac405ae03803cf7690e05fb8e542c0b.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-6ab4ccd8f4d2df3da390",
+      "name": "홍천강이야기 펜션",
+      "page": "http://xn--939az3bg41buzbs9jk9p.com/",
+      "image": "http://xn--939az3bg41buzbs9jk9p.com/wp-content/uploads/2024/08/DJI_0075.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-hongcheon-49708ff19facbd5162c1",
+      "name": "힐리언스 선마을 힐리펫룸",
+      "page": "https://www.healience.co.kr/",
+      "image": "https://www.healience.co.kr/resource/web/image/og_img.jpg",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-pyeongchang-88383bb01e0a40d693a7",
+      "name": "힐링하시개 애견펜션",
+      "page": "http://xn--h49at2x25g1itdrc.kr/",
+      "image": "http://xn--h49at2x25g1itdrc.kr/m.jpg?ver=20200624",
+      "via": "og:image",
+      "hotlink": false
+    },
+    {
+      "id": "region-pyeongchang-129d2ffb66db5ae1320a",
+      "name": "그랑샤리오펜션",
+      "page": "http://grandchariot.co.kr/",
+      "image": "http://grandchariot.co.kr/upfile_shop_img/pension_bak/grandchariot_5.jpg",
+      "via": "gallery",
+      "hotlink": false
+    },
+    {
+      "id": "region-yangyang-d0b4ba9386a3bf81ac9c",
+      "name": "꼬로몽 애견펜션",
+      "page": "http://kkoromong.co.kr/",
+      "image": "http://img.einet.kr/P201906001/home/fac_slide/f1.jpg",
+      "via": "gallery",
+      "hotlink": false
+    },
+    {
+      "id": "region-pyeongchang-68415ac6d9dcf5eb8444",
+      "name": "작은 통나무집",
+      "page": "http://smallloghouse.com/",
+      "image": "http://smallloghouse.com/img/main/3.jpg",
+      "via": "gallery",
+      "hotlink": false
+    }
+  ]
+}

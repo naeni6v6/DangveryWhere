@@ -21,7 +21,9 @@ try {
       '003_food_kind.sql',
       '004_multiple_dogs.sql',
       '005_region_favorites.sql',
-      '006_menu.sql'
+      '006_menu.sql',
+      '007_kto_pet_tour.sql',
+      '008_dog_characters.sql'
     ]) {
       const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
       // These checked-in migrations contain no functions or semicolons in literals.
@@ -50,13 +52,20 @@ try {
         "order" integer)
       ON CONFLICT (id) DO NOTHING
     `);
-    // 이미 들어 있던 행에는 위 INSERT 가 닿지 않으므로, 카페/식당 구분과 메뉴만 따로 맞춥니다.
+    // 이미 들어 있던 행에는 위 INSERT 가 닿지 않으므로, 스냅샷이 다시 적어 준 칸만 따로 맞춥니다.
+    // policy 는 관광공사 원본의 동반 규정을 합칠 때 스냅샷에서 바뀝니다(scripts/merge-kto-pet-tour.mjs).
+    // 업체에 직접 확인한 문장을 DB 에서 손으로 고쳤다면 이 UPDATE 가 덮어씁니다.
+    // 지금은 verified_at 이 전부 비어 있어 그런 행이 없지만, 확인을 시작하면 조건을 좁혀야 합니다.
     queries.push(sql`
-      UPDATE places AS target SET food_kind = source."foodKind", menu = source.menu
+      UPDATE places AS target
+      SET food_kind = source."foodKind", menu = source.menu, policy = source.policy
       FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
-        AS source(id text, "foodKind" text, menu text)
+        AS source(id text, "foodKind" text, menu text, policy text)
       WHERE target.id = source.id
-        AND (target.food_kind IS DISTINCT FROM source."foodKind" OR target.menu IS DISTINCT FROM source.menu)
+        AND target.verified_at IS NULL
+        AND (target.food_kind IS DISTINCT FROM source."foodKind"
+          OR target.menu IS DISTINCT FROM source.menu
+          OR target.policy IS DISTINCT FROM source.policy)
     `);
     await sql.transaction(queries);
     console.log('Schema and initial Gangneung data are ready. Existing records were preserved.');

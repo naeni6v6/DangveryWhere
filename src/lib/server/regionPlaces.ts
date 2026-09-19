@@ -28,7 +28,8 @@ import {
 
 const providerNames: Record<PreparedPlaceSource['provider'], string> = {
   'gangwon-pettravel': '강원 반려동반관광',
-  'kcisa-pet-culture': '한국문화정보원'
+  'kcisa-pet-culture': '한국문화정보원',
+  'kto-pet-tour': '한국관광공사'
 };
 
 /** 강릉 스냅샷과 같은 꼬리말. policyLines() 가 여기서부터 잘라 냅니다. */
@@ -99,6 +100,10 @@ export function foodKindOf(place: PreparedRegionalPlace): FoodKind | null {
     if (source.provider === 'kcisa-pet-culture') {
       if (textOf(source.raw, '카테고리3') === '카페') return 'cafe';
       tags.push(textOf(source.raw, '카테고리3'), textOf(source.raw, '카테고리2'));
+    } else if (source.provider === 'kto-pet-tour') {
+      // 관광공사 분류 코드. A05020900 이 '카페/전통찻집' 한 칸이라 그대로 믿습니다.
+      if (textOf(source.raw, 'cat3') === 'A05020900') return 'cafe';
+      tags.push(textOf(source.raw, 'cat3'));
     } else {
       tags.push(textOf(source.raw, 'keyword'));
     }
@@ -108,20 +113,28 @@ export function foodKindOf(place: PreparedRegionalPlace): FoodKind | null {
   return CAFE_TAG.test(joined) ? 'cafe' : 'restaurant';
 }
 
+/** 출처마다 소개글이 들어 있는 칸 이름이 다릅니다. */
+const descriptionKeys: Record<PreparedPlaceSource['provider'], string> = {
+  'gangwon-pettravel': 'content',
+  'kto-pet-tour': 'overview',
+  'kcisa-pet-culture': '기본 정보_장소설명'
+};
+
 /**
- * 소개 문구. 강원 원본의 소개글이 훨씬 길어서 있으면 그쪽을 먼저 씁니다.
+ * 소개 문구. 강원 원본과 관광공사 원본의 소개글이 훨씬 길어서 있으면 그쪽을 먼저 씁니다.
  * (문화정보원 쪽은 '애견카페' 한 단어인 경우가 많아요.)
  */
 function descriptionOf(place: PreparedRegionalPlace): string {
-  const gangwon = place.sources.find((source) => source.provider === 'gangwon-pettravel');
-  const ordered = gangwon
-    ? [gangwon, ...place.sources.filter((s) => s !== gangwon)]
-    : place.sources;
+  const priority: PreparedPlaceSource['provider'][] = [
+    'gangwon-pettravel',
+    'kto-pet-tour',
+    'kcisa-pet-culture'
+  ];
+  const ordered = [...place.sources].sort(
+    (a, b) => priority.indexOf(a.provider) - priority.indexOf(b.provider)
+  );
   for (const source of ordered) {
-    const text =
-      source.provider === 'gangwon-pettravel'
-        ? textOf(source.raw, 'content')
-        : textOf(source.raw, '기본 정보_장소설명');
+    const text = textOf(source.raw, descriptionKeys[source.provider]);
     if (text) return text;
   }
   return '';
@@ -137,6 +150,17 @@ export function menuOf(place: PreparedRegionalPlace): string {
   for (const source of place.sources) {
     if (source.provider !== 'gangwon-pettravel') continue;
     const text = textOf(source.raw, 'usedCost');
+    if (text) return text;
+  }
+  // 관광공사 원본은 대표메뉴·취급메뉴를 상세 칸에 따로 둡니다. 강원 원본이 없을 때만 씁니다.
+  for (const source of place.sources) {
+    if (source.provider !== 'kto-pet-tour') continue;
+    const intro = source.raw.intro;
+    if (!intro || typeof intro !== 'object') continue;
+    const detail = intro as Record<string, unknown>;
+    const text = [textOf(detail, 'firstmenu'), textOf(detail, 'treatmenu')]
+      .filter(Boolean)
+      .join(' / ');
     if (text) return text;
   }
   return '';

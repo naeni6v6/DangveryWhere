@@ -11,7 +11,8 @@ const PARTICLES = {
   '와/과': ['과', '와'],
   '은/는': ['은', '는'],
   '이/가': ['이', '가'],
-  '을/를': ['을', '를']
+  '을/를': ['을', '를'],
+  '이에요/예요': ['이에요', '예요']
 } as const;
 
 export type ParticlePair = keyof typeof PARTICLES;

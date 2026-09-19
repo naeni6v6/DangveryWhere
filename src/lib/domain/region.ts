@@ -23,7 +23,7 @@ export type RegionId =
   | 'hongcheon';
 
 /** 지금 저장본에 들어 있는 원본 제공처. 지역마다 섞여 있어 화면에 출처를 그대로 밝힙니다. */
-export type ProviderId = 'gangwon-pettravel' | 'kcisa-pet-culture';
+export type ProviderId = 'gangwon-pettravel' | 'kcisa-pet-culture' | 'kto-pet-tour';
 
 export const providerInfo: Record<ProviderId, { name: string; shortName: string; url: string }> = {
   'gangwon-pettravel': {
@@ -35,6 +35,11 @@ export const providerInfo: Record<ProviderId, { name: string; shortName: string;
     name: '한국문화정보원 반려동물 동반 가능 문화시설',
     shortName: '한국문화정보원',
     url: 'https://www.data.go.kr/data/15111389/fileData.do'
+  },
+  'kto-pet-tour': {
+    name: '한국관광공사 반려동물 동반여행 서비스',
+    shortName: '한국관광공사',
+    url: 'https://www.data.go.kr/data/15135102/openapi.do'
   }
 };
 
@@ -74,9 +79,9 @@ export const regionCatalog: RegionGeo[] = [
     city: '강원 전체',
     label: '강원 전체',
     // 평창 남단부터 고성 경계까지, 강원이 한 화면에 들어오는 중심·확대 단계입니다.
-    center: { lat: 37.7519, lng: 128.2819 },
+    center: { lat: 37.7245, lng: 128.2895 },
     zoom: 9,
-    sources: ['kcisa-pet-culture', 'gangwon-pettravel'],
+    sources: ['kcisa-pet-culture', 'gangwon-pettravel', 'kto-pet-tour'],
     status: 'mixed'
   },
   {
@@ -84,9 +89,9 @@ export const regionCatalog: RegionGeo[] = [
     province: '강원',
     city: '양양군',
     label: '강원 양양군',
-    center: { lat: 38.0386, lng: 128.6469 },
+    center: { lat: 38.0386, lng: 128.6476 },
     zoom: 11,
-    sources: ['kcisa-pet-culture', 'gangwon-pettravel'],
+    sources: ['kcisa-pet-culture', 'gangwon-pettravel', 'kto-pet-tour'],
     status: 'prepared'
   },
   {
@@ -96,7 +101,7 @@ export const regionCatalog: RegionGeo[] = [
     label: '강원 춘천시',
     center: { lat: 37.8345, lng: 127.6706 },
     zoom: 11,
-    sources: ['kcisa-pet-culture', 'gangwon-pettravel'],
+    sources: ['kcisa-pet-culture', 'gangwon-pettravel', 'kto-pet-tour'],
     status: 'prepared'
   },
   {
@@ -104,9 +109,9 @@ export const regionCatalog: RegionGeo[] = [
     province: '강원',
     city: '강릉시',
     label: '강원 강릉시',
-    center: { lat: 37.7594, lng: 128.8888 },
+    center: { lat: 37.7601, lng: 128.8456 },
     zoom: 11,
-    sources: ['gangwon-pettravel'],
+    sources: ['gangwon-pettravel', 'kto-pet-tour'],
     status: 'active'
   },
   {
@@ -116,7 +121,7 @@ export const regionCatalog: RegionGeo[] = [
     label: '강원 홍천군',
     center: { lat: 37.714, lng: 127.9168 },
     zoom: 10,
-    sources: ['kcisa-pet-culture', 'gangwon-pettravel'],
+    sources: ['kcisa-pet-culture', 'gangwon-pettravel', 'kto-pet-tour'],
     status: 'prepared'
   },
   {
@@ -124,9 +129,9 @@ export const regionCatalog: RegionGeo[] = [
     province: '강원',
     city: '평창군',
     label: '강원 평창군',
-    center: { lat: 37.5294, lng: 128.512 },
+    center: { lat: 37.502, lng: 128.512 },
     zoom: 11,
-    sources: ['kcisa-pet-culture', 'gangwon-pettravel'],
+    sources: ['kcisa-pet-culture', 'gangwon-pettravel', 'kto-pet-tour'],
     status: 'prepared'
   }
 ];
@@ -138,7 +143,24 @@ export const regionCatalog: RegionGeo[] = [
 export function providerOfUrl(url: string): ProviderId | null {
   if (url.includes('pettravel.kr')) return 'gangwon-pettravel';
   if (url.includes('data.go.kr/data/15111389')) return 'kcisa-pet-culture';
+  if (url.includes('data.go.kr/data/15135102')) return 'kto-pet-tour';
   return null;
+}
+
+/**
+ * 사진 출처 한 줄.
+ *
+ * 관광공사 사진은 공공누리 제1유형(출처표시) 또는 제3유형(출처표시 + 변경금지)이라
+ * 출처를 밝혀야 씁니다. 제3유형이 대부분이라 사진을 줄이거나 자르지 않고
+ * tong.visitkorea.or.kr 원본 주소를 그대로 걸어 두었습니다.
+ * 강원 반려동반관광 사진은 우리가 받아 둔 것이라 이 줄이 붙지 않습니다.
+ */
+export function photoCredit(photos: string[]): string | null {
+  const credits: string[] = [];
+  if (photos.some((url) => url.includes('visitkorea.or.kr'))) credits.push('한국관광공사');
+  // 업소 홈페이지에서 고른 대표 사진(scripts/fetch-homepage-photos.mjs). 업소 저작물이라 밝힙니다.
+  if (photos.some((url) => url.startsWith('/places/homepage/'))) credits.push('업소 홈페이지');
+  return credits.length ? `사진: ${credits.join(' · ')}` : null;
 }
 
 export function findRegion(id: string): RegionGeo | null {

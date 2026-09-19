@@ -22,7 +22,8 @@
     type Place,
     type DogProfile
   } from '$lib/domain/place';
-  import { providerInfo, providerOfUrl } from '$lib/domain/region';
+  import { placeLink } from '$lib/domain/placeLink';
+  import { photoCredit, providerInfo, providerOfUrl } from '$lib/domain/region';
   // 장소 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
   import { menuBoardOf } from '$lib/data/menuBoards';
@@ -53,6 +54,7 @@
   );
   const notice = $derived(dog ? profileNotice(place, dog) : null);
   const phone = $derived(place.phone.replace(/[^0-9+]/g, ''));
+  const link = $derived(placeLink(place));
   // 장소마다 최대 5장. 첫 장은 표지로 쓰고 나머지는 아래 사진 줄에 이어 붙입니다.
   const photos = $derived((placeImages as Record<string, string[]>)[place.id] ?? []);
   // 앱 시트(appLayout)는 표지를 감추고 있어서, 첫 장까지 사진 줄에 함께 싣습니다.
@@ -64,6 +66,8 @@
     photoFailed = false;
   });
   const coverPhoto = $derived(photoFailed ? null : (photos[0] ?? null));
+  // 공공누리 출처표시. 관광공사 사진이 한 장이라도 섞여 있으면 밝힙니다.
+  const credit = $derived(photoCredit(photos));
   let panel: HTMLElement;
   let isMobile = $state(false);
   let detailExpanded = $state(false);
@@ -158,13 +162,18 @@
           onclick={onsave}><Heart size={21} fill={saved ? 'currentColor' : 'none'} /></button
         >
       </div>
-      <p class="detail-address"><MapPin size={14} />{place.address}</p>
+      <div class="detail-meta">
+        <p class="detail-address"><MapPin size={14} />{place.address}</p>
+        {#if phone}<a class="detail-phone" href={`tel:${phone}`}><Phone size={14} />{place.phone}</a
+          >{/if}
+      </div>
       <!-- 가게를 먼저 보여 주고(사진 → 소개 → 메뉴), 동반 규정은 그 아래에 둡니다. -->
       {#if morePhotos.length}<div class="photo-strip">
           {#each morePhotos as photo (photo)}
             <img src={photo} alt={`${place.name} 사진`} loading="lazy" decoding="async" />
           {/each}
         </div>{/if}
+      {#if photos.length && credit}<p class="photo-credit">{credit}</p>{/if}
       {#if place.description}<div class="about-place">
           <h3>이런 곳이에요</h3>
           <p>{place.description}</p>
@@ -215,13 +224,8 @@
     </div>
   </div>
   <div class="detail-actions">
-    {#if phone}<a class="secondary-button" href={`tel:${phone}`}><Phone size={17} />전화 문의</a
-      >{/if}
-    <a
-      class="primary-button"
-      href={`https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${place.latitude},${place.longitude}`}
-      target="_blank"
-      rel="noreferrer">길찾기<ArrowUpRight size={17} /></a
+    <a class="primary-button" href={link.url} target="_blank" rel="noreferrer"
+      >상세 정보 확인<ArrowUpRight size={17} /></a
     >
   </div>
 </div>
@@ -285,6 +289,11 @@
    * 표지에 못 실은 나머지 사진. 좌우로 밀어 보는 줄이라 detail-body 의 좌우 여백을
    * 음수 마진으로 지우고, 안쪽 패딩으로 되돌려 사진이 화면 끝까지 흘러가게 합니다.
    */
+  .photo-credit {
+    margin: -14px 0 20px;
+    font-size: 11px;
+    color: var(--muted);
+  }
   .photo-strip {
     display: flex;
     gap: 7px;
@@ -339,6 +348,11 @@
   .detail-title button {
     flex-shrink: 0;
   }
+  .detail-meta {
+    margin: 10px 0 27px;
+    display: grid;
+    gap: 4px;
+  }
   .detail-address {
     display: flex;
     align-items: start;
@@ -346,7 +360,16 @@
     font-size: 11px;
     color: var(--muted);
     line-height: 1.7;
-    margin: 10px 0 27px;
+    margin: 0;
+  }
+  .detail-phone {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    justify-self: start;
   }
   .detail-address :global(svg) {
     flex-shrink: 0;

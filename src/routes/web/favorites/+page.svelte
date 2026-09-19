@@ -18,8 +18,9 @@
     shortAddress,
     themeNames,
     type Place,
-    type ThemeFilter
+    type ThemeFilter,
   } from '$lib/domain/place';
+  import { placeLink } from '$lib/domain/placeLink';
   import { josa } from '$lib/domain/korean';
   import { getWebStore } from '$lib/web/store.svelte';
   import type { PageData } from './$types';
@@ -50,6 +51,7 @@
       'outdoor',
       'activity',
       'culture',
+      'shopping',
       'hospital'
     ] as ThemeFilter[])
       .map((id) => ({
@@ -167,10 +169,8 @@
               </button>
               <div class="fav-actions">
                 <a href={`/web/explore?place=${place.id}`}><Map size={16} />지도에서 보기</a>
-                <a
-                  href={`https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${place.latitude},${place.longitude}`}
-                  target="_blank"
-                  rel="noreferrer">길찾기<ArrowUpRight size={15} /></a
+                <a href={placeLink(place).url} target="_blank" rel="noreferrer"
+                  >상세 정보 확인<ArrowUpRight size={15} /></a
                 >
                 <button
                   class="fav-heart"

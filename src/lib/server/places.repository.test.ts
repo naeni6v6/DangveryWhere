@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('place data source', () => {
   it('allows the UI preview without making a database request', async () => {
     const places = await getPlaces();
-    expect(places).toHaveLength(93);
+    expect(places).toHaveLength(176);
     expect(places.every((place) => place.verifiedAt === null)).toBe(true);
     expect(query).not.toHaveBeenCalled();
   });

@@ -10,14 +10,17 @@ ALTER TABLE places ADD CONSTRAINT places_food_kind_check CHECK (
   food_kind IS NULL OR (category = 'food' AND food_kind IN ('cafe', 'restaurant'))
 );
 
+-- NOT VALID 인 이유: db:setup 은 이 파일을 매번 처음부터 다시 실행합니다. 뒤에 오는
+-- 007 이 분류와 id 규칙을 더 넓히는데, 그때 들어온 행이 이미 테이블에 있으면 여기서
+-- 좁은 규칙을 다시 검사하다 걸립니다. 새로 쓰는 행에는 그대로 걸리고, 최종 규칙은 007 이 쥡니다.
 ALTER TABLE places DROP CONSTRAINT IF EXISTS places_category_check;
 ALTER TABLE places ADD CONSTRAINT places_category_check CHECK (
   category IN ('food', 'stay', 'outdoor', 'activity', 'hospital')
-);
+) NOT VALID;
 
 -- 동물병원은 원본에서 번호 체계가 따로라, 동반 장소와 같은 번호가 나올 수 있습니다.
 -- 덮어쓰기를 막으려고 gw-h- 접두사를 쓰고, id 규칙을 거기에 맞춰 넓힙니다.
 ALTER TABLE places DROP CONSTRAINT IF EXISTS places_id_check;
-ALTER TABLE places ADD CONSTRAINT places_id_check CHECK (id ~ '^gw-(h-)?[0-9]+$');
+ALTER TABLE places ADD CONSTRAINT places_id_check CHECK (id ~ '^gw-(h-)?[0-9]+$') NOT VALID;
 
 CREATE INDEX IF NOT EXISTS places_food_kind ON places(food_kind);

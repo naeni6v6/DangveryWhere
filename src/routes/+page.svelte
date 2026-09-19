@@ -24,6 +24,7 @@
   } from '@lucide/svelte';
   import PlaceCard from '$lib/components/PlaceCard.svelte';
   import PlaceDetail from '$lib/components/PlaceDetail.svelte';
+  import { directLinkFirst } from '$lib/domain/placeLink';
   import MapView from '$lib/components/MapView.svelte';
   import DogDialog from '$lib/components/DogDialog.svelte';
   import {
@@ -72,8 +73,10 @@
     { id: 'outdoor', label: '관광·산책', icon: Trees },
     { id: 'activity', label: '체험', icon: Sparkles }
   ];
+  // 업소 페이지 링크가 있는 장소를 먼저 보여 줍니다(placeLink.ts).
   const filtered = $derived(
-    searchPlaces(data.places, query, category).filter((place) => {
+    directLinkFirst(
+      searchPlaces(data.places, query, category).filter((place) => {
       if (favoritesOnly && !savedIds.includes(place.id)) return false;
       if (weightInfoOnly && place.sourceWeight === null) return false;
       if (
@@ -85,6 +88,7 @@
         return false;
       return true;
     })
+    )
   );
   const filterCount = $derived(
     Number(weightInfoOnly) + Number(hideKnownMismatch && mode === 'dog')

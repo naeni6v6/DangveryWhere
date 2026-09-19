@@ -1,5 +1,5 @@
 /**
- * 전국 시군구 목록 (지도 기록 페이지의 세부 체크용)
+ * 전국 시군구 목록 (댕스탬프 페이지의 시군구 목록용)
  *
  * 원본: swcho/korea-maps — json/<시도>_시군구_경계.json 의 properties
  *       https://github.com/swcho/korea-maps  (MIT License, Copyright (c) 2022 StatGarten)

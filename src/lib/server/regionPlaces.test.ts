@@ -109,7 +109,7 @@ describe('converted places fit the model the screens already use', () => {
       for (const place of places) {
         expect(place.verifiedAt).toBeNull();
         // 수집일이지 규정 확인일이 아닙니다.
-        expect(place.importedAt).toBe('2026-09-17');
+        expect(place.importedAt).toBe('2026-09-19');
         expect(place.sourceUrl).toMatch(/^https:\/\//);
         expect(typeof place.description).toBe('string');
         expect(place.policy.length).toBeGreaterThan(0);
@@ -194,12 +194,12 @@ describe('region catalog matches the data it describes', () => {
     // 강원 밖은 목록에 없습니다. 저장본이 남아 있어도 화면에 나오면 안 돼요.
     expect(regions.every((region) => region.province === '강원')).toBe(true);
     // 강원 전체는 나머지를 합친 값이라 두 번 세지 않습니다.
-    expect(regions[0].placeCount).toBe(255 + 93);
+    expect(regions[0].placeCount).toBe(340 + 176);
     expect(
       regions
         .filter((region) => region.status !== 'mixed')
         .reduce((sum, region) => sum + region.placeCount, 0)
-    ).toBe(255 + 93);
+    ).toBe(340 + 176);
   });
 
   it('uses the live count for the region currently on screen', async () => {
@@ -264,7 +264,7 @@ describe('favourites keep working across regions', () => {
 describe('the live Gangneung region is untouched', () => {
   it('still comes from its own snapshot', async () => {
     const places = await getRegionPlaces('gangneung');
-    expect(places).toHaveLength(93);
+    expect(places).toHaveLength(176);
     expect(places.every((place) => place.address.includes('강릉'))).toBe(true);
     expect(places.some((place) => place.category === 'hospital')).toBe(true);
   });
@@ -277,7 +277,7 @@ describe('the whole-province view', () => {
 
   it('joins every region exactly once, in the same north-to-south order', async () => {
     const places = await getRegionPlaces('all');
-    expect(places).toHaveLength(255 + 93);
+    expect(places).toHaveLength(340 + 176);
     expect(new Set(places.map((place) => place.id)).size).toBe(places.length);
     // 강원 밖 저장본은 파일로만 남아 있고, 화면에는 한 건도 올라오지 않습니다.
     expect(places.every((place) => place.address.startsWith('강원'))).toBe(true);
