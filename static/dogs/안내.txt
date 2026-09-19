@@ -2,22 +2,31 @@
 
 `우리 강아지` 페이지(`/web/dog`) 왼쪽 무대와 견종 선택 목록에 쓰이는 이미지입니다.
 원본(1024px, #F8F8F8 배경 + 바닥 그림자)은 `assets/breeds/<한글견종명>.png` 에 있습니다.
+세 마리가 한 장에 묶여 온 시안은 `assets/breeds/시안/` 에 두고, `python scripts/breed-import.py split` 으로 칸마다 나눕니다.
 
 ## 파일 규칙
 
 | 경로 | 쓰임 |
 |---|---|
 | `dogs/<key>.webp` | 무대용, 640px 정사각형, 흰(#FFFFFF) 배경 + 바닥 그림자 |
+| `dogs/cut/<key>.webp` | 위 그림의 배경을 지운 판, 640px 정사각형 (자동 생성) |
 | `dogs/thumb/<key>.webp` | 견종 선택 목록 썸네일, 144px |
 
 - 배경은 순백(#FFFFFF)이어야 합니다. 무대에서 multiply 합성으로 배경을 지우기 때문에
   흰색이 아니면 네모 테두리가 비쳐 보여요.
 - 발이 닿는 바닥선은 이미지 높이의 약 88% 위치입니다. 체급별 확대가 이 선을 기준으로 이뤄져요.
+- `cut/` 은 `python scripts/breed-cutout.py` 로 만듭니다. multiply 로는 바닥 그림자가 얼룩으로 남고
+  흰 털도 탁해지는 자리(튜토리얼 완료 카드처럼 아이보리 위에 그냥 얹는 곳)에서 씁니다.
+  원본과 같은 640 정사각 캔버스라 바닥선 위치가 그대로예요. `breedCutout()` 으로 가져다 씁니다.
 
 ## 견종 추가하는 법
 
-1. 위 규칙대로 `dogs/<key>.webp`, `dogs/thumb/<key>.webp` 를 넣습니다.
-2. `src/lib/domain/breeds.ts` 의 `breeds` 에 한 줄 추가합니다.
+1. `assets/breeds/<한글>.png` 를 넣고 아래 둘을 돌립니다.
+   - `python scripts/breed-import.py build <한글>:<key>` → `dogs/<key>.webp` + `dogs/thumb/<key>.webp`
+   - `python scripts/breed-cutout.py <key>` → `dogs/cut/<key>.webp`
+2. `src/lib/domain/breeds.ts` 의 `breeds` 에 체급 자리에 맞춰 한 줄 추가합니다.
+   목록은 소형 → 중형 → 대형 차례이고, 견종 고르는 칸이 5칸짜리 격자 + 뒤에 '믹스'·'기타' 두 칸이라
+   **23종이 다섯 줄로 딱 떨어집니다.** 한 종을 더하면 한 종을 빼야 줄이 안 삐져나와요.
 
 ```ts
 { key: 'cocker-spaniel', label: '코카 스파니엘', match: ['코카', 'cocker'] }

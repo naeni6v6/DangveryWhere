@@ -14,7 +14,7 @@
     Plus,
     Pencil,
     Trash2,
-    Camera
+    Wand2
   } from '@lucide/svelte';
   import { type Dog, type DogSize, type Place } from '$lib/domain/place';
   import { MAX_DOGS, validateProfile } from '$lib/domain/profile';
@@ -88,7 +88,7 @@
    * 견종 목록·이미지는 $lib/domain/breeds.ts 와 static/dogs/ 에서 관리해요.
    */
   const previewBreed = $derived(findBreed(breed));
-  /** 사진으로 만든 이 아이의 캐릭터. 있으면 견종 캐릭터 대신 무대에 세웁니다. */
+  /** 직접 꾸민 이 아이의 캐릭터. 있으면 기본 견종 캐릭터 대신 무대에 세웁니다. */
   const character = $derived(store.characterFor(editingId));
   // 체급에 따라 캐릭터가 점점 커져요. (발끝 기준으로 확대)
   const sizeScale: Record<DogSize, number> = { small: 0.66, medium: 0.83, large: 1 };
@@ -276,7 +276,7 @@
           >
             {#key character?.id ?? previewBreed?.key ?? (mystery ? 'mystery' : '')}
               {#if character}
-                <!-- 사진으로 만든 캐릭터 (투명 배경) -->
+                <!-- 직접 꾸민 캐릭터 (투명 배경) -->
                 <img class="dog-model" src={character.finalImage} alt={modelAlt} draggable="false" />
               {:else if previewBreed && modelReady}
                 <img
@@ -316,7 +316,7 @@
         <p class="stage-note">견종을 고르면 캐릭터가 바뀌고, 체급을 바꾸면 크기가 달라져요.</p>
         {#if editing}
           <a class="stage-character" href={`/web/start/character?dog=${editing.id}`}>
-            <Camera size={16} />{character ? '사진으로 캐릭터 다시 만들기' : '사진으로 내 강아지 캐릭터 만들기'}
+            <Wand2 size={16} />{character ? '캐릭터 세부 다시 꾸미기' : '캐릭터 세부 꾸미기'}
           </a>
         {/if}
       </section>
@@ -410,7 +410,7 @@
 
     <!--
       아래: 우리 강아지 조건 요약.
-      예전에는 제한 장소·통과 장소 목록과 외출 체크리스트까지 늘어놨는데, 장소 목록은 '가게 찾기'와
+      예전에는 제한 장소·통과 장소 목록과 외출 체크리스트까지 늘어놨는데, 장소 목록은 '매장 찾기'와
       겹치고 체크리스트는 강아지 정보와 상관이 없어 뺐습니다. 숫자 셋과 버튼 하나면 충분해요.
     -->
     {#if store.dog && summary}
@@ -957,7 +957,7 @@
     color: var(--muted);
     text-align: center;
   }
-  /* 사진으로 캐릭터 만들기 (내 강아지 캐릭터 기능) */
+  /* 캐릭터 세부 꾸미기로 가는 단추 */
   .stage-character {
     display: inline-flex;
     align-items: center;

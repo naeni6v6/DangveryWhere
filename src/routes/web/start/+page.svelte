@@ -1,23 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fly } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
     ArrowLeft,
     ArrowRight,
-    Camera,
     Check,
     Dog as DogIcon,
     Map,
     PawPrint,
     PencilLine,
+    Wand2,
     X
   } from '@lucide/svelte';
   import {
     breeds,
     breedThumb,
     breedImage,
+    breedCutout,
     breedByLabel,
     findBreed,
     MYSTERY_IMAGE,
@@ -54,22 +55,42 @@
 
   /**
    * 첫 화면: 댕브리가 멀리서 달려오는 장면.
-   * 달려오는 동안(MASCOT_RUN_MS) 8프레임을 넘기고, 다 오면 인사 포즈로 바뀌며 말풍선이 뜹니다.
+   * 달려오는 동안(MASCOT_RUN_MS) 18프레임을 넘기고, 다 오면 인사 포즈로 바뀌며 말풍선이 뜹니다.
    * 한 번 본 뒤 [이전]으로 돌아오면 기다리게 하지 않고 바로 인사 포즈를 보여 줘요.
    */
   let runFrame = $state(0);
   let arrived = $state(false);
   let helloPlayed = false;
   /**
-   * 완료 화면 연출: 두구두구(실루엣이 떨리며 기대감) → 펑! 연기가 한참 머물다 → 걷히면서 캐릭터 등장.
+   * 완료 화면 연출: 들어오자마자 펑! 연기가 머물다 → 걷히면서 캐릭터 등장.
    * 연기는 REVEAL_POOF_MS 동안 머물고, 캐릭터는 연기가 걷히기 시작할 때 나와 그대로 남습니다.
    */
-  type Reveal = 'wait' | 'poof' | 'show';
-  let reveal = $state<Reveal>('wait');
-  const REVEAL_WAIT_MS = 1600;
+  type Reveal = 'poof' | 'show';
+  let reveal = $state<Reveal>('poof');
+  /** 연기가 다 걷혔는지. 걷히면 아예 치워, 캐릭터 위로 도는 레이어를 남기지 않습니다. */
+  let smoking = $state(true);
+  /** 둘레의 반짝임이 아직 도는지. 다 돌면 치웁니다. */
+  let sparkling = $state(true);
+  /**
+   * 등장 동작이 끝났는지. 끝난 뒤에는 애니메이션 자체를 떼어 냅니다.
+   * (0% 가 'opacity 0' 이라, 어떤 이유로든 애니메이션이 첫 프레임에서 멈추면 캐릭터가
+   *  안 보이거든요. 이 시점이 그 안전망이에요.)
+   */
+  let popped = $state(false);
+  /**
+   * 등장 그림이 실제로 그려질 수 있는지.
+   * 연기가 걷힐 때 <img> 를 새로 꽂는데, 그림(/dogs/cut/…)은 그때부터 받기 시작합니다.
+   * 아직 못 받은 그림에 등장 효과를 걸면 빈칸이 나타났다 사라지는 꼴이라, 받은 뒤에 겁니다.
+   */
+  let revealReady = $state(false);
+  /** 등장 효과 길이. 이만큼 지나면 애니메이션을 떼어도 보이는 모습이 같습니다. */
+  const REVEAL_FADE_MS = 450;
+  const REVEAL_POP_MS = REVEAL_FADE_MS + 250;
   const REVEAL_POOF_MS = 2500;
   /** 연기가 완전히 걷히는 데 더 걸리는 시간. 캐릭터가 나온 뒤에도 이만큼은 연기가 남아요. */
   const REVEAL_CLEAR_MS = 700;
+  /** 둘레의 반짝임이 다 사라지는 시간 (twinkle 1.1s + 마지막 별 지연 0.41s). */
+  const REVEAL_TWINKLE_MS = 1600;
 
   function reducedMotion() {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -77,14 +98,11 @@
 
   /**
    * 달려오는 동안 t(0~1)에 보일 프레임.
-   * 시트의 1→8번이 '멀리 → 가까이'라 거리에 맞춰 차례로 넘기되,
-   * 한 구간 안에서는 이웃 프레임을 번갈아 보여 발이 계속 움직이는 것처럼 보이게 합니다.
+   * 달리기2 시트는 18장이 걸음까지 이어진 연속 동작이라, 시간에 비례해 차례로 넘기기만 하면 됩니다.
    */
   function frameAt(t: number) {
     const last = MASCOT_RUN_FRAMES.length - 1;
-    const seg = Math.min(last - 1, Math.floor(t * last));
-    const sub = Math.floor((t * last - seg) * 4);
-    return Math.min(last, seg + (sub % 2));
+    return Math.min(last, Math.floor(t * MASCOT_RUN_FRAMES.length));
   }
 
   $effect(() => {
@@ -112,14 +130,25 @@
     if (step !== steps.length - 1) return;
     if (reducedMotion()) {
       reveal = 'show';
+      smoking = false;
+      sparkling = false;
+      popped = true;
       return;
     }
-    reveal = 'wait';
-    const poof = setTimeout(() => (reveal = 'poof'), REVEAL_WAIT_MS);
-    const show = setTimeout(() => (reveal = 'show'), REVEAL_WAIT_MS + REVEAL_POOF_MS);
+    reveal = 'poof';
+    smoking = true;
+    sparkling = true;
+    popped = false;
+    revealReady = false;
+    const show = setTimeout(() => (reveal = 'show'), REVEAL_POOF_MS);
+    const clear = setTimeout(() => (smoking = false), REVEAL_POOF_MS + REVEAL_CLEAR_MS);
+    const pop = setTimeout(() => (popped = true), REVEAL_POOF_MS + REVEAL_POP_MS);
+    const stars = setTimeout(() => (sparkling = false), REVEAL_POOF_MS + REVEAL_TWINKLE_MS);
     return () => {
-      clearTimeout(poof);
       clearTimeout(show);
+      clearTimeout(clear);
+      clearTimeout(pop);
+      clearTimeout(stars);
     };
   });
 
@@ -139,6 +168,16 @@
   const trimmedName = $derived(name.trim());
   const breedValue = $derived(custom ? customBreed.trim() : breedChoice);
   const previewBreed = $derived(findBreed(breedValue));
+  /**
+   * 마지막 화면의 등장 그림을 미리 받아 둡니다.
+   * 앞 단계에서 보여 주는 그림(/dogs/…)과 파일이 달라(/dogs/cut/…) 그냥 두면
+   * 연기가 걷히는 순간부터 받기 시작해요. 체급을 고르는 동안 받아 두면 제때 나옵니다.
+   */
+  $effect(() => {
+    const breed = previewBreed;
+    if (!breed || typeof Image === 'undefined') return;
+    new Image().src = breedCutout(breed);
+  });
   const profile = $derived(
     validateProfile({
       name,
@@ -241,7 +280,7 @@
     await finishTo(AFTER_TUTORIAL_PATH);
   }
   /**
-   * [내 강아지 캐릭터 만들기]: 같은 저장을 거친 뒤 사진으로 캐릭터를 만드는 화면으로.
+   * [캐릭터 세부 꾸미기]: 같은 저장을 거친 뒤 캐릭터를 다듬는 화면으로.
    * 방금 저장한 아이가 기준(store.dog)이 되므로 그 id 를 넘깁니다.
    */
   async function finishToCharacter() {
@@ -270,10 +309,11 @@
 
 <div class="tutorial">
   <div class="tutorial-bar">
-    <a class="bar-brand" href="/web"><img src="/logo.png" alt="" width="34" height="34" /><strong
-        >댕브리웨어</strong
-      ></a
-    >
+    <a class="bar-brand" href="/web">
+      <img class="bar-logo" src="/logo.png" alt="" width="34" height="34" />
+      <!-- 헤더(+layout.svelte)·메인과 같은 글자 로고 1번 시안, 같은 높이(46px)로 -->
+      <img class="bar-wordmark" src="/wordmark.png" alt="댕브리웨어" width="393" height="138" />
+    </a>
     <button class="bar-skip" type="button" onclick={skip}>건너뛰기</button>
   </div>
 
@@ -311,15 +351,19 @@
             <div class="run-scene" class:arrived style:--run-ms={`${MASCOT_RUN_MS}ms`}>
               <span class="run-ground" aria-hidden="true"></span>
               {#if arrived}
+                <!-- 달리던 그림이 사라지면서 인사 포즈가 겹쳐 떠오릅니다.
+                     달리기 마지막 프레임과 인사 포즈는 자세가 달라서, 그냥 갈아 끼우면 툭 끊겨 보여요.
+                     달려오던 애니메이션이 forwards 로 마지막 크기·자리에 멈춰 있는 동안 겹쳐 넘깁니다. -->
                 <img
                   class="mascot-wave"
                   src={MASCOT_IMAGE}
                   alt={`손을 흔드는 마스코트 ${MASCOT_NAME}`}
                   draggable="false"
+                  in:fade={{ duration: 260 }}
                 />
               {:else}
-                <!-- 8프레임을 겹쳐 두고 하나만 보이게 해서, 프레임이 바뀔 때 새로 불러오느라 깜빡이지 않게 합니다 -->
-                <div class="runner" aria-hidden="true">
+                <!-- 18프레임을 겹쳐 두고 하나만 보이게 해서, 프레임이 바뀔 때 새로 불러오느라 깜빡이지 않게 합니다 -->
+                <div class="runner" aria-hidden="true" out:fade={{ duration: 260 }}>
                   <div class="runner-bob">
                     {#each MASCOT_RUN_FRAMES as src, index (src)}
                       <img class="run-frame" class:on={runFrame === index} {src} alt="" draggable="false" />
@@ -493,32 +537,39 @@
               <small>0.1~120kg, 소수점 한 자리까지</small>
             </label>
           {:else}
-            <!-- 완료: 만든 강아지 카드. 실루엣이 두구두구 떨리다 → 펑! 연기 → 걷히면서 캐릭터 등장 -->
+            <!-- 완료: 만든 강아지 카드. 들어오자마자 펑! 연기 → 걷히면서 캐릭터 등장 -->
             <div class="done-card">
               <div
                 class="done-figure"
-                class:has-model={Boolean(previewBreed) && reveal === 'show'}
-                style:--wait-ms={`${REVEAL_WAIT_MS}ms`}
                 style:--poof-ms={`${REVEAL_POOF_MS + REVEAL_CLEAR_MS}ms`}
+                style:--reveal-fade={`${REVEAL_FADE_MS}ms`}
               >
-                {#if reveal === 'wait'}
-                  <img class="tease" src={MYSTERY_IMAGE} alt="" draggable="false" />
-                {:else}
-                  <!-- 연기는 캐릭터가 나온 뒤에도 남아 있다가 스스로 걷힙니다 -->
+                <!-- 연기는 캐릭터가 나온 뒤에도 남아 있다가 스스로 걷힙니다 -->
+                {#if smoking}
                   <span class="poof" aria-hidden="true">
                     {#each puffs as index (index)}<i style:--i={index}></i>{/each}
                   </span>
                 {/if}
                 {#if reveal === 'show'}
-                  <span class="twinkle" aria-hidden="true">
-                    {#each stars as index (index)}<i style:--i={index}>✦</i>{/each}
-                  </span>
+                  {#if sparkling}
+                    <span class="twinkle" aria-hidden="true">
+                      {#each stars as index (index)}<i style:--i={index}>✦</i>{/each}
+                    </span>
+                  {/if}
+                  <!-- 어떤 이유로든 그림을 못 받아도 빈칸이 남지 않게, 실루엣으로 갈아 끼웁니다 -->
                   <img
                     class="reveal"
+                    class:play={revealReady}
+                    class:popped
                     class:mystery={!previewBreed}
-                    src={previewBreed ? breedImage(previewBreed) : MYSTERY_IMAGE}
+                    src={previewBreed ? breedCutout(previewBreed) : MYSTERY_IMAGE}
                     alt=""
                     draggable="false"
+                    onload={() => (revealReady = true)}
+                    onerror={(event) => {
+                      const img = event.currentTarget as HTMLImageElement;
+                      if (!img.src.endsWith(MYSTERY_IMAGE)) img.src = MYSTERY_IMAGE;
+                    }}
                   />
                 {/if}
               </div>
@@ -532,12 +583,14 @@
                 >
               </div>
             </div>
-            <!-- 사진으로 우리 아이만의 캐릭터 만들기 (내 강아지 캐릭터 기능으로 이어짐) -->
+            <!-- 견종 캐릭터를 우리 아이에 가깝게 다듬기 (캐릭터 세부 꾸미기로 이어짐) -->
             <button type="button" class="character-cta" onclick={finishToCharacter} disabled={saving}>
-              <span class="cta-icon"><Camera size={22} /></span>
+              <span class="cta-icon"><Wand2 size={22} /></span>
               <span class="cta-copy">
-                <strong>사진으로 {trimmedName} 캐릭터 만들기</strong>
-                <small>사진 한 장이면 {trimmedName}의 털 색과 생김새를 살린 3D 캐릭터를 만들어 드려요.</small>
+                <strong>{trimmedName} 캐릭터 세부 꾸미기</strong>
+                <small
+                  >눈·귀·얼굴 크기와 털 색을 맞춰 {trimmedName}만의 캐릭터로 다듬을 수 있어요.</small
+                >
               </span>
               <ArrowRight size={18} />
             </button>
@@ -586,14 +639,16 @@
     gap: 9px;
     text-decoration: none;
   }
-  .bar-brand img {
+  .bar-logo {
+    flex-shrink: 0;
     transform: rotate(-8deg);
     filter: drop-shadow(0 4px 8px #b5704e40);
   }
-  .bar-brand strong {
-    font-size: 18px;
-    letter-spacing: -0.6px;
-    color: var(--brand);
+  /* 글자 로고는 높이만 정하고 너비는 비율대로. 헤더·메인과 같은 46px 입니다. */
+  .bar-wordmark {
+    flex-shrink: 0;
+    height: 46px;
+    width: auto;
   }
   .bar-skip {
     border: 0;
@@ -680,7 +735,8 @@
     align-items: center;
     justify-content: center;
     flex: 1;
-    gap: 6px;
+    /* 마스코트 발밑에 말풍선이 붙어 버리면 꼬리와 겹쳐 잘 안 읽혀요. 한 뼘 띄웁니다. */
+    gap: 26px;
     text-align: center;
   }
   /* 댕브리가 달려오는 무대. 마스코트 그림은 발끝이 바닥선에 맞춰진 정사각이라
@@ -714,8 +770,10 @@
     transform-origin: 50% 100%;
   }
   /* 멀리(작고 높게) → 가까이(크고 낮게). 다가올수록 빨리 커지는 원근 곡선 */
+  /* 멀리서는 천천히, 가까워지며 빨라졌다가, 도착 직전에 다시 늦춰 사뿐히 멈춥니다.
+     끝까지 가속하는 곡선이면 마지막 한 걸음이 확 덮치듯 들이닥쳐요. */
   .runner {
-    animation: run-approach var(--run-ms, 3000ms) cubic-bezier(0.55, 0.02, 0.85, 0.45) forwards;
+    animation: run-approach var(--run-ms, 3000ms) cubic-bezier(0.5, 0.02, 0.32, 1) forwards;
   }
   /* 발밑 그림자 — 몸이 통통 튀어도 바닥에 남아요 */
   .runner::before {
@@ -729,11 +787,13 @@
     border-radius: 50%;
     background: radial-gradient(closest-side, #4a342838, transparent);
   }
+  /* 프레임마다 발끝을 바닥선에 맞춰 두어 몸이 뜨는 만큼은 지워졌어요.
+     시트의 한 걸음(약 4.5프레임 ≈ 0.47초)에 맞춘 들썩임을 CSS 로 돌려줍니다. */
   .runner-bob {
     position: absolute;
     inset: 0;
     transform-origin: 50% 100%;
-    animation: run-bob 0.3s ease-in-out infinite alternate;
+    animation: run-bob 0.235s ease-in-out infinite alternate;
   }
   .run-frame {
     position: absolute;
@@ -763,23 +823,31 @@
       transform: translateY(0) scale(1, 1);
     }
     to {
-      transform: translateY(-7%) scale(0.97, 1.03);
+      transform: translateY(-5%) scale(0.98, 1.02);
     }
   }
   /* 도착: 살짝 눌렸다 펴지며 서고(착지), 몸을 갸웃갸웃 흔들어 손 인사, 그 뒤엔 숨쉬기 */
   .mascot-wave {
     object-fit: contain;
     animation:
-      wave-land 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-      wave-hi 0.8s ease-in-out 0.5s 3,
-      mascot-breathe 3.6s ease-in-out 3s infinite;
+      wave-land 0.7s cubic-bezier(0.22, 0.9, 0.3, 1),
+      wave-hi 0.8s ease-in-out 0.62s 3,
+      mascot-breathe 3.6s ease-in-out 3.1s infinite;
   }
+  /* 달려온 기세가 남아 앞으로 살짝 밀렸다가, 무릎을 굽혔다 펴며 섭니다.
+     겹쳐 넘기는 260ms 동안은 거의 움직이지 않아야 두 그림이 따로 놀지 않아요. */
   @keyframes wave-land {
     0% {
-      transform: scale(1.08, 0.88);
+      transform: translateY(2px) scale(1.04, 0.95);
+    }
+    38% {
+      transform: translateY(3px) scale(1.05, 0.93);
+    }
+    70% {
+      transform: translateY(-2px) scale(0.98, 1.03);
     }
     100% {
-      transform: scale(1, 1);
+      transform: translateY(0) scale(1, 1);
     }
   }
   @keyframes wave-hi {
@@ -834,8 +902,10 @@
   }
   .hello-speech {
     max-width: 440px;
+    padding: 18px 24px;
     font-size: 17px;
     color: var(--ink);
+    box-shadow: 0 10px 24px -16px #4a3428a6;
     animation: speech-in 0.4s 0.35s ease-out both;
   }
   .hello-speech::before {
@@ -1283,56 +1353,10 @@
     width: 150px;
     height: 150px;
   }
-  /* 견종 캐릭터 파일은 순백 배경이라, 등장한 뒤에만 multiply 로 배경을 지웁니다 */
-  .done-figure.has-model {
-    mix-blend-mode: multiply;
-  }
   .done-figure img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-  }
-  /* 두구두구 — 정체 모를 실루엣이 점점 크게 떨립니다 (기대감) */
-  .done-figure .tease {
-    filter: brightness(0.72) saturate(0.5);
-    opacity: 0.85;
-    transform-origin: 50% 88%;
-    animation: drumroll var(--wait-ms, 1600ms) linear both;
-  }
-  @keyframes drumroll {
-    0% {
-      transform: translateX(0) rotate(0deg);
-    }
-    10% {
-      transform: translateX(-1px) rotate(-0.6deg);
-    }
-    20% {
-      transform: translateX(1px) rotate(0.6deg);
-    }
-    30% {
-      transform: translateX(-2px) rotate(-1.2deg);
-    }
-    40% {
-      transform: translateX(2px) rotate(1.2deg);
-    }
-    50% {
-      transform: translateX(-3px) rotate(-2deg);
-    }
-    60% {
-      transform: translateX(3px) rotate(2deg);
-    }
-    70% {
-      transform: translateX(-4px) rotate(-3deg) scale(1.02);
-    }
-    80% {
-      transform: translateX(4px) rotate(3deg) scale(1.03);
-    }
-    90% {
-      transform: translateX(-5px) rotate(-4deg) scale(1.05);
-    }
-    100% {
-      transform: translateX(5px) rotate(4deg) scale(1.07);
-    }
   }
   /* 펑! — 연기 뭉치가 확 퍼진 뒤 한참 머물며 일렁이다가, 캐릭터가 나오면 천천히 걷힙니다 */
   .poof {
@@ -1409,21 +1433,30 @@
       transform: rotate(3deg) scale(1.04);
     }
   }
-  /* 등장 — 연기 사이로 캐릭터가 튀어나오고, 별이 둘레에서 반짝이다 사라집니다. 캐릭터는 그대로 남아요. */
+  /* 등장 — 연기 사이로 캐릭터가 스르륵 드러나고, 별이 둘레에서 반짝이다 사라집니다.
+     **크기도 자리도 절대 건드리지 않습니다.**
+     예전에는 '발끝을 딛고 1.14배로 커졌다 돌아오는' 동작을 걸었는데, 캐릭터는 제 크기로
+     나타났다가 부풀고 다시 줄어들었어요. 기준점이 발끝이라 줄어드는 동안 머리가 아래로
+     내려와서, 펑 한 뒤 잠시 있다 캐릭터가 밑으로 미끄러지는 것처럼 보였습니다.
+     어떤 곡선을 쓰든 '커졌다 제자리'는 반드시 내려앉는 구간을 만들기 때문에, 크기를 건드리는
+     대신 투명도만 바꿉니다. 연기가 걷히는 것과 겹쳐 충분히 '등장'으로 읽혀요. */
   .done-figure .reveal {
     position: relative;
-    animation: reveal-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    z-index: 1;
+    /* 가만히 있을 때의 모습 = 제자리·제 크기·또렷함. 애니메이션이 안 돌아도 늘 이 모습입니다. */
+    opacity: 1;
   }
-  @keyframes reveal-pop {
-    0% {
+  /* 그림이 다 받아진 뒤에만 겁니다 (받기 전에 걸면 빈칸이 나타났다 사라져요) */
+  .done-figure .reveal.play {
+    animation: reveal-fade var(--reveal-fade, 450ms) ease-out;
+  }
+  /* 동작이 끝났을 시간. 떼어 내도 보이는 모습이 같습니다. */
+  .done-figure .reveal.popped {
+    animation: none;
+  }
+  @keyframes reveal-fade {
+    from {
       opacity: 0;
-      transform: scale(0.15) translateY(24px) rotate(-12deg);
-    }
-    55% {
-      opacity: 1;
-    }
-    100% {
-      transform: none;
     }
   }
   .twinkle {
@@ -1543,6 +1576,9 @@
     min-width: 0;
   }
   .cta-copy strong {
+    display: flex;
+    align-items: center;
+    gap: 7px;
     font-size: 15px;
   }
   .cta-copy small {
@@ -1635,11 +1671,11 @@
     .mascot-wave,
     .mascot-head,
     .dots i,
-    .done-figure .tease,
     .poof,
     .poof::before,
     .poof i,
     .done-figure .reveal,
+    .done-figure .reveal.play,
     .twinkle i,
     .breed-model,
     .hello-speech {

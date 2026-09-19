@@ -17,14 +17,19 @@ export const MASCOT_CURIOUS = '/mascot/dangbri-curious.webp';
 export const MASCOT_FINISH = '/mascot/dangbri-finish.webp';
 
 /**
- * 멀리서 달려오는 8프레임 (댕브리_달리기 시트).
- * 1번이 가장 멀리, 8번이 가장 가까이 온 동작이라 순서대로 틀면 달려오는 장면이 됩니다.
- * 발끝을 같은 바닥선에 맞춘 정사각 캔버스라 CSS 로 크기만 키우면 원근이 살아요.
+ * 달려오는 18프레임 (댕브리_달리기2 시트).
+ * 네 걸음 남짓이 끊김 없이 이어지도록 그려진 연속 동작이라, 1번부터 차례로 틀면 됩니다.
+ * 18장 모두 같은 배율로 발끝을 같은 바닥선에 맞춰 두었으니
+ * CSS 로 크기만 키우면 달려오는 원근이 얹힙니다.
  */
 export const MASCOT_RUN_FRAMES = Array.from(
-  { length: 8 },
-  (_, i) => `/mascot/dangbri-run-${i + 1}.webp`
+  { length: 18 },
+  (_, i) => `/mascot/dangbri-dash-${i + 1}.webp`
 );
 
-/** 달려오는 데 걸리는 시간(ms). 다 오면 인사 포즈로 바뀝니다. */
-export const MASCOT_RUN_MS = 3000;
+/**
+ * 달려오는 데 걸리는 시간(ms). 다 오면 인사 포즈로 바뀝니다.
+ * 18프레임을 이 시간에 고르게 나눠 트니, 한 장에 약 105ms(≈9.5fps) — 클레이 애니메이션 같은 결이면서
+ * 걸음이 이어져 보이는 속도예요. 늘리면 느릿느릿 끊겨 보입니다.
+ */
+export const MASCOT_RUN_MS = 1900;

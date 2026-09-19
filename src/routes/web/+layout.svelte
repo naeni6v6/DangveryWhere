@@ -50,7 +50,7 @@
   const isLanding = $derived(path === '/web' || path === '/web/start' || path === '/web/start/character');
   const nav = [
     { href: '/web/dog', label: '우리 강아지', icon: PawPrint },
-    { href: '/web/explore', label: '가게 찾기', icon: Map },
+    { href: '/web/explore', label: '매장 찾기', icon: Map },
     { href: '/web/record', label: '댕스탬프', icon: Stamp },
     { href: '/web/favorites', label: '찜한 장소', icon: Heart }
   ];

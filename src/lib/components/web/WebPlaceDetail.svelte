@@ -9,7 +9,10 @@
     Clock3,
     PawPrint,
     Info,
-    ExternalLink
+    ExternalLink,
+    ZoomIn,
+    ChevronLeft,
+    ChevronRight
   } from '@lucide/svelte';
   import {
     placeMenu,
@@ -73,6 +76,28 @@
     photoFailed = false;
   });
   const hasPhoto = $derived(!!photoSrc && !photoFailed);
+
+  /**
+   * 사진 크게 보기.
+   * 목록의 사진은 작게 잘려 있어서 간판·메뉴판 글씨가 안 읽혀요. 눌러서 원본 크기로 펼쳐 봅니다.
+   * 열려 있는 사진의 번호를 담고, 닫혀 있으면 null 입니다.
+   */
+  let zoomed = $state<number | null>(null);
+  const zoomStep = (move: number) => {
+    if (zoomed === null) return;
+    zoomed = (zoomed + move + photos.length) % photos.length;
+  };
+  // 다른 장소로 넘어가면 크게 보던 사진은 닫습니다.
+  $effect(() => {
+    place.id;
+    zoomed = null;
+  });
+  let zoomLayer = $state<HTMLElement>();
+  // 열릴 때 초점을 안으로 들여야 방향키·Esc 가 먹고, Esc 가 장소 상세까지 같이 닫지 않아요.
+  $effect(() => {
+    if (zoomed !== null) zoomLayer?.focus({ preventScroll: true });
+  });
+
   let panel: HTMLElement;
   onMount(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -102,6 +127,12 @@
         />
       {/key}
       <span class="cover-shade" aria-hidden="true"></span>
+      <!-- 사진을 눌러 크게 볼 수 있다는 걸 돋보기 표로 알려 줍니다 -->
+      <button class="zoom-cover" type="button" onclick={() => (zoomed = 0)}>
+        <span class="zoom-badge"><ZoomIn size={16} />크게 보기{#if photos.length > 1}
+            <em>{photos.length}장</em>{/if}</span
+        >
+      </button>
     {/if}
     <div class="cover-top">
       <span>장소 살펴보기</span>
@@ -109,8 +140,12 @@
         ><X size={22} /></button
       >
     </div>
-    {#if !hasPhoto}<div class="cover-art" aria-hidden="true">
-        <ThemeIcon {theme} size={32} strokeWidth={1.4} />
+    <!-- 사진을 아직 못 구한 가게. 바탕만 띄워 두면 무엇이 빠진 건지 알 수 없어서,
+         사진이 들어올 자리라는 걸 한가운데에 적어 둡니다. -->
+    {#if !hasPhoto}<div class="cover-empty">
+        <ThemeIcon {theme} size={30} strokeWidth={1.4} />
+        <strong>사진 준비중</strong>
+        <span>{themeNames[theme]} 사진을 모으고 있어요</span>
       </div>{/if}
     <div class="cover-text">
       <span class="cover-eyebrow">{themeNames[theme]}{area ? " · " + area : ""}</span>
@@ -126,8 +161,16 @@
     <div class="detail-body">
       <!-- 가게를 먼저 보여 주고(사진 → 소개 → 메뉴), 동반 규정은 그 아래에 둡니다. -->
       {#if hasPhoto && morePhotos.length}<div class="photo-strip">
-          {#each morePhotos as photo (photo)}
-            <img src={photo} alt={`${place.name} 사진`} loading="lazy" decoding="async" />
+          {#each morePhotos as photo, index (photo)}
+            <button
+              class="photo-thumb"
+              type="button"
+              aria-label={`${place.name} 사진 ${index + 2} 크게 보기`}
+              onclick={() => (zoomed = index + 1)}
+            >
+              <img src={photo} alt={`${place.name} 사진`} loading="lazy" decoding="async" />
+              <span class="zoom-mark" aria-hidden="true"><ZoomIn size={15} /></span>
+            </button>
           {/each}
         </div>{/if}
       {#if hasPhoto && credit}<p class="photo-credit">{credit}</p>{/if}
@@ -211,6 +254,46 @@
   </div>
 </div>
 
+<!--
+  사진 크게 보기.
+  키 입력은 여기서 받아 멈춰 세웁니다. 그냥 두면 Esc 한 번에 장소 상세까지 같이 닫혀요.
+-->
+{#if zoomed !== null}
+  <div
+    class="zoom-layer"
+    bind:this={zoomLayer}
+    role="dialog"
+    aria-modal="true"
+    aria-label={`${place.name} 사진 크게 보기`}
+    tabindex="-1"
+    onkeydown={(event) => {
+      if (event.key === 'Escape') zoomed = null;
+      else if (event.key === 'ArrowLeft') zoomStep(-1);
+      else if (event.key === 'ArrowRight') zoomStep(1);
+      else return;
+      event.preventDefault();
+      event.stopPropagation();
+    }}
+  >
+    <!-- 사진 바깥을 누르면 닫힙니다 -->
+    <button class="zoom-backdrop" type="button" aria-label="크게 보기 닫기" onclick={() => (zoomed = null)}
+    ></button>
+    <img class="zoom-photo" src={photos[zoomed]} alt={`${place.name} 사진 ${zoomed + 1}`} />
+    <button class="zoom-close" type="button" aria-label="크게 보기 닫기" onclick={() => (zoomed = null)}
+      ><X size={22} /></button
+    >
+    {#if photos.length > 1}
+      <button class="zoom-nav prev" type="button" aria-label="이전 사진" onclick={() => zoomStep(-1)}
+        ><ChevronLeft size={26} /></button
+      >
+      <button class="zoom-nav next" type="button" aria-label="다음 사진" onclick={() => zoomStep(1)}
+        ><ChevronRight size={26} /></button
+      >
+      <p class="zoom-count">{zoomed + 1} / {photos.length}</p>
+    {/if}
+  </div>
+{/if}
+
 <style>
   .web-detail {
     position: absolute;
@@ -231,14 +314,15 @@
   .detail-cover {
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 260px;
     padding: 14px 22px 22px;
     background: linear-gradient(135deg, var(--brand-deep) 0%, var(--brand) 55%, #b5553f 100%);
     color: #fff;
   }
   /* 실제 가게 사진 커버 */
   .detail-cover.has-photo {
-    display: flex;
-    flex-direction: column;
     min-height: 240px;
     background: var(--brown-deep);
   }
@@ -271,7 +355,10 @@
     padding-top: 40px;
     text-shadow: 0 1px 10px #0000004d;
   }
+  /* 사진을 덮은 '크게 보기' 단추 위로 올려, 닫기 단추가 계속 눌리게 합니다. */
   .cover-top {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -297,15 +384,32 @@
   .has-photo .cover-close:hover {
     background: #00000059;
   }
-  .cover-art {
-    width: 54px;
-    height: 54px;
-    border-radius: 14px;
-    background: #ffffff22;
-    border: 1px solid #ffffff44;
-    display: grid;
-    place-items: center;
-    margin-bottom: 12px;
+  /* 사진이 들어올 자리 */
+  .cover-empty {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 120px;
+    margin: 14px 0 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px dashed #ffffff59;
+    border-radius: 16px;
+    background: #ffffff14;
+    color: #fff;
+  }
+  .cover-empty strong {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .cover-empty span {
+    font-size: 12.5px;
+    color: #ffffffbd;
   }
   .cover-eyebrow {
     font-size: 12.5px;
@@ -484,14 +588,181 @@
   .photo-strip::-webkit-scrollbar {
     display: none;
   }
-  .photo-strip img {
+  /* 사진 한 장 = 누를 수 있는 단추. 돋보기 표로 크게 볼 수 있다는 걸 알립니다. */
+  .photo-thumb {
+    position: relative;
     flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: none;
+    cursor: zoom-in;
+    scroll-snap-align: start;
+  }
+  .photo-strip img {
+    display: block;
     width: 148px;
     height: 104px;
     object-fit: cover;
-    border-radius: 10px;
     background: var(--cream);
-    scroll-snap-align: start;
+    transition: transform 0.25s ease;
+  }
+  .photo-thumb:hover img,
+  .photo-thumb:focus-visible img {
+    transform: scale(1.06);
+  }
+  .zoom-mark {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #1f140eb8;
+    color: #fff;
+  }
+  .photo-thumb:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  /* 표지 사진 전체를 누를 수 있게 덮되, 위에 얹힌 닫기 단추·글자보다는 아래에 둡니다. */
+  .zoom-cover {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+  }
+  .zoom-badge {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #1f140ecc;
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    transition: background 0.16s;
+  }
+  .zoom-badge em {
+    font-style: normal;
+    opacity: 0.75;
+  }
+  .zoom-cover:hover .zoom-badge,
+  .zoom-cover:focus-visible .zoom-badge {
+    background: var(--brand-deep);
+  }
+  .zoom-cover:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+  }
+
+  /* ---------- 사진 크게 보기 ---------- */
+  .zoom-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: clamp(16px, 4vw, 56px);
+  }
+  .zoom-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: #1c120bdb;
+    cursor: zoom-out;
+    animation: zoom-fade 0.18s ease-out;
+  }
+  .zoom-photo {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 14px;
+    object-fit: contain;
+    box-shadow: 0 30px 70px -30px #000000a6;
+    animation: zoom-in 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @keyframes zoom-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes zoom-in {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+  }
+  .zoom-close,
+  .zoom-nav {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    border: 1px solid #ffffff3d;
+    border-radius: 50%;
+    background: #241811d9;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.16s, transform 0.16s;
+  }
+  .zoom-close {
+    top: clamp(14px, 3vw, 28px);
+    right: clamp(14px, 3vw, 28px);
+    width: 46px;
+    height: 46px;
+  }
+  .zoom-nav {
+    top: 50%;
+    width: 52px;
+    height: 52px;
+    margin-top: -26px;
+  }
+  .zoom-nav.prev {
+    left: clamp(10px, 2.5vw, 26px);
+  }
+  .zoom-nav.next {
+    right: clamp(10px, 2.5vw, 26px);
+  }
+  .zoom-close:hover,
+  .zoom-nav:hover,
+  .zoom-close:focus-visible,
+  .zoom-nav:focus-visible {
+    background: var(--brand);
+    transform: scale(1.06);
+    outline: none;
+  }
+  .zoom-count {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(14px, 3vw, 26px);
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #241811d9;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .zoom-backdrop,
+    .zoom-photo {
+      animation: none;
+    }
+    .photo-thumb img {
+      transition: none;
+    }
   }
   .about-place h3 {
     font-size: 15.5px;

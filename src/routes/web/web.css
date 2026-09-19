@@ -127,15 +127,25 @@
 }
 
 /* ---------- 지도 (MapView 내부 요소 크기 보정) ---------- */
+/* PC 화면은 지도가 넓어서 마커도 한 치수 크게 잡습니다. 모양은 app.css 와 같아요. */
 .web-root .live-map-marker {
-  background: var(--brand);
-  font-size: 13.5px;
-  font-weight: 600;
-  padding: 9px 14px;
-  border-radius: 14px;
+  font-size: 13px;
+  max-width: 220px;
+  padding: 7px 14px 7px 7px;
+}
+.web-root .live-map-marker .marker-icon {
+  width: 24px;
+  height: 24px;
 }
 .web-root .live-map-marker.selected {
   background: var(--brand-deep);
+}
+.web-root .live-map-dot {
+  width: 16px;
+  height: 16px;
+}
+.web-root .live-map-cluster {
+  font-size: 14.5px;
 }
 .web-root .web-map .map-shell .map-location {
   font-size: 14px;

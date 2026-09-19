@@ -5,6 +5,7 @@
   import MapView from '$lib/components/MapView.svelte';
   import WebPlaceCard from '$lib/components/web/WebPlaceCard.svelte';
   import { directLinkFirst } from '$lib/domain/placeLink';
+  import { hasPhoto, photoFirst } from '$lib/domain/placePhoto';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
   import { themeNames, type Theme, type ThemeFilter, type Place } from '$lib/domain/place';
@@ -43,8 +44,11 @@
       // 그 지역에 문화시설도 동물병원도 없으면 빈 줄이 남지 않게 통째로 뺍니다.
       .filter((row) => row.length)
   );
-  // 업소 페이지 링크가 있는 장소를 먼저. 그 안에서는 서버가 준 순서 그대로입니다.
-  const filtered = $derived(directLinkFirst(store.filter(data.places)));
+  // 사진이 있는 장소를 맨 위로, 그다음 업소 페이지 링크가 있는 장소.
+  // 사진 없는 곳도 목록에는 남습니다(동반 규정은 사진과 상관없이 필요한 정보라서요).
+  const filtered = $derived(photoFirst(directLinkFirst(store.filter(data.places))));
+  // 사진 있는 곳이 어디서 끝나는지. 그 자리에 칸막이를 한 줄 넣습니다.
+  const withPhoto = $derived(filtered.filter(hasPhoto).length);
   const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
   const area = $derived(region.label);
   const sources = $derived(region.sources.map((id) => providerInfo[id]));
@@ -106,7 +110,7 @@
 </script>
 
 <svelte:head>
-  <title>가게 찾기 — 댕브리웨어</title>
+  <title>매장 찾기 — 댕브리웨어</title>
 </svelte:head>
 <svelte:window
   onkeydown={(event) => {
@@ -192,13 +196,19 @@
   </div>
 
   <div class="list-scroll" bind:this={listElement}>
-    {#each filtered as place (place.id)}<WebPlaceCard
+    {#each filtered as place, index (place.id)}
+      <!-- 사진 있는 곳과 없는 곳 사이 칸막이. 목록이 갑자기 허전해 보이지 않게 이유를 적어 둡니다. -->
+      {#if index === withPhoto && withPhoto > 0}<div class="list-divider">
+          <span>사진 준비 중인 곳 {filtered.length - withPhoto}</span>
+        </div>{/if}
+      <WebPlaceCard
         {place}
         selected={selected?.id === place.id}
         saved={store.isSaved(place.id)}
         onselect={() => (selected = place)}
         onsave={() => store.toggleSave(place)}
-      />{/each}
+      />
+    {/each}
     {#if !filtered.length}<div class="empty-state">
         <Search size={36} strokeWidth={1} />
         <h3>조건에 맞는 장소가 없어요</h3>
@@ -382,6 +392,21 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+  /* 사진 있는 곳 / 준비 중인 곳 사이 칸막이 */
+  .list-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 14px 10px 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .list-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
   }
   .sidebar-footer {
     display: flex;

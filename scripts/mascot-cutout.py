@@ -8,7 +8,8 @@
     python scripts/mascot-cutout.py run wave   # 일부만 (curious / finish / wave / run)
 
 - 궁금 / 마무리 / 인사: rembg(u2net) 로 배경을 지우고 여백을 잘라 저장
-- 달리기: 시트 위 줄의 8프레임을 잘라 각각 배경 제거 후, 발끝을 같은 바닥선에 맞춘 정사각 캔버스에 담아 저장
+- 달리기: 달리기2 시트(3줄 x 6칸, 18프레임)를 잘라 각각 배경 제거 후,
+  18장 공통 배율로 발끝을 같은 바닥선에 맞춘 정사각 캔버스에 담아 저장
   (isnet-anime 모델은 작은 프레임을 놓치거나 귀·다리를 잘라 먹어 u2net 을 씁니다)
 - 확인용으로 파란 배경에 얹은 그림을 scripts/.mascot-check/ 에 함께 남깁니다 (git 제외)
 """
@@ -89,54 +90,71 @@ def square(rgba: Image.Image, side: int, pad_bottom: float = 0.06) -> Image.Imag
     return canvas
 
 
+def pack_run(cutouts: list[Image.Image], side: int, pad_bottom: float = 0.05) -> list[Image.Image]:
+    """달리기 프레임들을 같은 정사각 캔버스에 담습니다.
+
+    프레임마다 따로 맞추면(각자 꽉 채우면) 몸을 웅크린 프레임만 크게 담겨 덩치가 들썩여요.
+    그래서 배율은 18장 공통으로 하나만 쓰고,
+    - 가로: 알파 무게중심 (앞발 하나가 튀어나와도 몸통 자리가 흔들리지 않게)
+    - 세로: 발끝을 같은 바닥선에
+    에 맞춰 얹습니다. 이러면 그림에 그려진 자세·크기 변화만 남아 달리는 동작이 이어집니다.
+    """
+    import numpy as np
+
+    inner = side * (1 - pad_bottom - 0.04)
+    scale = min(inner / max(c.width for c in cutouts), inner / max(c.height for c in cutouts))
+    ground = side - round(side * pad_bottom)
+    out = []
+    for c in cutouts:
+        w, h = round(c.width * scale), round(c.height * scale)
+        im = c.resize((w, h), Image.LANCZOS)
+        alpha = np.asarray(im.getchannel('A')).astype(float)
+        xs = alpha.sum(0)
+        mid = float((xs * np.arange(w)).sum() / max(xs.sum(), 1))
+        canvas = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+        canvas.alpha_composite(im, (round(side / 2 - mid), ground - h))
+        out.append(canvas)
+    return out
+
+
 def run_frames(sheet: Image.Image):
-    """시트 위 줄(달리기 8프레임)을 세로 띠 단위로 나눕니다. 라벨 글씨는 아래에서 잘라 냅니다."""
-    rgb = sheet.convert('RGB')
-    w, h = rgb.size
-    px = rgb.load()
+    """달리기2 시트(3줄 x 6칸, 18프레임)를 잘라 냅니다. 제목·번호 글씨는 띠 밖이라 자동으로 빠져요."""
+    import numpy as np
 
-    # 배경과 다른 픽셀 판정(느슨하게) — 프레임 위치만 찾는 용도
-    def ink(x, y):
-        r, g, b = px[x, y]
-        return abs(r - 251) > 10 or abs(g - 248) > 10 or abs(b - 246) > 10
+    a = np.asarray(sheet.convert('RGB')).astype(int)
+    h, w = a.shape[:2]
+    # 배경은 오른쪽 위 구석 색(크림). 이보다 충분히 다른 픽셀만 그림으로 봅니다.
+    bg = a[2, w - 3]
+    ink = np.abs(a - bg).sum(2) > 22
 
-    y0, y1 = 130, 400  # 프레임 몸통이 있는 띠(제목·번호 글씨 제외)
-    counts = [sum(1 for y in range(y0, y1, 2) if ink(x, y)) for x in range(w)]
-    runs, start = [], None
-    for x, on in enumerate([c > 0 for c in counts] + [False]):
-        if on and start is None:
-            start = x
-        elif not on and start is not None:
-            if x - start > 30:
-                runs.append((start, x))
-            start = None
-    # 프레임끼리 가로로 살짝 겹치면(앞발·귀) 띠가 붙어 버려요.
-    # 8개가 안 나오면 가장 넓은 띠를 잉크가 가장 적은 열에서 갈라 8개를 맞춥니다.
-    while len(runs) < 8:
-        i = max(range(len(runs)), key=lambda k: runs[k][1] - runs[k][0])
-        xa, xb = runs[i]
-        cut_at = min(range(xa + 40, xb - 40), key=lambda x: counts[x])
-        runs[i:i + 1] = [(xa, cut_at), (cut_at, xb)]
-        runs.sort()
-    assert len(runs) == 8, runs
+    # 그림 몸통이 있는 세 줄(제목·번호 글씨는 이 밖에 있습니다)
+    bands = [(82, 352), (392, 656), (680, 982)]
     frames = []
-    for i, (xa, xb) in enumerate(runs):
-        # 이 띠 안에서 세로로 가장 긴 잉크 구간 = 강아지 (번호 글씨는 아래에 떨어져 있음)
-        rows = [any(ink(x, y) for x in range(xa, xb, 2)) for y in range(80, 460)]
-        best, cur = None, None
-        for j, on in enumerate(rows + [False]):
-            if on and cur is None:
-                cur = j
-            elif not on and cur is not None:
-                if best is None or j - cur > best[1] - best[0]:
-                    best = (cur, j)
-                cur = None
-        ya, yb = best[0] + 80, best[1] + 80
-        # 가로는 띠 경계 그대로(옆 프레임 조각이 안 들어오게), 세로만 여유를 둡니다.
-        m = 14
-        crop = sheet.crop((xa, max(0, ya - m), xb, min(h, yb + m)))
-        frames.append(crop)
-        print('frame', i + 1, (xa, ya, xb, yb))
+    for y0, y1 in bands:
+        cols = ink[y0:y1].sum(0)
+        runs, start = [], None
+        for x, on in enumerate(list(cols > 0) + [False]):
+            if on and start is None:
+                start = x
+            elif not on and start is not None:
+                if x - start > 20:
+                    runs.append((start, x))
+                start = None
+        # 아래 줄은 그림이 커서 옆 칸과 붙어 버려요. 6칸이 될 때까지
+        # 가장 넓은 띠를 잉크가 가장 적은 열에서 갈라 냅니다.
+        while len(runs) < 6:
+            i = max(range(len(runs)), key=lambda k: runs[k][1] - runs[k][0])
+            xa, xb = runs[i]
+            cut_at = int(np.argmin(cols[xa + 60:xb - 60])) + xa + 60
+            runs[i:i + 1] = [(xa, cut_at), (cut_at, xb)]
+            runs.sort()
+        assert len(runs) == 6, runs
+        for xa, xb in runs:
+            ys = np.where(ink[y0:y1, xa:xb].any(1))[0]
+            ya, yb = y0 + int(ys[0]), y0 + int(ys[-1]) + 1
+            m = 10
+            frames.append(sheet.crop((max(0, xa - m), max(0, ya - m), min(w, xb + m), min(h, yb + m))))
+            print('frame', len(frames), (xa, ya, xb, yb))
     return frames
 
 
@@ -149,15 +167,21 @@ if __name__ == '__main__':
     if 'wave' in what:
         save(square(cut(Image.open(os.path.join(ASSETS, '댕브리_인사.png'))), 720, 0.04), 'dangbri-wave', 720)
     if 'run' in what:
-        sheet = Image.open(os.path.join(ASSETS, '댕브리_달리기.png'))
-        for i, crop in enumerate(run_frames(sheet)):
-            # 작은 프레임은 모델이 놓치기 쉬워, 매팅 전에 세로 900px 로 키웁니다.
+        sheet = Image.open(os.path.join(ASSETS, '댕브리_달리기2.png'))
+        cutouts = []
+        for crop in run_frames(sheet):
+            # 작은 프레임은 모델이 놓치기 쉬워, 매팅 전에 세로 900px 로 키웠다가
+            # 시트에서의 크기 비율 그대로 돌려놓습니다.
             up = 900 / crop.height
             big = crop.resize((round(crop.width * up), 900), Image.LANCZOS)
-            save(square(cut(big, single=True), 480, 0.05), f'dangbri-run-{i + 1}', 480)
-        # 확인용 컨택 시트
-        sheet_out = Image.new('RGBA', (8 * 240, 240), (60, 120, 200, 255))
-        for i in range(8):
-            f = Image.open(os.path.join(OUT, f'dangbri-run-{i + 1}.webp')).resize((240, 240), Image.LANCZOS)
-            sheet_out.alpha_composite(f, (i * 240, 0))
+            back = cut(big, single=True)
+            cutouts.append(back.resize((max(1, round(back.width / up)), max(1, round(back.height / up))),
+                                       Image.LANCZOS))
+        for i, frame in enumerate(pack_run(cutouts, 480)):
+            save(frame, f'dangbri-dash-{i + 1}', 480)
+        # 확인용 컨택 시트 (3줄 x 6칸)
+        sheet_out = Image.new('RGBA', (6 * 200, 3 * 200), (60, 120, 200, 255))
+        for i in range(18):
+            f = Image.open(os.path.join(OUT, f'dangbri-dash-{i + 1}.webp')).resize((200, 200), Image.LANCZOS)
+            sheet_out.alpha_composite(f, (i % 6 * 200, i // 6 * 200))
         sheet_out.convert('RGB').save(os.path.join(CHECK, f'run_contact_{MODEL}.png'))

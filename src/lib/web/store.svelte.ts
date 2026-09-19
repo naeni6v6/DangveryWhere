@@ -29,6 +29,8 @@ const ACTIVE_DOG_KEY = 'dangverywhere-active-dog';
 export const MAX_ACTIVE_DOGS = 2;
 /** 로그인 전에 등록한 아이들. 계정이 없으니 이 브라우저에 담아 새로고침해도 남게 합니다. */
 const LOCAL_DOGS_KEY = 'dangverywhere-dogs';
+/** 로그인 전에 찜한 곳. 마찬가지로 이 브라우저에 담아 둡니다(장소 id 목록, 최근 찜한 것이 앞). */
+const LOCAL_FAVORITES_KEY = 'dangverywhere-favorites';
 
 /**
  * 처음 들어온 브라우저에 넣어 주는 예시 강아지.
@@ -55,7 +57,7 @@ export class WebStore {
   /** 지금 장소 비교의 기준이 되는 아이들 (최대 MAX_ACTIVE_DOGS 마리) */
   activeDogIds = $state<string[]>([]);
   savedIds = $state<string[]>([]);
-  /** 사진으로 만든 캐릭터들. 최근 것이 앞에 옵니다. */
+  /** 직접 꾸민 캐릭터들. 최근 것이 앞에 옵니다. */
   characters = $state<DogCharacter[]>([]);
   loggedIn = $state(false);
   toast = $state('');
@@ -66,7 +68,7 @@ export class WebStore {
 
   constructor(account: Account) {
     this.loggedIn = Boolean(account.user);
-    this.savedIds = [...account.favorites];
+    this.savedIds = this.loggedIn ? [...account.favorites] : readLocalFavorites();
     // 로그인했으면 계정에 저장된 것이, 아니면 이 브라우저에 담아 둔 것이 기준입니다.
     this.dogs = this.loggedIn ? [...account.dogs] : readLocalDogs();
     this.characters = this.loggedIn ? [...(account.characters ?? [])] : readLocalCharacters();
@@ -361,9 +363,25 @@ export class WebStore {
     }
   }
 
+  #saveLocalFavorites() {
+    if (this.loggedIn) return;
+    try {
+      localStorage.setItem(LOCAL_FAVORITES_KEY, JSON.stringify(this.savedIds));
+    } catch {
+      // 저장이 막혀 있어도 이번 방문에는 그대로 쓸 수 있어요.
+    }
+  }
+
   async toggleSave(place: Place) {
+    // 로그인 전에도 찜할 수 있게, 계정 대신 이 브라우저에 담아 둡니다.
+    // (강아지 정보와 같은 방식이라, 로그인하면 계정 쪽 기록으로 바뀝니다.)
     if (!this.loggedIn) {
-      this.requestLogin();
+      const saved = !this.isSaved(place.id);
+      this.savedIds = saved
+        ? [place.id, ...this.savedIds]
+        : this.savedIds.filter((id) => id !== place.id);
+      this.#saveLocalFavorites();
+      this.notify(saved ? '찜한 장소에 저장했어요.' : '찜한 장소에서 지웠어요.');
       return;
     }
     if (this.#saving) return;
@@ -388,8 +406,8 @@ export class WebStore {
       if (!response.ok) throw new Error();
       await invalidateAll();
       this.loggedIn = false;
-      this.savedIds = [];
       // 로그아웃하면 계정 기록 대신 이 브라우저에 담아 둔 기록으로 돌아갑니다.
+      this.savedIds = readLocalFavorites();
       this.dogs = readLocalDogs();
       this.characters = readLocalCharacters();
       this.activeDogIds = this.#firstDogIds();
@@ -406,6 +424,17 @@ export class WebStore {
  * 저장된 적이 한 번도 없을 때만 예시 강아지를 넣어 주고 바로 저장해서,
  * 사용자가 예시를 지우면 다시 살아나지 않게 합니다.
  */
+function readLocalFavorites(): string[] {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) ?? '[]');
+    if (!Array.isArray(saved)) return [];
+    return saved.filter((id): id is string => typeof id === 'string');
+  } catch {
+    // 저장소를 못 쓰는 브라우저(시크릿 모드 등)에서는 이번 방문 동안만 기억합니다.
+    return [];
+  }
+}
+
 function readLocalDogs(): Dog[] {
   try {
     const raw = localStorage.getItem(LOCAL_DOGS_KEY);
