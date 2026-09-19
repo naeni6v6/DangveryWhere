@@ -218,7 +218,10 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Keep local Markdown documents out of version control at any depth.
+# 단, 넘겨받는 사람이 봐야 하는 문서(README·docs/)는 올립니다.
 *.[mM][dD]
+!README.md
+!docs/**/*.md
 
 # SvelteKit / Cloudflare / local tooling
 node_modules/
