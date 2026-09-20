@@ -2,6 +2,7 @@
 import { build, files, version } from '$service-worker';
 const worker = self as unknown as ServiceWorkerGlobalScope;
 const name = `dangverywhere-static-${version}`;
+const mediaName = `${name}-media`;
 const assets = [...build, ...files];
 const assetPaths = new Set(assets);
 /**
@@ -16,10 +17,25 @@ const immutablePaths = new Set(build);
  * 통째로 엎어져서 설치 자체가 안 됩니다(= 오프라인 화면까지 같이 날아가요).
  * 대신 아래 fetch 에서 한 번 본 사진만 캐시에 남겨 둡니다.
  */
-const precachePaths = assets.filter((path) => !path.startsWith('/places/'));
+const essentials = [
+  '/offline.html',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/logo.png',
+  '/wordmark.png',
+  '/mascot/dangbri-wave.webp'
+];
+// 사진·영상·견종별 이미지 전체를 설치 때 받지 않고 실제로 열었을 때 캐시합니다.
+const precachePaths = [...build, ...essentials.filter((path) => assetPaths.has(path))];
+const MAX_MEDIA_ENTRIES = 80;
 
 worker.addEventListener('install', (event) => {
   event.waitUntil(caches.open(name).then((cache) => cache.addAll(precachePaths)));
+});
+worker.addEventListener('message', (event) => {
+  // 작성 중인 내용을 날리지 않도록 사용자가 새 버전을 선택한 뒤에만 활성화합니다.
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(worker.skipWaiting());
 });
 worker.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -28,27 +44,46 @@ worker.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith('dangverywhere-static-') && key !== name)
+            .filter(
+              (key) => key.startsWith('dangverywhere-static-') && key !== name && key !== mediaName
+            )
             .map((key) => caches.delete(key))
         )
       )
+      .then(() => worker.clients.claim())
   );
 });
+async function storeMedia(cache: Cache, path: string, response: Response) {
+  try {
+    await cache.put(path, response);
+    const keys = await cache.keys();
+    await Promise.all(
+      keys.slice(0, Math.max(0, keys.length - MAX_MEDIA_ENTRIES)).map((key) => cache.delete(key))
+    );
+  } catch {
+    // 저장 공간이 부족해도 정상적으로 받아 온 응답은 계속 보여 줍니다.
+  }
+}
 worker.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== worker.location.origin) return;
+  // 영상 일부를 요청했는데 캐시된 전체 응답을 돌려주는 것도 피합니다.
+  if (request.headers.has('range') || /\.(mp4|webm|mov|mp3)$/i.test(url.pathname)) return;
   // Only build/static files are cached. Never cache policies, HTML with account
   // state, authenticated endpoints, third-party maps or OAuth responses.
   if (assetPaths.has(url.pathname)) {
     event.respondWith(
-      caches.open(name).then(async (cache) => {
+      caches.open(precachePaths.includes(url.pathname) ? name : mediaName).then(async (cache) => {
         const cached = await cache.match(url.pathname);
         if (cached && immutablePaths.has(url.pathname)) return cached;
-        const fresh = fetch(request).then((response) => {
+        const fresh = fetch(request).then(async (response) => {
           // 206(Range) 응답은 영상의 일부라 캐시에 넣으면 안 됩니다.
-          if (response.status === 200 && !request.headers.has('range'))
-            cache.put(url.pathname, response.clone()).catch(() => {});
+          if (response.status === 200) {
+            if (precachePaths.includes(url.pathname))
+              await cache.put(url.pathname, response.clone()).catch(() => {});
+            else await storeMedia(cache, url.pathname, response.clone());
+          }
           return response;
         });
         if (!cached) return fresh;
@@ -57,7 +92,11 @@ worker.addEventListener('fetch', (event) => {
         return cached;
       })
     );
-  } else if (request.mode === 'navigate' && !url.pathname.startsWith('/auth')) {
+  } else if (
+    request.mode === 'navigate' &&
+    !url.pathname.startsWith('/auth') &&
+    !url.pathname.startsWith('/api')
+  ) {
     event.respondWith(
       fetch(request).catch(async () =>
         (await caches.open(name))

@@ -1,0 +1,625 @@
+/* Mobile app only. The teammate-owned /web routes do not load this stylesheet. */
+.mobile-root {
+  --brand: #b5704e;
+  --brand-deep: #95573a;
+  --brand-soft: #f6e7dc;
+  --brand-tint: #fbf1e9;
+  --brown: #b5704e;
+  --brown-warm: #8a6144;
+  --brown-deep: #4a3428;
+  --gold: #e0a06a;
+  --blush: #f5d9c4;
+  --ivory: #fcf5ea;
+  --cream: #fcf5ea;
+  --sand: #f6ece1;
+  --ink: #3d2b20;
+  --muted: #8f7d70;
+  --line: #eee0d3;
+  --line-soft: #ecd9cb;
+  --icon-brown-top: #7a5137;
+  --icon-brown-bottom: #543828;
+  --icon-cream: #f8ece0;
+  --mobile-header-height: calc(72px + env(safe-area-inset-top));
+  --mobile-tab-height: calc(68px + env(safe-area-inset-bottom));
+  container: mobile / inline-size;
+  width: min(100%, 480px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: #fffdf9;
+  color: var(--ink);
+  box-shadow: 0 0 50px #49342109;
+  isolation: isolate;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.mobile-root button,
+.mobile-root input,
+.mobile-root select {
+  font-family: inherit;
+}
+.mobile-root input:not([type='range']):not([type='checkbox']):not([type='radio']),
+.mobile-root select,
+.mobile-root textarea {
+  font-size: 16px;
+}
+.mobile-root button:focus-visible,
+.mobile-root a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+.mobile-root .primary-button {
+  min-height: 48px;
+  font-weight: 600;
+  border-radius: 13px;
+}
+.mobile-header {
+  height: var(--mobile-header-height);
+  padding: calc(10px + env(safe-area-inset-top)) 19px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fffdf9;
+}
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.mobile-brand > span {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+.mobile-brand small {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+.mobile-account-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.mobile-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: white;
+  color: var(--brown-warm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mobile-login-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #426b48;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mobile-account-logout {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mobile-main {
+  min-width: 0;
+  padding-bottom: var(--mobile-tab-height);
+  outline: none;
+}
+.mobile-tabs {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(100%, 480px);
+  height: var(--mobile-tab-height);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 7px 10px calc(5px + env(safe-area-inset-bottom));
+  background: #fffefdf5;
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+  z-index: 40;
+}
+.mobile-tabs a {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 10px;
+  color: #97877a;
+  min-height: 48px;
+}
+.tab-icon {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 29px;
+  border-radius: 13px;
+}
+.mobile-tabs a.active {
+  color: var(--brand-deep);
+  font-weight: 700;
+}
+.mobile-tabs a.active .tab-icon {
+  background: var(--brand-soft);
+}
+.mobile-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(430px, calc(100% - 32px));
+  bottom: calc(var(--mobile-tab-height) + 14px);
+  border-radius: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 14px 18px;
+  font-size: 12px;
+  background: #4a3428f5;
+  color: white;
+  box-shadow: 0 6px 20px #30221926;
+  z-index: 100;
+}
+.mobile-toast svg {
+  flex-shrink: 0;
+}
+.mobile-skip {
+  position: fixed;
+  top: -100px;
+  left: 20px;
+  padding: 12px;
+  background: #fff;
+  z-index: 150;
+}
+.mobile-skip:focus {
+  top: 10px;
+}
+.mobile-offline {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  background: #fff0d8;
+  padding: 10px 18px;
+  line-height: 1.65;
+}
+.mobile-offline svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.mobile-dialog {
+  color: var(--ink);
+  width: min(420px, calc(100% - 28px));
+  border: 1px solid var(--line);
+  border-radius: 23px;
+  padding: 30px 22px 23px;
+  max-height: 85dvh;
+}
+.mobile-dialog::backdrop {
+  background: #30221966;
+}
+.mobile-close {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+}
+.mobile-root .app-dialog {
+  max-width: calc(100% - 28px);
+}
+.mobile-root .app-map .map-controls {
+  top: 15px;
+  bottom: auto;
+  right: 12px;
+}
+.mobile-root .app-map.map-shell {
+  min-height: 0;
+}
+.mobile-root .explore-map[aria-hidden='true'] {
+  display: none;
+}
+.mobile-root .app-map .map-message {
+  bottom: 193px;
+  left: 12px;
+  right: 12px;
+  max-width: none;
+}
+.mobile-root .app-map .preview-label {
+  bottom: 188px;
+}
+.mobile-root .app-map .cluster-list {
+  top: 15px;
+  right: 60px;
+  max-width: calc(100% - 80px);
+  max-height: calc(100% - 210px);
+}
+.mobile-root .login-dialog {
+  padding: 36px 22px 25px;
+}
+.mobile-onboarding .mobile-main {
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.mobile-page {
+  padding: 20px 20px 35px;
+}
+.mobile-page h1 {
+  font-size: 27px;
+  letter-spacing: -1.2px;
+  margin: 5px 0 10px;
+}
+.mobile-page-lead {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.mobile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 50px 15px;
+  text-align: center;
+  color: var(--muted);
+}
+.mobile-empty h2 {
+  color: var(--ink);
+  font-size: 18px;
+  margin-top: 20px;
+}
+.mobile-empty p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.mobile-empty .primary-button {
+  margin-top: 15px;
+}
+
+/* These overrides also apply inside a narrow app preview on a desktop monitor. */
+.mobile-root .mobile-feature .page-scroll {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+.mobile-root .mobile-feature .page {
+  width: calc(100% - 36px);
+  padding: 20px 0 35px;
+}
+.mobile-root .mobile-feature .page-head {
+  margin-bottom: 24px;
+}
+.mobile-root .mobile-feature .page-eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.mobile-root .mobile-feature .page-head h1 {
+  font-size: 27px;
+  line-height: 1.4;
+  letter-spacing: -1px;
+}
+.mobile-root .mobile-feature .page-head p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.mobile-root .mobile-dog .dog-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+.mobile-root .mobile-dog .dog-stage {
+  padding: 20px 16px;
+  border-radius: 22px;
+}
+.mobile-root .mobile-dog .stage-figure {
+  min-height: 205px;
+  height: 240px;
+}
+.mobile-root .mobile-dog .figure-scale {
+  width: 250px;
+  max-width: 100%;
+}
+.mobile-root .mobile-dog .size-meter {
+  white-space: nowrap;
+}
+.mobile-root .mobile-dog .size-meter span {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+.mobile-root .mobile-dog .dog-tabs button {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 9px;
+  font-size: 12px;
+}
+.mobile-root .mobile-dog .stage-caption strong {
+  font-size: 22px;
+}
+.mobile-root .mobile-dog .stage-caption span {
+  font-size: 12px;
+}
+.mobile-root .mobile-dog .stage-character {
+  min-height: 44px;
+  font-size: 13px;
+}
+.mobile-root .mobile-dog .stage-title {
+  font-size: 21px;
+}
+.mobile-root .mobile-dog .stage-note {
+  font-size: 11px;
+}
+.mobile-root .mobile-dog .dog-form {
+  padding: 22px 17px;
+  border-radius: 20px;
+}
+.mobile-root .mobile-dog .dog-form h2 {
+  font-size: 19px;
+}
+.mobile-root .mobile-dog .field-row {
+  grid-template-columns: 1fr;
+  gap: 17px;
+}
+.mobile-root .mobile-dog .size-options {
+  gap: 7px;
+}
+.mobile-root .mobile-dog .size-options label {
+  min-height: 106px;
+  padding: 12px 4px;
+}
+.mobile-root .mobile-dog .size-options strong {
+  font-size: 13px;
+}
+.mobile-root .mobile-dog .size-options small {
+  font-size: 10px;
+}
+.mobile-root .mobile-dog .dog-grid {
+  grid-template-columns: 1fr;
+}
+.mobile-root .mobile-dog .manage {
+  padding: 17px;
+}
+.mobile-root .mobile-dog .manage-head {
+  flex-wrap: wrap;
+  gap: 13px;
+}
+.mobile-root .mobile-dog .manage-head h2 {
+  font-size: 18px;
+}
+.mobile-root .mobile-dog .manage-head p,
+.mobile-root .mobile-dog .manage-note {
+  font-size: 12px;
+}
+.mobile-root .mobile-dog .go-explore {
+  padding: 14px 12px;
+  gap: 9px;
+}
+.mobile-root .mobile-dog .go-figure {
+  display: none;
+}
+.mobile-root .mobile-dog .go-copy strong {
+  font-size: 14px;
+}
+.mobile-root .mobile-dog .go-copy > span {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.mobile-root .mobile-dog .dog-summary {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 20px 14px;
+  gap: 17px;
+}
+.mobile-root .mobile-dog .summary-copy h2 {
+  font-size: 18px;
+}
+.mobile-root .mobile-dog .summary-stats {
+  gap: 5px;
+}
+.mobile-root .mobile-dog .summary-stats > div {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+}
+.mobile-root .mobile-dog .summary-stats dt {
+  font-size: 10px;
+  gap: 3px;
+}
+.mobile-root .mobile-dog .summary-stats dt svg {
+  width: 13px;
+}
+.mobile-root .mobile-dog .summary-stats dd {
+  font-size: 25px;
+}
+.mobile-root .mobile-record .stamp-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.mobile-root .mobile-record .map-card {
+  padding: 20px 12px;
+}
+.mobile-root .mobile-record .gangwon {
+  max-width: 100%;
+}
+.mobile-root .mobile-record .slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.mobile-root .mobile-record .stamp-book {
+  padding: 21px 12px;
+}
+.mobile-root .mobile-record .stamp-book h2 {
+  font-size: 20px;
+}
+.mobile-root .mobile-record .slot {
+  padding: 15px 3px;
+}
+.mobile-root .mobile-record .slot-caption {
+  font-size: 10px;
+}
+.mobile-root .mobile-tutorial .tutorial {
+  min-height: calc(100dvh - env(safe-area-inset-top));
+  padding: 12px 0 20px;
+}
+.mobile-root .mobile-tutorial .tutorial-bar {
+  padding: 0 16px;
+  gap: 10px;
+}
+.mobile-root .mobile-tutorial .bar-wordmark {
+  font-size: 17px;
+}
+.mobile-root .mobile-tutorial .bar-logo {
+  width: 36px;
+  height: 36px;
+}
+.mobile-root .mobile-tutorial .bar-skip {
+  font-size: 12px;
+}
+.mobile-root .mobile-tutorial .card,
+.mobile-root .mobile-tutorial .card.wide {
+  width: 100%;
+  border: 0;
+  margin: 12px 0 0;
+  border-radius: 0;
+  padding: 23px 20px;
+  box-shadow: none;
+}
+.mobile-root .mobile-tutorial .card-head h1 {
+  font-size: 26px;
+}
+.mobile-root .mobile-tutorial .lead {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.mobile-root .mobile-tutorial .breed-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.mobile-root .mobile-tutorial .breed-grid .breed-name {
+  font-size: 11px;
+}
+.mobile-root .mobile-tutorial .customize {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.mobile-root .mobile-tutorial .options {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.mobile-root .mobile-tutorial .swatches {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mobile-root .mobile-tutorial .done-card {
+  flex-direction: column;
+  text-align: center;
+}
+.mobile-root .mobile-tutorial .btn-next,
+.mobile-root .mobile-tutorial .btn-back {
+  min-height: 52px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.mobile-root .mobile-tutorial .guide-copy {
+  font-size: 13px;
+}
+.mobile-root .mobile-tutorial .guide {
+  padding: 15px;
+}
+.mobile-root .mobile-tutorial .character-cta {
+  padding: 16px 12px;
+}
+.mobile-root .mobile-tutorial .cta-copy strong {
+  font-size: 15px;
+}
+.mobile-root .mobile-tutorial .cta-copy small {
+  font-size: 11px;
+}
+.mobile-root .mobile-character .custom-stage {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
+  padding-top: 8px;
+}
+.mobile-root .mobile-character .custom-figure {
+  width: 100%;
+  height: 235px;
+  aspect-ratio: auto;
+}
+.mobile-root .mobile-character .custom-figure canvas {
+  width: 235px;
+  height: 235px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.mobile-root .mobile-character .custom-figure > div {
+  height: 207px;
+  width: 207px;
+  margin: 0 auto;
+}
+.mobile-root .mobile-character .custom-figure > div canvas {
+  width: 100%;
+  height: 100%;
+}
+.mobile-root .mobile-character .trait-card {
+  margin-top: 10px;
+  padding: 12px;
+}
+.mobile-root .mobile-character .trait-card summary {
+  cursor: pointer;
+  min-height: 24px;
+}
+.mobile-root .mobile-character .customize {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-root .mobile-character .custom-stage-foot {
+  padding: 8px 0;
+}
+.mobile-root .mobile-character .card-foot {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 13px 0 calc(10px + env(safe-area-inset-bottom));
+  z-index: 4;
+}
+.mobile-root .mobile-character .options {
+  width: 100%;
+}
+.mobile-root .mobile-character .options input,
+.mobile-root .mobile-character .options button {
+  scroll-margin-top: 360px;
+  scroll-margin-bottom: 90px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-root *,
+  .mobile-root *::before,
+  .mobile-root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
