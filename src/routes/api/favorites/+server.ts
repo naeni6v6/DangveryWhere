@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { requireUser } from '$lib/server/auth';
 import { database } from '$lib/server/db';
 import { findPlacesByIds } from '$lib/server/regionPlaces';
+import { placeIdVariants } from '$lib/domain/placeIdentity';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async (event) => {
@@ -14,7 +15,11 @@ export const PUT: RequestHandler = async (event) => {
   if (!place) error(404, '등록된 장소를 찾지 못했어요.');
   const sql = database();
   if (input.saved)
-    await sql`INSERT INTO favorites (user_id,place_id) VALUES (${userId},${input.placeId}) ON CONFLICT DO NOTHING`;
-  else await sql`DELETE FROM favorites WHERE user_id=${userId} AND place_id=${input.placeId}`;
+    await sql`INSERT INTO favorites (user_id,place_id) VALUES (${userId},${place.id}) ON CONFLICT DO NOTHING`;
+  else {
+    // Old and new IDs may both have been saved before the duplicate was reviewed.
+    const variants = placeIdVariants(place.id);
+    await sql`DELETE FROM favorites WHERE user_id=${userId} AND place_id = ANY(${variants}::text[])`;
+  }
   return json({ saved: input.saved });
 };

@@ -1,9 +1,14 @@
 import placeImages from '$lib/data/placeImages.json';
 import type { Place } from './place';
+import { placeIdVariants } from './placeIdentity';
 
 /** 장소 사진 (static/places 아래 경로 목록). 사진을 못 구한 곳은 빈 배열입니다. */
 export function placePhotos(id: string): string[] {
-  return (placeImages as Record<string, string[]>)[id] ?? [];
+  return [
+    ...new Set(
+      placeIdVariants(id).flatMap((key) => (placeImages as Record<string, string[]>)[key] ?? [])
+    )
+  ];
 }
 
 export function hasPhoto(place: Place): boolean {

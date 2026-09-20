@@ -1,11 +1,23 @@
 <script lang="ts">
   import { onMount, untrack, type Snippet } from 'svelte';
   import { page } from '$app/state';
-  import { Home, Map, Heart, Stamp, PawPrint, LogIn, CircleCheck, WifiOff } from '@lucide/svelte';
+  import {
+    Home,
+    Map,
+    Heart,
+    Stamp,
+    PawPrint,
+    LogIn,
+    CircleCheck,
+    WifiOff,
+    Sparkles
+  } from '@lucide/svelte';
   import { WebStore, setWebStore } from '$lib/web/store.svelte';
+  import { canonicalPlaceId } from '$lib/domain/placeIdentity';
   import MobileLoginDialog from '$lib/components/mobile/MobileLoginDialog.svelte';
   import InstallApp from '$lib/components/mobile/InstallApp.svelte';
   import AppTutorial from '$lib/components/mobile/AppTutorial.svelte';
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import type { LayoutData } from './$types';
   import './mobile.css';
 
@@ -16,6 +28,14 @@
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   const isTutorial = $derived(path.startsWith('/start'));
   const isMap = $derived(path === '/explore');
+  const selectedPlaceId = $derived(
+    page.state.mobilePlaceId !== undefined
+      ? page.state.mobilePlaceId
+      : page.url.searchParams.get('place')
+  );
+  const isPlaceDetail = $derived(
+    isMap && data.places.some((place) => place.id === canonicalPlaceId(selectedPlaceId ?? ''))
+  );
   const nav = [
     { href: '/', label: '홈', icon: Home },
     { href: '/dog', label: '우리 강아지', icon: PawPrint },
@@ -45,10 +65,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 </svelte:head>
 
-<div class="mobile-root" class:mobile-map={isMap} class:mobile-onboarding={isTutorial}>
+<div
+  class="mobile-root"
+  class:mobile-map={isMap}
+  class:mobile-onboarding={isTutorial}
+  class:mobile-place-detail={isPlaceDetail}
+>
   <a class="mobile-skip" href="#mobile-main">본문으로 건너뛰기</a>
-  {#if !isTutorial}
-    <header class="mobile-header">
+  {#if !isTutorial && !isPlaceDetail}
+    <header class="mobile-header" class:with-tutorial={path === '/'}>
       <a class="mobile-brand" href="/" aria-label="댕브리웨어 홈">
         <img
           class="mobile-wordmark"
@@ -57,9 +82,19 @@
           width="393"
           height="138"
         />
-        <small>DangveryWhere · 반려견 동반 지도</small>
+        <small>DangveryWhere · <span>반려견 동반 지도</span></small>
       </a>
-      <div class="mobile-account-area">
+      <div class="mobile-account-area" class:signed-in={store.loggedIn}>
+        {#if path === '/'}
+          <a
+            class="mobile-tutorial-link"
+            href="/start?replay"
+            aria-label="튜토리얼 보기"
+            title="튜토리얼 보기"
+          >
+            <Sparkles size={17} aria-hidden="true" /><span>튜토리얼</span>
+          </a>
+        {/if}
         {#if store.loggedIn}
           <span
             class="mobile-login-status"
@@ -109,8 +144,8 @@
     returnPath={page.url.pathname + page.url.search}
   />
   <InstallApp />
-  <AppTutorial enabled={!isTutorial} />
+  <AppTutorial enabled={!isTutorial && !isPlaceDetail} />
   {#if store.toast}<div class="mobile-toast" role="status">
-      <PawPrint size={17} />{store.toast}
+      <PawPrint size={17} /><span><ReadableText text={store.toast} /></span>
     </div>{/if}
 </div>

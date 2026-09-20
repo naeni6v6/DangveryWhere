@@ -27,7 +27,7 @@
   <section class="photo-gallery" aria-label={`${name} 사진`}>
     <div class="photo-stage">
       <button class="photo-open" onclick={open} aria-label={`${name} 사진 ${index + 1} 크게 보기`}>
-        <img src={photos[index]} alt={`${name} 사진 ${index + 1}`} />
+        <img class="mobile-photo" src={photos[index]} alt={`${name} 사진 ${index + 1}`} />
         <span class="photo-expand"><Expand size={15} />크게 보기</span>
       </button>
       {#if photos.length > 1}
@@ -102,10 +102,6 @@
   .photo-open img {
     position: absolute;
     inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
   }
   .photo-expand {
     position: absolute;

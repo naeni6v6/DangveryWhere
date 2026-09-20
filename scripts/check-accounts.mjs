@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
+import { compare } from 'bcryptjs';
 import { unflatten } from 'devalue';
 
 // Optional local integration check. Creates two temporary accounts, then removes only those accounts.
@@ -85,6 +86,10 @@ try {
   const [stored] = await sql`SELECT password_hash FROM app_users WHERE id=${first.data.user.id}`;
   assert.match(stored.password_hash, /^\$2[ab]\$12\$/);
   assert.notEqual(stored.password_hash, password);
+  const [otherStored] = await sql`SELECT password_hash FROM app_users WHERE id=${second.data.user.id}`;
+  assert.notEqual(stored.password_hash, otherStored.password_hash);
+  assert.equal(await compare(password, stored.password_hash), true);
+  assert.equal(await compare(password, otherStored.password_hash), true);
   console.log('PASS: signup, automatic login, duplicate username protection, hashed storage.');
 
   const dog = { name: '계정분리확인', breed: '믹스견', size: 'small', weight: 5 };

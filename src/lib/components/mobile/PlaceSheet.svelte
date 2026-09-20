@@ -19,14 +19,20 @@
     placeMenu,
     type Place
   } from '$lib/domain/place';
-  import { placeLink } from '$lib/domain/placeLink';
+  import { placeLink, placeLinkLabel } from '$lib/domain/placeLink';
   import { placePhotos } from '$lib/domain/placePhoto';
   import { photoCredit, providerInfo, providerOfUrl } from '$lib/domain/region';
   import { menuBoardOf } from '$lib/data/menuBoards';
   import MenuBoard from '$lib/components/MenuBoard.svelte';
   import PhotoGallery from './PhotoGallery.svelte';
+  import ReadableText from './ReadableText.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
-  let { place, onclose }: { place: Place; onclose: () => void } = $props();
+  let {
+    place,
+    onclose,
+    inline = false
+  }: { place: Place; onclose: () => void; inline?: boolean } = $props();
+  const titleId = $props.id();
   const store = getWebStore();
   const photos = $derived(placePhotos(place.id));
   const credit = $derived(photoCredit(photos));
@@ -36,10 +42,10 @@
   const menu = $derived(placeMenu(place.menu ?? '', menuBoardOf(place.id)));
   const notices = $derived(store.activeDogs.map((dog) => ({ dog, ...profileNotice(place, dog) })));
   const source = $derived(providerInfo[providerOfUrl(place.sourceUrl) ?? 'gangwon-pettravel']);
-  let dialog: HTMLDialogElement;
+  let dialog = $state<HTMLDialogElement>();
   let sharing = $state(false);
   onMount(() => {
-    dialog.showModal();
+    if (!inline) dialog?.showModal();
   });
   async function share() {
     sharing = true;
@@ -62,29 +68,19 @@
   }
 </script>
 
-<dialog
-  class="mobile-place-sheet"
-  bind:this={dialog}
-  aria-labelledby="mobile-place-title"
-  oncancel={(event) => {
-    event.preventDefault();
-    onclose();
-  }}
-  onclick={(event) => {
-    if (event.target === dialog) onclose();
-  }}
->
-  <div class="mobile-detail-handle" aria-hidden="true"></div>
+{#snippet content()}
+  {#if !inline}<div class="mobile-detail-handle" aria-hidden="true"></div>{/if}
   <header class="mobile-detail-header">
     <span>{themeNames[placeTheme(place)]}</span>
     <div>
       <button onclick={share} disabled={sharing} aria-label="장소 공유"><Share2 size={20} /></button
-      ><button onclick={onclose} aria-label="장소 상세 닫기"><X size={23} /></button>
+      >{#if !inline}<button onclick={onclose} aria-label="장소 상세 닫기"><X size={23} /></button
+        >{/if}
     </div>
   </header>
   <div class="mobile-detail-content">
-    <h2 id="mobile-place-title">{place.name}</h2>
-    <p class="address"><MapPin size={15} />{place.address}</p>
+    <h2 id={titleId}>{place.name}</h2>
+    <p class="address"><MapPin size={15} /><span>{place.address}</span></p>
     {#if photos.length}
       <PhotoGallery {photos} name={place.name} />
       {#if credit}<p class="credit">{credit}</p>{/if}
@@ -103,7 +99,7 @@
             class:restricted={notice.kind === 'restricted'}
           >
             <strong>{notice.dog.name} · {notice.label}</strong>
-            <p>{notice.detail}</p>
+            <p><ReadableText text={notice.detail} /></p>
           </div>{/each}
         {#if !store.dogs.length}<a href="/dog" class="register-dog"
             >우리 강아지를 등록하고 조건 비교하기 <ArrowUpRight size={16} /></a
@@ -111,15 +107,21 @@
       {#if lines.length}<ul>
           {#each lines as line}<li>{line}</li>{/each}
         </ul>{:else}<p>
-          {place.category === 'hospital'
-            ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
-            : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
+          <ReadableText
+            text={place.category === 'hospital'
+              ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
+              : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
+          />
         </p>{/if}
       <p class="policy-note">
         <Info size={15} /><span
-          >공공데이터에 등록된 안내예요. {place.category === 'hospital'
-            ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
-            : '최근 운영 규정은 방문 전에 확인해 주세요.'}</span
+          ><ReadableText
+            text={`공공데이터에 등록된 안내예요. ${
+              place.category === 'hospital'
+                ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
+                : '최근 운영 규정은 방문 전에 확인해 주세요.'
+            }`}
+          /></span
         >
       </p>
     </section>
@@ -159,10 +161,29 @@
         aria-label={`${place.name} 전화하기`}><Phone size={21} /><span>전화</span></a
       >{/if}
     <a class="primary-button" href={link.url} target="_blank" rel="noreferrer"
-      >상세 정보 확인<ArrowUpRight size={18} /></a
+      >{placeLinkLabel(link)}<ArrowUpRight size={18} /></a
     >
   </footer>
-</dialog>
+{/snippet}
+
+{#if inline}
+  <section class="mobile-place-sheet inline" aria-labelledby={titleId}>{@render content()}</section>
+{:else}
+  <dialog
+    class="mobile-place-sheet"
+    bind:this={dialog}
+    aria-labelledby={titleId}
+    oncancel={(event) => {
+      event.preventDefault();
+      onclose();
+    }}
+    onclick={(event) => {
+      if (event.target === dialog) onclose();
+    }}
+  >
+    {@render content()}
+  </dialog>
+{/if}
 
 <style>
   .mobile-place-sheet {
@@ -183,6 +204,19 @@
   .mobile-place-sheet[open] {
     display: flex;
     flex-direction: column;
+  }
+  .mobile-place-sheet.inline {
+    position: relative;
+    inset: auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
   }
   .mobile-place-sheet::backdrop {
     background: #30221966;
@@ -349,6 +383,9 @@
     align-items: center;
     padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
+  }
+  .inline .mobile-detail-footer {
+    padding-bottom: 12px;
   }
   .mobile-detail-save,
   .mobile-detail-phone {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { env } from '$env/dynamic/public';
   import { loadNaverMaps } from '$lib/maps/naver';
   import {
@@ -17,9 +17,11 @@
   import { placeArea, placeTheme, type Place } from '$lib/domain/place';
   import { themeIconSvg } from '$lib/components/themeIconPaths';
   import { DEFAULT_REGION_ID, findRegion, type RegionId } from '$lib/domain/region';
+  import { selectedPlaceTarget } from './layout';
   let {
     places,
     selectedId,
+    focusPlace = null,
     onselect,
     appLayout = false,
     caption = '반려견 동반 정보가 있는 장소',
@@ -28,6 +30,8 @@
   }: {
     places: Place[];
     selectedId: string | null;
+    /** Show just this place above the mobile detail sheet. */
+    focusPlace?: Place | null;
     onselect: (place: Place) => void;
     appLayout?: boolean;
     /** 지도 위 설명 문구. 동물병원처럼 '동반 장소'가 아닌 목록에서 바꿔 씁니다. */
@@ -38,6 +42,7 @@
     regionId?: RegionId;
   } = $props();
   const region = $derived(findRegion(regionId) ?? findRegion(DEFAULT_REGION_ID)!);
+  let mapShell: HTMLDivElement;
   let mapElement: HTMLDivElement;
   let ready = $state(false);
   let message = $state('');
@@ -46,6 +51,7 @@
   let markers: naver.maps.Marker[] = [];
   let mapRevision = $state(0);
   let clusterPlaces = $state<Place[]>([]);
+  const visiblePlaces = $derived(focusPlace ? [focusPlace] : places);
   // 장소가 없는 시군구도 포함해 강원 18개 시군구 전체를 담는 지도 범위입니다.
   const gangwonBounds = { south: 36.95, west: 127.0, north: 38.65, east: 129.45 };
   // 지도를 못 불러왔을 때 보여 주는 대체 지도용 아이콘입니다.
@@ -103,7 +109,7 @@
     );
   const groups = $derived.by(() => {
     const bins = new Map<string, Place[]>();
-    for (const place of places) {
+    for (const place of visiblePlaces) {
       const key = `${Math.floor(x(place) / 8)}-${Math.floor(y(place) / 7)}`;
       bins.set(key, [...(bins.get(key) ?? []), place]);
     }
@@ -114,9 +120,9 @@
       y: items.reduce((sum, p) => sum + y(p), 0) / items.length
     }));
   });
-  const selected = $derived(places.find((place) => place.id === selectedId));
+  const selected = $derived(focusPlace ?? places.find((place) => place.id === selectedId));
   $effect(() => {
-    places;
+    visiblePlaces;
     clusterPlaces = [];
   });
 
@@ -223,13 +229,28 @@
     if (!env.PUBLIC_NAVER_MAP_CLIENT_ID) return;
     let disposed = false;
     let idleListener: naver.maps.MapEventListener | undefined;
+    let redrawFrame = 0;
+    const settled = () => {
+      cancelAnimationFrame(redrawFrame);
+      // Wait for the SDK projection to settle before regrouping markers at the new zoom.
+      redrawFrame = requestAnimationFrame(() => {
+        if (disposed) return;
+        mapRevision++;
+        if (!focusPlace && !changingCamera) rememberView();
+      });
+    };
     const resize = new ResizeObserver(() => {
       if (!map || !ready) return;
-      const { clientWidth, clientHeight } = mapElement;
+      // setSize writes fixed pixels onto mapElement; measure the responsive wrapper instead.
+      const { clientWidth, clientHeight } = mapShell;
       // 지도가 잠깐 감춰지면 0 이 들어오는데, 그대로 넘기면 지도가 0 으로 접힌 채
       // 다시 펴지지 않습니다(펼 크기를 지도 자신에게서 읽어 오기 때문에요).
       if (!clientWidth || !clientHeight) return;
-      useMap(() => map.setSize(new maps.Size(clientWidth, clientHeight)));
+      useMap(() => {
+        map.setSize(new maps.Size(clientWidth, clientHeight));
+        if (focusPlace) focusCamera(focusPlace);
+      });
+      settled();
     });
     loadNaverMaps(env.PUBLIC_NAVER_MAP_CLIENT_ID)
       .then((sdk) => {
@@ -246,10 +267,8 @@
           mapDataControlOptions: { position: maps.Position.TOP_RIGHT },
           padding
         });
-        idleListener = maps.Event.addListener(map, 'idle', () => {
-          if (!disposed) mapRevision++;
-        });
-        resize.observe(mapElement);
+        idleListener = maps.Event.addListener(map, 'idle', settled);
+        resize.observe(mapShell);
         ready = true;
       })
       .catch((failure: unknown) => {
@@ -261,6 +280,7 @@
       });
     return () => {
       disposed = true;
+      cancelAnimationFrame(redrawFrame);
       resize.disconnect();
       if (maps) {
         clearMarkers();
@@ -317,7 +337,7 @@
         solo: boolean;
       }[] = [];
       // 고른 곳이 맨 앞. 나머지는 목록 순서(사진 있는 곳이 앞)를 그대로 따릅니다.
-      const ordered = [...places].sort(
+      const ordered = [...visiblePlaces].sort(
         (a, b) => Number(b.id === selectedId) - Number(a.id === selectedId)
       );
       for (const place of ordered) {
@@ -428,15 +448,66 @@
   // 화면에 그리는 값이 아니라 '이미 옮겨 갔는지' 표시라, 반응형으로 두지 않습니다.
   let shownRegion: RegionId | null = null;
   $effect(() => {
-    if (!ready || shownRegion === region.id) return;
+    if (!ready || focusPlace || shownRegion === region.id) return;
     shownRegion = region.id;
     showRegion();
   });
 
-  $effect(() => {
-    if (ready && selected)
-      useMap(() => map.panTo(new maps.LatLng(selected.latitude, selected.longitude)));
+  function focusCamera(place: Place, zoomIn = false) {
+    const bounds = mapShell.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const coordinate = new maps.LatLng(place.latitude, place.longitude);
+    map.updateBy(coordinate, zoomIn ? Math.max(15, map.getZoom()) : map.getZoom());
+    const target = selectedPlaceTarget(bounds.width, bounds.height, window.innerHeight, bounds.top);
+    const projection = map.getProjection();
+    const center = projection.fromCoordToOffset(map.getCenter());
+    const point = projection.fromCoordToOffset(coordinate);
+    map.setCenter(
+      projection.fromOffsetToCoord(
+        new maps.Point(center.x + point.x - target.x, center.y + point.y - target.y)
+      )
+    );
+  }
+
+  let focusedId: string | null = null;
+  let overviewCamera: { center: naver.maps.Coord; zoom: number } | null = null;
+  let cameraRevision = 0;
+  let changingCamera = false;
+  // Call before route state changes: removing the toolbar can resize the SDK immediately.
+  export function rememberView() {
+    if (!ready || focusPlace) return;
+    useMap(() => {
+      overviewCamera = { center: map.getCenter().clone(), zoom: map.getZoom() };
+    });
+  }
+  $effect.pre(() => {
+    const place = focusPlace;
+    if (!ready || focusedId === (place?.id ?? null)) return;
+    focusedId = place?.id ?? null;
+    const revision = ++cameraRevision;
+    const previousCamera = overviewCamera;
+    changingCamera = true;
+    void tick().then(() => {
+      if (!ready || revision !== cameraRevision) return;
+      useMap(() => {
+        const { clientWidth, clientHeight } = mapShell;
+        if (clientWidth && clientHeight) map.setSize(new maps.Size(clientWidth, clientHeight));
+        map.setOptions('padding', place ? { top: 0, right: 0, bottom: 0, left: 0 } : padding);
+        if (place) focusCamera(place, true);
+        else if (previousCamera) {
+          map.updateBy(previousCamera.center, previousCamera.zoom);
+        } else showRegion();
+      });
+      changingCamera = false;
+    });
   });
+
+  function zoomBy(amount: number) {
+    useMap(() => {
+      map.setZoom(map.getZoom() + amount, !focusPlace);
+      if (focusPlace) focusCamera(focusPlace);
+    });
+  }
 
   function locate() {
     if (!ready) {
@@ -462,7 +533,7 @@
   }
 </script>
 
-<div class="map-shell" class:app-map={appLayout}>
+<div bind:this={mapShell} class="map-shell" class:app-map={appLayout} class:focused={!!focusPlace}>
   <div bind:this={mapElement} class="live-map" class:visible={ready}></div>
   {#if !ready}
     <div class="preview-map" aria-label={`${region.label} 장소의 개략적인 위치 미리보기`}>
@@ -509,7 +580,9 @@
           <button
             class="preview-marker"
             class:active={place.id === selectedId}
-            style={`left:${group.x}%;top:${group.y}%`}
+            style={focusPlace
+              ? 'left:50%;top:calc(100dvh / 6)'
+              : `left:${group.x}%;top:${group.y}%`}
             onclick={() => onselect(place)}
             aria-label={`${place.name} 동반 규정 보기`}
             title={place.name}><Icon size={16} strokeWidth={1.8} /><span>{place.name}</span></button
@@ -523,7 +596,10 @@
           >
         {/if}
       {/each}
-      {#if selected}<div class="selected-label" style={`left:${x(selected)}%;top:${y(selected)}%`}>
+      {#if selected && !focusPlace}<div
+          class="selected-label"
+          style={`left:${x(selected)}%;top:${y(selected)}%`}
+        >
           {selected.name}
         </div>{/if}
     </div>
@@ -538,17 +614,15 @@
     <span class="legend-dot"></span>{caption} <strong>{places.length}</strong>
   </div>
   <div class="map-controls">
-    <button
-      aria-label="지도 확대"
-      disabled={!ready}
-      onclick={() => useMap(() => map.setZoom(map.getZoom() + 1, true))}><Plus size={20} /></button
+    <button aria-label="지도 확대" disabled={!ready} onclick={() => zoomBy(1)}
+      ><Plus size={20} /></button
     >
-    <button
-      aria-label="지도 축소"
-      disabled={!ready}
-      onclick={() => useMap(() => map.setZoom(map.getZoom() - 1, true))}><Minus size={20} /></button
+    <button aria-label="지도 축소" disabled={!ready} onclick={() => zoomBy(-1)}
+      ><Minus size={20} /></button
     >
-    <button aria-label="현재 위치로 이동" onclick={locate}><LocateFixed size={20} /></button>
+    {#if !focusPlace}<button aria-label="현재 위치로 이동" onclick={locate}
+        ><LocateFixed size={20} /></button
+      >{/if}
   </div>
   {#if !ready}<div class="preview-label">위치 개략도 · 실제 지도 연결 전 미리보기</div>{/if}
   {#if clusterPlaces.length}<div class="cluster-list">
@@ -589,6 +663,10 @@
   }
   .live-map.visible {
     visibility: visible;
+  }
+  .map-shell :global(.live-marker-pin > button) {
+    /* bottom: 0 already puts the label above its coordinate. */
+    transform: translateX(-50%);
   }
   .preview-map {
     position: absolute;
@@ -857,6 +935,21 @@
   }
   .app-map .map-message {
     bottom: calc(var(--app-nav-height, 64px) + 248px);
+  }
+  .map-shell.focused .map-controls {
+    top: calc(12px + env(safe-area-inset-top));
+  }
+  .map-shell.focused .preview-label {
+    top: calc(12px + env(safe-area-inset-top));
+    bottom: auto;
+    left: 70px;
+    max-width: calc(100% - 136px);
+  }
+  .map-shell.focused .map-message {
+    top: calc(25dvh - 42px);
+    bottom: auto;
+    padding: 8px 12px;
+    font-size: 11px;
   }
 
   @container app-shell (max-height: 680px) {

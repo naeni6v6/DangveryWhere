@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Heart, Map, MapPin, ArrowUpRight, Scale, TriangleAlert } from '@lucide/svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
+  import ReadableText from './ReadableText.svelte';
   import {
     placeArea,
     shortAddress,
@@ -23,31 +24,38 @@
 <article class="favorite-card">
   <button class="favorite-photo" onclick={onselect} aria-label={`${place.name} 상세 보기`}>
     {#if photo && !failed}<img
+        class="mobile-photo"
         src={photo}
         alt={`${place.name} 사진`}
         loading="lazy"
         onerror={() => (failed = true)}
       />{:else}<span class="photo-empty"><ThemeIcon {theme} size={30} />사진 준비 중</span>{/if}
-    <span class="favorite-kind"><ThemeIcon {theme} size={15} />{themeNames[theme]}</span>
   </button>
   <button class="favorite-main" onclick={onselect} aria-label={`${place.name} 동반 규정 보기`}>
+    <span class="favorite-kind">{themeNames[theme]}</span>
     <strong>{place.name}</strong>
     <span class="favorite-address"
-      ><MapPin size={14} />{placeArea(place).city} {shortAddress(place)}</span
+      ><MapPin size={13} /><span>{placeArea(place).city} {shortAddress(place)}</span></span
     >
     <p>
-      {theme === 'hospital'
-        ? '진료 시간은 전화로 확인해 주세요.'
-        : (policyLines(place.policy)[0] ?? '상세 규정이 부족해요. 방문 전 문의해 주세요.')}
+      <ReadableText
+        text={theme === 'hospital'
+          ? '진료 시간은 전화로 확인해 주세요.'
+          : (policyLines(place.policy)[0] ?? '상세 규정이 부족해요. 방문 전 문의해 주세요.')}
+      />
     </p>
     {#if place.sourceWeight !== null || restricted}<span class="favorite-tags">
         {#if place.sourceWeight !== null}<span
-            ><Scale size={14} />제한 체중 {place.sourceWeight}kg</span
+            ><Scale size={13} /><span
+              >{place.sourceWeight}kg {place.sourceWeightBound === 'under' ? '미만' : '이하'} 안내</span
+            ></span
           >{/if}
         {#if restricted}<span class="warn"
-            ><TriangleAlert size={14} />{store.activeDogs.length > 1
-              ? `${restricted.dog.name} ${restricted.label}`
-              : restricted.label}</span
+            ><TriangleAlert size={13} /><span
+              >{store.activeDogs.length > 1
+                ? `${restricted.dog.name} ${restricted.label}`
+                : restricted.label}</span
+            ></span
           >{/if}
       </span>{/if}
   </button>
@@ -69,16 +77,24 @@
 <style>
   .favorite-card {
     position: relative;
+    display: grid;
+    grid-template-columns: minmax(68px, 1fr) minmax(0, 3fr);
+    gap: 12px;
+    padding: 14px;
     overflow: hidden;
     border: 1px solid var(--line);
-    border-radius: 21px;
+    border-radius: 18px;
     background: #fff;
   }
   .favorite-photo {
     position: relative;
     display: block;
     width: 100%;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 4 / 3;
+    align-self: start;
+    margin-top: 3px;
+    border-radius: 11px;
+    overflow: hidden;
     padding: 0;
     border: 0;
     background: var(--sand);
@@ -86,10 +102,6 @@
   .favorite-photo img {
     position: absolute;
     inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
   }
   .photo-empty {
     display: flex;
@@ -97,61 +109,57 @@
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 9px;
-    font-size: 12px;
+    gap: 5px;
+    font-size: 9px;
     color: var(--brown-warm);
   }
   .favorite-kind {
-    position: absolute;
-    left: 12px;
-    bottom: 11px;
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    background: #fffffff2;
+    display: block;
     color: var(--brand-deep);
-    border-radius: 22px;
-    padding: 7px 12px;
-    font-size: 12px;
+    padding-right: 26px;
+    font-size: 10px;
+    line-height: 1.35;
     font-weight: 700;
-    box-shadow: 0 3px 12px #30221918;
   }
   .favorite-main {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    min-width: 0;
+    gap: 4px;
     width: 100%;
-    padding: 18px;
+    padding: 0;
     border: 0;
     background: none;
     text-align: left;
     color: var(--ink);
   }
   .favorite-main > strong {
-    font-size: 19px;
-    letter-spacing: -0.6px;
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.4px;
+    padding-right: 18px;
     word-break: keep-all;
   }
   .favorite-address {
     display: flex;
     align-items: flex-start;
-    gap: 5px;
-    font-size: 12px;
+    gap: 4px;
+    font-size: 11px;
     color: var(--muted);
     line-height: 1.65;
   }
-  .favorite-address :global(svg) {
+  .favorite-address :global(svg),
+  .favorite-tags :global(svg),
+  .favorite-actions :global(svg) {
     flex-shrink: 0;
     margin-top: 3px;
   }
   .favorite-main p {
     margin: 0;
-    border-radius: 12px;
-    padding: 12px;
-    background: var(--cream);
-    font-size: 12px;
-    line-height: 1.8;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
     word-break: keep-all;
   }
   .favorite-tags {
@@ -163,8 +171,10 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
-    padding: 6px 8px;
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 5px 7px;
     border-radius: 8px;
     background: var(--brand-soft);
     color: var(--brand-deep);
@@ -174,34 +184,33 @@
     color: #b0462c;
   }
   .favorite-actions {
+    grid-column: 1 / -1;
     display: flex;
     justify-content: space-between;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 3px 0 0;
     border-top: 1px solid var(--line);
-    background: #fffcf8;
   }
   .favorite-actions a {
     display: flex;
     align-items: center;
     gap: 5px;
     min-height: 44px;
-    font-size: 12px;
+    font-size: 11px;
     text-decoration: none;
     color: var(--brown-warm);
   }
   .favorite-heart {
     position: absolute;
-    top: 11px;
-    right: 11px;
+    top: 4px;
+    right: 4px;
     display: grid;
     place-items: center;
     width: 44px;
     height: 44px;
     border: 0;
     border-radius: 50%;
-    background: #fffffff2;
+    background: none;
     color: var(--brand);
-    box-shadow: 0 3px 12px #30221920;
   }
 </style>

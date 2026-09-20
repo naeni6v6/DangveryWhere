@@ -11,6 +11,9 @@
  * 이 저장본은 DB 에 넣지 않습니다. db:setup 은 지금도 강릉 스냅샷만 적재합니다.
  */
 import type { FoodKind, Place, WeightBound } from '$lib/domain/place';
+import { canonicalPlaceId, canonicalPlaceIds } from '$lib/domain/placeIdentity';
+import placeAliases from '$lib/data/placeAliases.json';
+import reviewedLinks from '$lib/data/reviewedPlaceLinks.json';
 import {
   dataRegions,
   findRegion,
@@ -210,7 +213,9 @@ export function toPlace(place: PreparedRegionalPlace, collectedAt: string): Plac
     // 수집일입니다. 업체에 규정을 확인한 날이 아니에요.
     importedAt: collectedAt,
     verifiedAt: null,
-    ...weightOf(place)
+    ...weightOf(place),
+    // Contact/location review is independent of pet-policy verification.
+    ...(reviewedLinks as Record<string, { corrections?: Partial<Place> }>)[place.id]?.corrections
   };
 }
 
@@ -219,6 +224,25 @@ const converted = new Map<RegionId, Place[]>();
 
 /** 저장본이 있는 지역들. 강원 전체 보기는 이들을 지도 순서(북 → 남)대로 이어 붙여 만듭니다. */
 const dataRegionIds = dataRegions().map((region) => region.id);
+
+/** Confirmed same business: retain both source records, expose one canonical place. */
+function mergeReviewedDuplicates(places: PreparedRegionalPlace[]): PreparedRegionalPlace[] {
+  const groups = new Map<string, PreparedRegionalPlace[]>();
+  for (const place of places) {
+    const id = canonicalPlaceId(place.id);
+    groups.set(id, [...(groups.get(id) ?? []), place]);
+  }
+  return [...groups].map(([id, group]) => {
+    const canonical = group.find((place) => place.id === id) ?? group[0];
+    return {
+      ...canonical,
+      id,
+      phone: canonical.phone || group.find((place) => place.phone)?.phone || '',
+      hours: canonical.hours || group.find((place) => place.hours)?.hours || '',
+      sources: group.flatMap((place) => place.sources)
+    };
+  });
+}
 
 export async function getRegionPlaces(regionId: RegionId): Promise<Place[]> {
   // 강릉은 DB 가 원본이라 캐시하지 않습니다. DB 를 고치면 바로 반영돼야 하니까요.
@@ -230,7 +254,16 @@ export async function getRegionPlaces(regionId: RegionId): Promise<Place[]> {
   const cached = converted.get(regionId);
   if (cached) return cached;
   const dataset = await loadPreparedRegion(regionId);
-  const places = dataset.places.map((place) => toPlace(place, dataset.collectedAt));
+  const places = mergeReviewedDuplicates(dataset.places).map((place) => {
+    const converted = toPlace(place, dataset.collectedAt);
+    if (place.id === 'region-yangyang-4a80633bd5595369f7bb') {
+      converted.policy =
+        '자료마다 제한 체중이 달라 더 엄격한 10kg 미만 기준으로 표시합니다. 한국문화정보원은 10kg 미만, 강원 반려동반관광은 13kg으로 기재했습니다. 현재 기준은 업체에 확인해 주세요.\n' +
+        // Preserve the raw records, but do not display an unqualified "no restrictions" next to a limit.
+        converted.policy.replace(/^- 제한사항 없음\r?\n/gm, '');
+    }
+    return converted;
+  });
   converted.set(regionId, places);
   return places;
 }
@@ -249,6 +282,7 @@ export function regionOfPlaceId(placeId: string): RegionId | null {
  * id 로 지역을 먼저 좁혀, 필요한 지역만 읽습니다.
  */
 export async function findPlacesByIds(placeIds: string[]): Promise<Place[]> {
+  placeIds = canonicalPlaceIds(placeIds);
   const byRegion = new Map<RegionId, Set<string>>();
   for (const placeId of placeIds) {
     const regionId = regionOfPlaceId(placeId);
@@ -276,7 +310,8 @@ function fallbackCount(regionId: RegionId): number {
   if (regionId === 'gangneung') return gangneungSnapshotCount;
   // dataRegionIds 에는 강릉도 들어 있어, 여기서 한 번만 더해집니다.
   if (regionId === 'all') return dataRegionIds.reduce((sum, id) => sum + fallbackCount(id), 0);
-  return index.regions[regionId as keyof typeof index.regions]?.candidateCount ?? 0;
+  const merged = Object.keys(placeAliases).filter((id) => regionOfPlaceId(id) === regionId).length;
+  return (index.regions[regionId as keyof typeof index.regions]?.candidateCount ?? 0) - merged;
 }
 
 /**

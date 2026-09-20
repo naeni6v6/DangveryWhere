@@ -6,21 +6,24 @@
     X,
     SlidersHorizontal,
     MapPin,
-    List,
-    Map,
     PawPrint,
     ChevronUp,
     ChevronDown,
-    Info
+    Info,
+    ArrowLeft
   } from '@lucide/svelte';
   import MapView from '$lib/mobile/MapView.svelte';
   import CategoryStrip from '$lib/components/mobile/CategoryStrip.svelte';
   import MobilePlaceCard from '$lib/components/mobile/MobilePlaceCard.svelte';
   import PlaceSheet from '$lib/components/mobile/PlaceSheet.svelte';
+  import ResultsSheet from '$lib/components/mobile/ResultsSheet.svelte';
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
+  import type { SheetLevel } from '$lib/mobile/layout';
   import { getWebStore } from '$lib/web/store.svelte';
   import { placeTheme, type ThemeFilter, type Place } from '$lib/domain/place';
   import { photoFirst } from '$lib/domain/placePhoto';
   import { directLinkFirst } from '$lib/domain/placeLink';
+  import { canonicalPlaceId } from '$lib/domain/placeIdentity';
   import { providerInfo } from '$lib/domain/region';
   import type { PageData } from './$types';
   import '$lib/mobile/navigation';
@@ -53,26 +56,35 @@
       ? page.state.mobilePlaceId
       : page.url.searchParams.get('place')
   );
-  const selected = $derived(data.places.find((place) => place.id === selectedId) ?? null);
-  let expanded = $state(false);
-  let limit = $state(20);
+  const selected = $derived(
+    data.places.find((place) => place.id === canonicalPlaceId(selectedId ?? '')) ?? null
+  );
+  let sheetLevel = $state<SheetLevel>(0);
+  let detailLevel = $state<SheetLevel>(1);
+  let canvasHeight = $state(0);
+  let overviewHeight = $state(0);
+  const expanded = $derived(sheetLevel === 2);
+  const resultsKey = $derived(filtered.map((place) => place.id).join(','));
   let changingRegion = $state(false);
   let openedHere = false;
   let filters: HTMLDialogElement;
   let sources: HTMLDialogElement;
   let dogPicker = $state<HTMLDetailsElement>();
+  let mapView = $state<MapView>();
+  // Keep the hidden list at its original size so opening details never clamps its scroll offset.
+  $effect.pre(() => {
+    if (!selected && canvasHeight) overviewHeight = canvasHeight;
+  });
   $effect(() => {
     const theme = page.state.mobileCategory ?? page.url.searchParams.get('category');
     if (theme && allThemes.includes(theme as ThemeFilter)) store.category = theme as ThemeFilter;
   });
-  $effect(() => {
-    store.query;
-    store.category;
-    data.regionId;
-    limit = 20;
-  });
 
   function pick(place: Place) {
+    if (selected?.id === place.id) return;
+    mapView?.rememberView();
+    if (dogPicker) dogPicker.open = false;
+    detailLevel = 1;
     const url = new URL(window.location.href);
     url.searchParams.set('place', place.id);
     pushState(url, { ...page.state, mobilePlaceId: place.id });
@@ -97,7 +109,7 @@
   }
   async function changeRegion(event: Event) {
     changingRegion = true;
-    expanded = false;
+    sheetLevel = 0;
     const url = new URL(window.location.href);
     url.searchParams.set('region', (event.currentTarget as HTMLSelectElement).value);
     url.searchParams.delete('place');
@@ -125,7 +137,7 @@
   }}
 />
 <div class="mobile-explore">
-  <section class="explore-toolbar" aria-label="장소 검색과 필터">
+  <section class="explore-toolbar" aria-label="장소 검색과 필터" hidden={!!selected}>
     <div class="explore-location">
       <label
         ><MapPin size={16} /><span class="sr-only">매장 찾기 지역</span><select
@@ -143,14 +155,14 @@
       role="search"
       onsubmit={(event) => {
         event.preventDefault();
-        expanded = true;
+        sheetLevel = 2;
       }}
     >
       <Search size={19} /><input
         aria-label="장소 검색"
         placeholder="장소 이름이나 동네를 검색해요"
         bind:value={store.query}
-        oninput={() => (expanded = true)}
+        oninput={() => (sheetLevel = 2)}
       />{#if store.query}<button
           type="button"
           aria-label="검색어 지우기"
@@ -172,10 +184,10 @@
     <div class="explore-dogs">
       {#if store.dogs.length}
         <details class="dog-picker" bind:this={dogPicker}>
-          <summary class:active={store.mode === 'dog'}
-            ><PawPrint size={14} /><span>{store.dogNames} 기준</span><ChevronDown
-              size={13}
-            /></summary
+          <summary class:active={store.dogFilterActive}
+            ><PawPrint size={14} /><span
+              >{store.dogFilterActive ? `${store.dogNames} 맞춤 적용` : '함께 갈 강아지'}</span
+            ><ChevronDown size={13} /></summary
           >
           <div class="dog-picker-panel">
             <strong>함께 갈 강아지 <small>최대 2마리</small></strong>
@@ -210,15 +222,20 @@
       {:else}<a class="register-inline" href="/dog"
           ><PawPrint size={14} />우리 강아지 등록<ChevronDown size={13} /></a
         >{/if}
-      <span>{changingRegion ? '지역을 불러오는 중…' : `${filtered.length.toLocaleString()}곳`}</span
+      <span aria-live="polite"
+        >{store.weightInfoOnly ? '체중 정보 있음 · ' : ''}{changingRegion
+          ? '지역을 불러오는 중…'
+          : `${filtered.length.toLocaleString()}곳`}</span
       >
     </div>
   </section>
-  <div class="explore-canvas" class:expanded>
-    <div class="explore-map" aria-hidden={expanded} inert={expanded}>
+  <div class="explore-canvas" bind:clientHeight={canvasHeight}>
+    <div class="explore-map" aria-hidden={expanded && !selected} inert={expanded && !selected}>
       <MapView
+        bind:this={mapView}
         places={filtered}
         selectedId={selected?.id ?? null}
+        focusPlace={selected}
         onselect={pick}
         regionId={data.regionId}
         appLayout
@@ -228,37 +245,37 @@
           : '반려견 동반 정보가 있는 장소'}
       />
     </div>
-    <section class="explore-results" aria-label="장소 목록">
-      <button
-        class="results-toggle"
-        onclick={() => (expanded = !expanded)}
-        aria-expanded={expanded}
-      >
-        <span
-          >{#if expanded}<Map size={17} />지도 보기{:else}<List size={17} />목록 보기{/if}<b
-            >{filtered.length.toLocaleString()}</b
-          ></span
-        >{#if expanded}<ChevronDown size={19} />{:else}<ChevronUp size={19} />{/if}
-      </button>
-      <div class="results-scroll">
-        {#if filtered.length}{#each filtered.slice(0, expanded ? limit : 2) as place (place.id)}<MobilePlaceCard
+    <div
+      class="results-layer"
+      class:suspended={!!selected}
+      aria-hidden={!!selected}
+      inert={!!selected}
+      style:height={selected && overviewHeight ? `${overviewHeight}px` : '100%'}
+    >
+      <ResultsSheet bind:level={sheetLevel} count={filtered.length} resetKey={resultsKey}>
+        {#if filtered.length}{#each filtered as place (place.id)}<MobilePlaceCard
               {place}
               onselect={() => pick(place)}
-            />{/each}{#if expanded && filtered.length > limit}<button
-              class="more-places"
-              onclick={() => (limit += 20)}
-              >장소 더 보기 ({Math.min(limit, filtered.length)}/{filtered.length})<ChevronDown
-                size={16}
-              /></button
-            >{/if}
+            />{/each}
+          <p class="results-end">{filtered.length.toLocaleString()}곳을 모두 확인했어요.</p>
         {:else}<div class="mobile-empty">
             <Search size={28} />
             <h2>조건에 맞는 장소가 없어요</h2>
             <p>검색어나 필터를 바꿔보세요.</p>
             <button class="secondary-button" onclick={reset}>전체 장소 보기</button>
           </div>{/if}
-      </div>
-    </section>
+      </ResultsSheet>
+    </div>
+    {#if selected}
+      <button class="detail-back" aria-label="매장 목록으로 돌아가기" onclick={closePlace}>
+        <ArrowLeft size={22} />
+      </button>
+      {#key selected.id}
+        <ResultsSheet bind:level={detailLevel} count={0} resetKey={selected.id} detail>
+          <PlaceSheet place={selected} onclose={closePlace} inline />
+        </ResultsSheet>
+      {/key}
+    {/if}
   </div>
 </div>
 
@@ -309,12 +326,17 @@
     /></label
   >
   <p class="filter-note">
-    필터 결과도 방문 가능을 보장하지 않아요. 허용 구역과 준비물을 함께 확인해 주세요.
+    <ReadableText
+      text="필터 결과도 방문 가능을 보장하지 않아요. 허용 구역과 준비물을 함께 확인해 주세요."
+    />
   </p>
   <div class="filter-actions">
     <button class="secondary-button" onclick={reset}>초기화</button><button
       class="primary-button"
-      onclick={() => filters.close()}>{filtered.length}곳 보기</button
+      onclick={() => {
+        filters.close();
+        sheetLevel = 2;
+      }}>{filtered.length}곳 보기</button
     >
   </div>
 </dialog>
@@ -324,8 +346,9 @@
   >
   <h2 id="mobile-source-title">어떤 정보를 보여주나요?</h2>
   <p class="mobile-page-lead">
-    {region.label}의 공공데이터를 모았어요. 원문을 옮긴 정보로, 시설의 현재 운영 여부와 규정을 방문
-    전에 확인해 주세요.
+    <ReadableText
+      text={`${region.label}의 공공데이터를 모았어요. 원문을 옮긴 정보로, 시설의 현재 운영 여부와 규정을 방문 전에 확인해 주세요.`}
+    />
   </p>
   {#each region.sources as source}<p>
       <a href={providerInfo[source].url} target="_blank" rel="noreferrer"
@@ -333,12 +356,11 @@
       >
     </p>{/each}
 </dialog>
-{#if selected}{#key selected.id}<PlaceSheet place={selected} onclose={closePlace} />{/key}{/if}
 
 <style>
   .mobile-explore {
     height: calc(100dvh - var(--mobile-header-height) - var(--mobile-tab-height));
-    min-height: 460px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
   }
@@ -521,74 +543,41 @@
   .explore-canvas {
     flex: 1;
     position: relative;
-    min-height: 230px;
+    min-height: 0;
   }
   .explore-map {
     position: absolute;
     inset: 0;
+    z-index: 0;
   }
-  .expanded .explore-map {
+  .results-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .results-layer.suspended {
     visibility: hidden;
   }
-  .explore-results {
+  .detail-back {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 182px;
-    border-radius: 23px 23px 0 0;
-    background: white;
-    box-shadow: 0 -5px 22px #4934210e;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-  }
-  .expanded .explore-results {
-    height: 100%;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .results-toggle {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 45px;
-    flex-shrink: 0;
-    padding: 0 20px;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    border-radius: inherit;
-    background: white;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .results-toggle span {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-  .results-toggle b {
-    font-size: 11px;
-    color: var(--brand);
-  }
-  .results-scroll {
-    flex: 1;
-    overflow: auto;
-    overscroll-behavior: contain;
-    padding: 0 20px 12px;
-  }
-  .more-places {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 48px;
-    background: var(--cream);
+    top: calc(12px + env(safe-area-inset-top));
+    left: 16px;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--line);
-    border-radius: 12px;
-    font-size: 13px;
-    margin: 15px 0;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 3px 12px #4934211a;
+  }
+  .results-end {
+    margin: 20px 0 4px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
   }
   .filter-dialog h2 {
     font-size: 23px;

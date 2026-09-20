@@ -18,6 +18,7 @@
   <button class="place-open" onclick={onselect} aria-label={`${place.name} 상세 보기`}>
     <div class="place-photo">
       {#if photo && !failed}<img
+          class="mobile-photo"
           src={photo}
           alt=""
           loading="lazy"
@@ -27,7 +28,7 @@
     <div class="place-copy">
       <small>{themeNames[placeTheme(place)]} · {placeArea(place).city}</small>
       <h3>{place.name}</h3>
-      <p><MapPin size={12} />{shortAddress(place)}</p>
+      <p><MapPin size={12} /><span>{shortAddress(place)}</span></p>
       <span class:restricted={!!restriction} class="policy-chip"
         >{placeTheme(place) === 'hospital'
           ? '전화 후 방문'
@@ -66,8 +67,10 @@
     width: 100%;
   }
   .place-photo {
-    width: 108px;
-    height: 72px;
+    width: 27%;
+    min-width: 72px;
+    max-width: 108px;
+    aspect-ratio: 3 / 2;
     border-radius: 12px;
     overflow: hidden;
     flex-shrink: 0;
@@ -78,12 +81,8 @@
     justify-content: center;
   }
   .place-photo img {
-    display: block;
-    width: 100%;
-    height: 100%;
     min-width: 0;
     min-height: 0;
-    object-fit: contain;
     background: var(--sand);
   }
   .place-copy {
@@ -100,9 +99,8 @@
     line-height: 1.45;
     margin: 5px 0;
     letter-spacing: -0.5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
   p {
     font-size: 11px;
@@ -110,10 +108,12 @@
     margin: 0 0 9px;
     display: flex;
     gap: 3px;
-    align-items: center;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    align-items: flex-start;
+    line-height: 1.6;
+  }
+  p :global(svg) {
+    flex-shrink: 0;
+    margin-top: 3px;
   }
   .policy-chip {
     display: inline-flex;

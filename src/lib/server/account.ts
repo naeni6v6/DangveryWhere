@@ -3,6 +3,7 @@ import { findPlacesByIds, getRegionPlaces, listRegions } from './regionPlaces';
 import { DEFAULT_REGION_ID, type RegionId } from '$lib/domain/region';
 import type { Dog } from '$lib/domain/place';
 import type { DogCharacter } from '$lib/domain/character';
+import { canonicalPlaceIds } from '$lib/domain/placeIdentity';
 
 /**
  * Places plus the signed-in user's dogs and favorites, shared by the mobile and web screens.
@@ -36,7 +37,7 @@ export async function loadAccountData(locals: App.Locals) {
         size: row.size as Dog['size'],
         weight: Number(row.weight)
       }));
-      favorites = saved.map((row) => row.place_id as string);
+      favorites = canonicalPlaceIds(saved.map((row) => row.place_id as string));
       characters = (drawn as Record<string, unknown>[]).map((row) => ({
         id: row.id as string,
         dogId: (row.dog_id as string | null) ?? null,

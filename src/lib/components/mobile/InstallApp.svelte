@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from './ReadableText.svelte';
   import { onMount } from 'svelte';
   import { Download, Share, PlusSquare, X, RefreshCw } from '@lucide/svelte';
   import { page } from '$app/state';
@@ -158,7 +159,9 @@
   {:else}
     <p>Chrome 또는 Edge의 메뉴에서<br />‘앱 설치’ 또는 ‘홈 화면에 추가’를 선택해 주세요.</p>
     {#if dev}<p class="install-note">
-        현재는 개발 화면이에요. 정식 설치와 오프라인 기능은 배포된 앱에서 제공해요.
+        <ReadableText
+          text="현재는 개발 화면이에요. 정식 설치와 오프라인 기능은 배포된 앱에서 제공해요."
+        />
       </p>{/if}
   {/if}
   <button class="primary-button" onclick={() => instructions.close()}>알겠어요</button>

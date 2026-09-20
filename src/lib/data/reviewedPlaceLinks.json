@@ -1,0 +1,63 @@
+{
+  "gw-389": {
+    "name": "강릉커피거리",
+    "url": "https://m.place.naver.com/place/20947876/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "플레이스 상호와 창해로14번길 20-1 일치"
+  },
+  "gw-624": {
+    "name": "멍앤서프",
+    "url": "https://m.place.naver.com/place/1568235225/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "현재 상호 멍엔서프. 도로명 창해로 237의 지번 송정동 963-2 일치"
+  },
+  "region-chuncheon-0070f9d8d6ff67bb02c6": {
+    "name": "도그스테이블",
+    "url": "https://m.place.naver.com/place/1211555097/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "현재 상호 도그스테이블석사점. 안마산로 294-30 일치",
+    "corrections": { "phone": "033-264-7624" }
+  },
+  "region-chuncheon-46bf7fd704b2ad6c0e6a": {
+    "name": "춘천숲자연휴양림캠핑장",
+    "url": "https://m.place.naver.com/accommodation/32769838/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "종자리로 224-104와 033-264-1156 일치"
+  },
+  "region-chuncheon-6f7fd77cf424c3865d1b": {
+    "name": "강촌잠빌펜션",
+    "url": "https://m.place.naver.com/accommodation/38460005/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "현재 상호 잠빌펜션. 강촌로 250 일치",
+    "corrections": { "phone": "0507-1361-2630" }
+  },
+  "region-yangyang-4a80633bd5595369f7bb": {
+    "name": "속초애견펜션 양양해피플레이스",
+    "url": "https://m.place.naver.com/accommodation/11734270/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "상호·중복골길 11 일치. 홈페이지는 happyplacepension.co.kr. 체중 기준은 플레이스에서 확인되지 않음"
+  },
+  "region-yangyang-4ae2e6a4ab9754e292ee": {
+    "name": "한계령오색펜션",
+    "url": "https://m.place.naver.com/accommodation/1012609135/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "상호·설악로 1323-19 일치. 인근 설악산오색펜션과 구별"
+  },
+  "region-yangyang-4de695e659131648edbf": {
+    "name": "발렌타인애견펜션",
+    "url": null,
+    "checkedAt": "2026-09-20",
+    "evidence": "네이버 업체명 검색 결과 없음. 남대천로 251-117 검색은 주소만 반환. 폐업 여부는 미확인, 종료된 직접 링크만 제거"
+  },
+  "region-yangyang-f063cb94bbc6e60ff8e7": {
+    "name": "강이네하우스",
+    "url": "https://m.place.naver.com/accommodation/1178786778/home",
+    "checkedAt": "2026-09-20",
+    "evidence": "애견펜션 강이네하우스, 전화 0507-1314-2453 일치. 플레이스 도로명 17-4로 정정",
+    "corrections": {
+      "address": "강원특별자치도 양양군 서면 상평1길 17-4",
+      "latitude": 38.0667995,
+      "longitude": 128.5833467
+    }
+  }
+}

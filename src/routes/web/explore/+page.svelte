@@ -1,10 +1,19 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
-  import { Map, Search, ArrowUpRight, SlidersHorizontal, RotateCcw } from '@lucide/svelte';
+  import {
+    Map,
+    Search,
+    ArrowUpRight,
+    SlidersHorizontal,
+    RotateCcw,
+    X,
+    PawPrint
+  } from '@lucide/svelte';
   import MapView from '$lib/components/MapView.svelte';
   import WebPlaceCard from '$lib/components/web/WebPlaceCard.svelte';
   import { directLinkFirst } from '$lib/domain/placeLink';
+  import { canonicalPlaceId } from '$lib/domain/placeIdentity';
   import { hasPhoto, photoFirst } from '$lib/domain/placePhoto';
   import WebPlaceDetail from '$lib/components/web/WebPlaceDetail.svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
@@ -18,8 +27,10 @@
   const store = getWebStore();
   let selected = $state<Place | null>(null);
   let showFilters = $state(false);
+  let filters: HTMLDialogElement;
   let offline = $state(false);
   let listElement: HTMLDivElement;
+  let detailElement = $state<HTMLElement>();
 
   // 원본 API 는 식음료를 한 묶음으로 주지만, 카페와 식당은 찾는 목적이 달라 나눠 놨습니다.
   // 문화시설(박물관·미술관)은 문화정보원 자료에만, 쇼핑은 관광공사 자료에만 있어
@@ -49,7 +60,9 @@
   const filtered = $derived(photoFirst(directLinkFirst(store.filter(data.places))));
   // 사진 있는 곳이 어디서 끝나는지. 그 자리에 칸막이를 한 줄 넣습니다.
   const withPhoto = $derived(filtered.filter(hasPhoto).length);
-  const region = $derived(data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]);
+  const region = $derived(
+    data.regions.find((item) => item.id === data.regionId) ?? data.regions[0]
+  );
   const area = $derived(region.label);
   const sources = $derived(region.sources.map((id) => providerInfo[id]));
   const areaText = (suffix: string) => (area ? `${area} ${suffix}` : suffix);
@@ -62,9 +75,9 @@
         ? areaText('동물병원')
         : '동반 장소와 동물병원'
   );
-  // 지역을 바꾸면 이전 지역에서 고른 장소가 상세 패널에 남아 있지 않게 합니다.
+  // 검색·필터·지역을 바꿔 목록에서 빠진 장소는 상세 패널에서도 닫습니다.
   $effect(() => {
-    const ids = new Set(data.places.map((place) => place.id));
+    const ids = new Set(filtered.map((place) => place.id));
     untrack(() => {
       if (selected && !ids.has(selected.id)) selected = null;
     });
@@ -93,7 +106,9 @@
     const requestedCategory = params.get('category');
     if (requestedCategory && requestedCategory in themeNames)
       store.category = requestedCategory as ThemeFilter;
-    const requestedPlace = data.places.find((place) => place.id === params.get('place'));
+    const requestedPlace = data.places.find(
+      (place) => place.id === canonicalPlaceId(params.get('place') ?? '')
+    );
     if (requestedPlace) {
       store.resetFilters();
       selected = requestedPlace;
@@ -114,9 +129,8 @@
 </svelte:head>
 <svelte:window
   onkeydown={(event) => {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !showFilters) {
       selected = null;
-      showFilters = false;
     }
   }}
 />
@@ -149,8 +163,12 @@
       <button
         class="filter-toggle"
         class:active={showFilters || store.filterCount > 0}
-        onclick={() => (showFilters = !showFilters)}
+        onclick={() => {
+          showFilters = true;
+          filters.showModal();
+        }}
         aria-expanded={showFilters}
+        aria-haspopup="dialog"
         ><SlidersHorizontal size={18} />동반 조건 필터{#if store.filterCount}<span
             >{store.filterCount}</span
           >{/if}</button
@@ -159,17 +177,18 @@
           ><RotateCcw size={15} />초기화</button
         >{/if}
     </div>
-    {#if showFilters}<div class="filter-options">
-        <label
-          ><input type="checkbox" bind:checked={store.weightInfoOnly} />제한 체중이 기재된 장소만</label
-        >
-        {#if store.mode === 'dog' && store.dog}<label
-            ><input type="checkbox" bind:checked={store.hideKnownMismatch} />원본의 체중·체급 제한에
-            {store.activeDogs.length > 1 ? '둘 중 하나라도 맞지 않는' : '맞지 않는'} 곳 제외</label
-          >{:else}<p class="filter-hint">
-            <a href="/web/dog">우리 강아지</a>를 등록하면 체중·체급 조건에 맞지 않는 곳을 뺄 수 있어요.
-          </p>{/if}
-        <p>필터 결과도 방문 가능을 보장하지 않아요. 허용 구역과 준비물을 함께 확인해 주세요.</p>
+    {#if store.filterCount}<div class="filter-summary" aria-label="적용 중인 조건">
+        {#if store.weightInfoOnly}<button
+            onclick={() => (store.weightInfoOnly = false)}
+            aria-label="체중 정보 필터 해제">체중 정보 있음<X size={12} /></button
+          >{/if}
+        {#if store.dogFilterActive}<button
+            onclick={() => {
+              store.hideKnownMismatch = false;
+              store.mode = 'all';
+            }}
+            aria-label="강아지 제한 제외 필터 해제">강아지 제한 제외<X size={12} /></button
+          >{/if}
       </div>{/if}
   </div>
 
@@ -177,7 +196,7 @@
     <h2>
       {#if store.category === 'hospital'}
         가까운 동물병원
-      {:else if store.dog}
+      {:else if store.dogFilterActive}
         {store.dogNames}{josa(store.dogNames, '와/과')} 함께 갈 곳
       {:else}
         함께 갈 곳
@@ -187,7 +206,7 @@
     <p>
       {#if store.category === 'hospital'}
         진료 시간은 전화로 확인해 주세요
-      {:else if store.mode === 'dog' && store.dog}
+      {:else if store.dogFilterActive}
         {store.dogNames}의 체중·체급 조건 적용 중
       {:else}
         방문 전 동반 규정을 확인해 보세요
@@ -213,7 +232,8 @@
         <Search size={36} strokeWidth={1} />
         <h3>조건에 맞는 장소가 없어요</h3>
         <p>검색어나 필터를 바꿔보세요.</p>
-        <button class="secondary-button" onclick={() => store.resetFilters()}>전체 장소 보기</button>
+        <button class="secondary-button" onclick={() => store.resetFilters()}>전체 장소 보기</button
+        >
       </div>{/if}
   </div>
 
@@ -228,11 +248,72 @@
   </div>
 </aside>
 
+<dialog
+  bind:this={filters}
+  class="filter-dialog"
+  aria-labelledby="web-filter-title"
+  onclose={() => (showFilters = false)}
+>
+  <header>
+    <h2 id="web-filter-title">동반 조건 필터</h2>
+    <button class="close-filter" onclick={() => filters.close()} aria-label="필터 닫기"
+      ><X size={22} /></button
+    >
+  </header>
+  <div class="filter-options">
+    {#if store.dogs.length}<fieldset>
+        <legend>함께 갈 강아지 <small>최대 2마리</small></legend>
+        <div class="filter-dogs">
+          {#each store.dogs as dog (dog.id)}<button
+              class:active={store.isActive(dog.id)}
+              aria-pressed={store.isActive(dog.id)}
+              onclick={() => store.toggleDog(dog.id)}
+              ><PawPrint size={16} />{dog.name}<small>{dog.weight}kg</small></button
+            >{/each}
+        </div>
+      </fieldset>{:else}<p class="filter-hint"><a href="/web/dog">우리 강아지 등록하기</a></p>{/if}
+    <label
+      ><span
+        ><strong>제한 체중이 기재된 장소만</strong><small
+          >원본에 체중 정보가 있는 장소를 골라요</small
+        ></span
+      ><input type="checkbox" bind:checked={store.weightInfoOnly} /></label
+    >
+    <label
+      ><span
+        ><strong>우리 강아지의 제한 장소 제외</strong><small
+          >{store.dogs.length
+            ? '선택한 아이의 체중·체급 조건으로 비교해요'
+            : '강아지를 먼저 등록해 주세요'}</small
+        ></span
+      ><input
+        type="checkbox"
+        checked={store.dogFilterActive}
+        disabled={!store.dogs.length}
+        onchange={(event) => {
+          store.hideKnownMismatch = event.currentTarget.checked;
+          store.mode = event.currentTarget.checked ? 'dog' : 'all';
+        }}
+      /></label
+    >
+    <p class="filter-note">
+      필터 결과도 방문 가능을 보장하지 않아요. 허용 구역과 준비물을 함께 확인해 주세요.
+    </p>
+  </div>
+  <footer class="filter-actions">
+    <button class="secondary-button" onclick={() => store.resetFilters()}>초기화</button><button
+      class="primary-button"
+      onclick={() => filters.close()}>{filtered.length}곳 보기</button
+    >
+  </footer>
+</dialog>
+
 <main class="web-map" class:has-detail={selected !== null} aria-label="반려견 동반 장소 지도">
   <h1 class="sr-only">댕브리웨어 웹 · 반려견 동반 지도</h1>
   <MapView
     places={filtered}
     selectedId={selected?.id ?? null}
+    selectionOverlay={detailElement}
     onselect={(place) => (selected = place)}
     caption={mapCaption}
     padding={{ top: 40, right: 40, bottom: 40, left: 40 }}
@@ -242,6 +323,7 @@
       오프라인 · 최신 규정을 확인할 수 없어요.
     </div>{/if}
   {#if selected}<WebPlaceDetail
+      bind:panel={detailElement}
       place={selected}
       dogs={store.activeDogs}
       saved={store.isSaved(selected.id)}
@@ -261,14 +343,14 @@
     min-height: 0;
   }
   .sidebar-top {
-    padding: 22px 22px 16px;
+    padding: 16px 20px 12px;
     border-bottom: 1px solid var(--line);
   }
   /* 줄은 themeRows 가 정하고, 한 줄이 너무 좁아지면 그 안에서만 다시 접힙니다. */
   .category-row {
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 6px;
   }
   .category-line {
     display: flex;
@@ -286,7 +368,7 @@
     font-size: 15px;
     color: var(--brown-warm);
     white-space: nowrap;
-    min-height: 46px;
+    min-height: 44px;
   }
   .category-row button:hover {
     background: var(--cream);
@@ -332,26 +414,28 @@
     place-items: center;
   }
   .filter-options {
-    margin-top: 14px;
-    padding: 18px 20px;
-    background: var(--cream);
-    border: 1px solid var(--line);
-    border-radius: 14px;
+    padding: 20px 24px;
+    overflow: auto;
     display: grid;
-    gap: 12px;
+    gap: 20px;
   }
   .filter-options label {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     font-size: 15px;
     line-height: 1.6;
   }
+  .filter-options label small {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+  }
   .filter-options input {
     accent-color: var(--brand);
-    width: 18px;
-    height: 18px;
-    margin-top: 3px;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
   }
   .filter-options p {
@@ -364,8 +448,112 @@
     color: var(--brand);
     font-weight: 600;
   }
+  .filter-dialog {
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 40px);
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    color: var(--brown);
+    background: white;
+    box-shadow: 0 16px 60px #35221f33;
+  }
+  .filter-dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .filter-dialog::backdrop {
+    background: #2f222655;
+  }
+  .filter-dialog header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 18px 14px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .filter-dialog h2 {
+    margin: 0;
+    font-size: 21px;
+  }
+  .close-filter {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--cream);
+  }
+  .filter-options fieldset {
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+  }
+  .filter-options legend {
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .filter-options legend small {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .filter-dogs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filter-dogs button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: white;
+  }
+  .filter-dogs button.active {
+    background: var(--brand-soft);
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .filter-note {
+    background: var(--cream);
+    padding: 14px;
+    border-radius: 12px;
+  }
+  .filter-actions {
+    display: flex;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+  }
+  .filter-actions .primary-button {
+    flex: 1;
+  }
+  .filter-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .filter-summary button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 4px 10px;
+    color: var(--brand);
+    background: var(--brand-soft);
+    font-size: 12px;
+  }
   .list-heading {
-    padding: 20px 24px 12px;
+    padding: 14px 24px 10px;
   }
   .list-heading h2 {
     font-size: 22px;
@@ -413,7 +601,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    padding: 14px 24px;
+    padding: 10px 24px;
     border-top: 1px solid var(--line);
     font-size: 13px;
     color: var(--muted);

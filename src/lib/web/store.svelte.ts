@@ -10,6 +10,8 @@ import {
 } from '$lib/domain/place';
 
 import type { DogCharacter } from '$lib/domain/character';
+import { canonicalPlaceId, canonicalPlaceIds } from '$lib/domain/placeIdentity';
+import { readExplorePreferences, saveExplorePreferences } from '$lib/domain/explorePreferences';
 
 export type Account = {
   user: App.Locals['user'];
@@ -71,11 +73,24 @@ export class WebStore {
   constructor(account: Account) {
     this.loggedIn = Boolean(account.user);
     this.nickname = account.user?.nickname ?? '';
-    this.savedIds = this.loggedIn ? [...account.favorites] : readLocalFavorites();
+    this.savedIds = canonicalPlaceIds(
+      this.loggedIn ? [...account.favorites] : readLocalFavorites()
+    );
     // 로그인했으면 계정에 저장된 것이, 아니면 이 브라우저에 담아 둔 것이 기준입니다.
     this.dogs = this.loggedIn ? [...account.dogs] : readLocalDogs();
     this.characters = this.loggedIn ? [...(account.characters ?? [])] : readLocalCharacters();
     this.activeDogIds = this.#restoreActiveIds();
+    Object.assign(this, readExplorePreferences(this.dogs.length > 0));
+    // Both layouts own this effect, so every entry point (including dog profiles) is saved.
+    $effect(() => {
+      saveExplorePreferences({
+        query: this.query,
+        category: this.category,
+        mode: this.mode,
+        weightInfoOnly: this.weightInfoOnly,
+        hideKnownMismatch: this.hideKnownMismatch
+      });
+    });
   }
 
   completeLogin(account: Account, signup = false) {
@@ -84,7 +99,7 @@ export class WebStore {
     // it together avoids showing guest or previous-account records under the new name.
     this.loggedIn = true;
     this.nickname = account.user.nickname;
-    this.savedIds = [...account.favorites];
+    this.savedIds = canonicalPlaceIds(account.favorites);
     this.dogs = [...account.dogs];
     this.characters = [...(account.characters ?? [])];
     this.activeDogIds = this.#restoreActiveIds();
@@ -272,7 +287,11 @@ export class WebStore {
   }
 
   get filterCount() {
-    return Number(this.weightInfoOnly) + Number(this.hideKnownMismatch && this.mode === 'dog');
+    return Number(this.weightInfoOnly) + Number(this.dogFilterActive);
+  }
+
+  get dogFilterActive() {
+    return this.mode === 'dog' && this.hideKnownMismatch && this.activeDogs.length > 0;
   }
 
   get hasFilters() {
@@ -295,7 +314,7 @@ export class WebStore {
   }
 
   isSaved(id: string) {
-    return this.savedIds.includes(id);
+    return this.savedIds.includes(canonicalPlaceId(id));
   }
 
   notify(text: string) {
@@ -309,6 +328,7 @@ export class WebStore {
     this.category = 'all';
     this.weightInfoOnly = false;
     this.hideKnownMismatch = false;
+    this.mode = 'all';
   }
 
   /**
@@ -322,11 +342,7 @@ export class WebStore {
       this.selectDog(localId);
       this.mode = 'dog';
       this.hideKnownMismatch = true;
-      this.notify(
-        id
-          ? `${profile.name}의 정보를 수정했어요.`
-          : `${profile.name}를 등록했어요.`
-      );
+      this.notify(id ? `${profile.name}의 정보를 수정했어요.` : `${profile.name}를 등록했어요.`);
       return;
     }
     try {
@@ -453,7 +469,7 @@ function readLocalFavorites(): string[] {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) ?? '[]');
     if (!Array.isArray(saved)) return [];
-    return saved.filter((id): id is string => typeof id === 'string');
+    return canonicalPlaceIds(saved.filter((id): id is string => typeof id === 'string'));
   } catch {
     // 저장소를 못 쓰는 브라우저(시크릿 모드 등)에서는 이번 방문 동안만 기억합니다.
     return [];

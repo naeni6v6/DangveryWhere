@@ -5,6 +5,7 @@
   import { page } from '$app/state';
   import {
     ArrowLeft,
+    ChevronDown,
     Check,
     Map,
     PawPrint,
@@ -28,6 +29,7 @@
   import { shrinkDataUrl } from '$lib/character/image';
   import type { CharacterRenderer } from '$lib/character/renderer';
   import CharacterCanvas from '$lib/components/web/CharacterCanvas.svelte';
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   const AFTER_TUTORIAL_PATH = $derived(`${basePath}/explore`);
 
@@ -208,12 +210,15 @@
       </h1>
       <p class="lead">
         {#if stage === 'customize'}
-          견종 캐릭터를 밑그림으로 놓고 눈·귀·얼굴 크기와 털 색을 맞춥니다. 원래 모습에서 너무
-          멀어지지 않게 범위를 정해 두었어요.
+          <ReadableText
+            text="견종 캐릭터를 밑그림으로 놓고 눈·귀·얼굴 크기와 털 색을 맞춥니다. 원래 모습에서 너무 멀어지지 않게 범위를 정해 두었어요."
+          />
         {:else}
-          {saved?.local
-            ? '이 캐릭터는 이 브라우저에 저장했어요. 로그인 후 만든 캐릭터는 계정에 저장돼요.'
-            : '계정에 저장했어요. 다른 기기에서도 같은 캐릭터를 볼 수 있어요.'}
+          <ReadableText
+            text={saved?.local
+              ? '이 캐릭터는 이 브라우저에 저장했어요. 로그인 후 만든 캐릭터는 계정에 저장돼요.'
+              : '계정에 저장했어요. 다른 기기에서도 같은 캐릭터를 볼 수 있어요.'}
+          />
         {/if}
       </p>
       <ol
@@ -240,12 +245,12 @@
             alt={`마스코트 ${MASCOT_NAME}`}
             draggable="false"
           />
-          <p class="speech">{bubble}</p>
+          <p class="speech"><ReadableText text={bubble} /></p>
         </div>
 
         {#if error}
           <div class="error" role="alert">
-            <TriangleAlert size={18} /><span>{error}</span>
+            <TriangleAlert size={18} /><span><ReadableText text={error} /></span>
             <button type="button" class="error-close" aria-label="닫기" onclick={() => (error = '')}
               ><X size={16} /></button
             >
@@ -277,14 +282,19 @@
                 >
               </div>
               <details class="trait-card">
-                <summary class="trait-label"><PawPrint size={14} />밑그림으로 쓴 캐릭터</summary>
+                <summary class="trait-label">
+                  <PawPrint size={16} aria-hidden="true" />
+                  <span>밑그림으로 쓴 캐릭터</span>
+                  <ChevronDown size={19} class="trait-chevron" aria-hidden="true" />
+                </summary>
                 <ul class="chips">
                   {#each traitChips as chip (chip)}<li>{chip}</li>{/each}
                 </ul>
                 <p class="trait-note">
                   {#if profileBreed}
-                    프로필에 적어 둔 견종({dog?.breed})의 캐릭터예요. 견종을 바꾸려면 우리 강아지
-                    화면에서 고쳐 주세요.
+                    <ReadableText
+                      text={`프로필에 적어 둔 견종(${dog?.breed})의 캐릭터예요. 견종을 바꾸려면 우리 강아지 화면에서 고쳐 주세요.`}
+                    />
                   {:else}
                     아직 {dog?.breed ?? '이 견종'} 캐릭터가 없어서 기본 캐릭터로 시작해요.
                   {/if}
@@ -612,21 +622,39 @@
   }
   /* 밑그림으로 쓴 견종 캐릭터가 어떤 아이인지 알려 주는 카드 */
   .trait-card {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-    padding: 14px 16px;
+    padding: 0 16px;
     border: 1px solid var(--line);
     border-radius: 18px;
     background: var(--cream);
   }
   .trait-label {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
     font-size: 13px;
     font-weight: 700;
     color: var(--brand);
+    min-height: 48px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .trait-label::-webkit-details-marker {
+    display: none;
+  }
+  .trait-label > span {
+    flex: 1;
+  }
+  .trait-label :global(.trait-chevron) {
+    transition: transform 180ms ease;
+  }
+  .trait-card[open] .trait-label :global(.trait-chevron) {
+    transform: rotate(180deg);
+  }
+  .trait-card[open] {
+    padding-bottom: 16px;
+  }
+  .trait-card[open] .trait-note {
+    margin-top: 12px;
   }
   .chips {
     display: flex;

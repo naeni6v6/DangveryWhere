@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { profileNotice, type DogProfile, type Place } from '$lib/domain/place';
 import { DEFAULT_REGION_ID, dataRegions, groupedRegions, regionCatalog } from '$lib/domain/region';
 import { loadPreparedRegion } from './regions';
+import { canonicalPlaceId, canonicalPlaceIds, placeIdVariants } from '$lib/domain/placeIdentity';
+import { placePhotos } from '$lib/domain/placePhoto';
 import {
   findPlacesByIds,
   foodKindOf,
@@ -201,12 +203,12 @@ describe('region catalog matches the data it describes', () => {
     // 강원 밖은 목록에 없습니다. 저장본이 남아 있어도 화면에 나오면 안 돼요.
     expect(regions.every((region) => region.province === '강원')).toBe(true);
     // 강원 전체는 나머지를 합친 값이라 두 번 세지 않습니다.
-    expect(regions[0].placeCount).toBe(340 + 176);
+    expect(regions[0].placeCount).toBe(340 + 176 - 1);
     expect(
       regions
         .filter((region) => region.status !== 'mixed')
         .reduce((sum, region) => sum + region.placeCount, 0)
-    ).toBe(340 + 176);
+    ).toBe(340 + 176 - 1);
   });
 
   it('uses the live count for the region currently on screen', async () => {
@@ -219,6 +221,31 @@ describe('region catalog matches the data it describes', () => {
 });
 
 describe('place ids point back at their region', () => {
+  it('merges Happy Place while preserving sources, photos, favorites and old URLs', async () => {
+    const oldId = 'region-yangyang-a5e930212be4313b9ef6';
+    const id = 'region-yangyang-4a80633bd5595369f7bb';
+    const matches = (await getRegionPlaces('yangyang')).filter((place) =>
+      place.name.includes('해피플레이스')
+    );
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({
+      id,
+      name: '속초애견펜션 양양해피플레이스',
+      phone: '010-2750-2749',
+      sourceWeight: 10,
+      sourceWeightBound: 'under'
+    });
+    expect(matches[0].policy).toContain('자료마다 제한 체중이 달라');
+    expect(matches[0].policy).toContain('13kg');
+    expect(matches[0].policy).not.toContain('제한사항 없음');
+    expect(matches[0].description.length).toBeGreaterThan(50);
+    expect(canonicalPlaceId(oldId)).toBe(id);
+    expect(canonicalPlaceIds([oldId, id])).toEqual([id]);
+    expect(placeIdVariants(id)).toContain(oldId);
+    expect(placePhotos(id)).toEqual(placePhotos(oldId));
+    expect(placePhotos(id).length).toBeGreaterThan(0);
+    expect(await findPlacesByIds([oldId, id])).toEqual(matches);
+  });
   it('reads a place id back to its own region', async () => {
     const [first] = await getRegionPlaces('hongcheon');
     expect(regionOfPlaceId(first.id)).toBe('hongcheon');
@@ -284,7 +311,7 @@ describe('the whole-province view', () => {
 
   it('joins every region exactly once, in the same north-to-south order', async () => {
     const places = await getRegionPlaces('all');
-    expect(places).toHaveLength(340 + 176);
+    expect(places).toHaveLength(340 + 176 - 1);
     expect(new Set(places.map((place) => place.id)).size).toBe(places.length);
     // 강원 밖 저장본은 파일로만 남아 있고, 화면에는 한 건도 올라오지 않습니다.
     expect(places.every((place) => place.address.startsWith('강원'))).toBe(true);

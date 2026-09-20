@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import { Heart, Map as MapIcon, LogIn, RefreshCw } from '@lucide/svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   import FavoritePlaceCard from '$lib/components/mobile/FavoritePlaceCard.svelte';
@@ -122,8 +123,9 @@
       <span class="empty-icon"><Heart size={38} strokeWidth={1.5} /></span>
       <h2>아직 찜한 장소가 없어요</h2>
       <p>
-        지도에서 마음에 드는 곳의 하트를 눌러 보세요. 로그인하지 않아도 이 브라우저에 그대로 남아요.{#if !store.loggedIn}
-          로그인하면 다른 기기에서도 같은 목록을 볼 수 있습니다.{/if}
+        <ReadableText
+          text={`지도에서 마음에 드는 곳의 하트를 눌러 보세요. 로그인하지 않아도 이 브라우저에 그대로 남아요.${!store.loggedIn ? ' 로그인하면 다른 기기에서도 같은 목록을 볼 수 있습니다.' : ''}`}
+        />
       </p>
       <a class="primary-button" href="/explore"><MapIcon size={18} />매장 찾으러 가기</a>
       {#if !store.loggedIn}<button class="secondary-button" onclick={() => store.requestLogin()}
@@ -158,7 +160,7 @@
     justify-content: center;
     gap: 7px;
     min-height: 100px;
-    padding: 13px 10px;
+    padding: 13px 10px 13px 16px;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: #fff;

@@ -1,8 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { Search, ArrowUpRight, ChevronRight, MapPin, PawPrint, Heart } from '@lucide/svelte';
+  import { Search, ArrowUpRight, ChevronRight, MapPin, Stamp, Heart } from '@lucide/svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
   import MobilePlaceCard from '$lib/components/mobile/MobilePlaceCard.svelte';
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   import { photoFirst } from '$lib/domain/placePhoto';
   import { directLinkFirst } from '$lib/domain/placeLink';
@@ -11,6 +12,7 @@
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   const store = getWebStore();
+  let showAllSuggestions = $state(false);
   const region = $derived(data.regions.find((item) => item.id === data.regionId)!);
   const dogBreed = $derived(findBreed(store.dog?.breed ?? ''));
   const dogPhoto = $derived(
@@ -90,17 +92,6 @@
         >{/each}
     </div>
   </section>
-  {#if store.dog}<a class="home-dog" href="/dog"
-      ><img src={dogPhoto} alt="" width="84" height="84" />
-      <div>
-        <small
-          >{store.dog.name}{store.dogs.length > 1 ? ` 외 ${store.dogs.length - 1}마리` : ''}</small
-        >
-        <strong>우리 강아지 관리</strong>
-        <p>프로필 수정 · 캐릭터 꾸미기</p>
-      </div>
-      <ChevronRight size={19} /></a
-    >{/if}
   <section class="home-section home-places">
     <div class="section-title">
       <div>
@@ -110,18 +101,29 @@
       <a href="/explore">지도 보기<ChevronRight size={14} /></a>
     </div>
     <p class="home-places-intro">카테고리별로 한 곳씩 둘러보세요.</p>
-    {#each suggestions as place (place.id)}<MobilePlaceCard
-        {place}
-        onselect={() => openPlace(place)}
-      />{/each}
+    <div id="home-suggestions">
+      {#each suggestions.slice(0, showAllSuggestions ? suggestions.length : 4) as place (place.id)}<MobilePlaceCard
+          {place}
+          onselect={() => openPlace(place)}
+        />{/each}
+    </div>
+    {#if suggestions.length > 4}
+      <button
+        class="suggestions-toggle"
+        aria-expanded={showAllSuggestions}
+        aria-controls="home-suggestions"
+        onclick={() => (showAllSuggestions = !showAllSuggestions)}
+      >
+        {showAllSuggestions ? '접기' : `더 보기 (${suggestions.length - 4}곳)`}
+      </button>
+    {/if}
     <p class="home-data-note">
-      공공데이터의 동반 정보를 모았어요. 방문 전 규정을 다시 확인해 주세요.
+      <ReadableText text="공공데이터의 동반 정보를 모았어요. 방문 전 규정을 다시 확인해 주세요." />
     </p>
   </section>
   <section class="home-shortcuts">
     <a class="shortcut-record" href="/record"
-      ><span class="shortcut-icon" aria-hidden="true"
-        ><PawPrint size={27} fill="currentColor" strokeWidth={1.5} /></span
+      ><span class="shortcut-icon" aria-hidden="true"><Stamp size={27} strokeWidth={1.7} /></span
       ><strong>발도장 모으기</strong><span class="shortcut-description"
         >우리의 여행을 기록해요<ChevronRight size={13} /></span
       ></a
@@ -151,9 +153,18 @@
     display: flex;
     position: relative;
     align-items: center;
-    background: #f7e9d8;
+    background:
+      radial-gradient(ellipse at 18% 8%, #ffffffed 0%, #ffffff00 55%),
+      radial-gradient(ellipse at 94% 85%, #e8c6abb3 0%, #e8c6ab00 58%),
+      radial-gradient(ellipse at 6% 100%, #f2d6bf99 0%, #f2d6bf00 58%),
+      linear-gradient(135deg, #fffaf5 0%, #f8eadf 48%, #eed4bf 100%);
     min-height: 230px;
     border-radius: 23px;
+    border: 1px solid #ffffffd9;
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 14px 30px -16px #94705b52,
+      0 3px 8px -4px #98735b29;
     padding: 25px 21px;
     overflow: hidden;
   }
@@ -290,7 +301,7 @@
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    font-size: 11px;
+    font-size: 13px;
   }
   .home-themes a > span {
     display: grid;
@@ -300,40 +311,16 @@
     background: var(--cream);
     border-radius: 18px;
   }
-  .home-dog {
-    margin-top: 31px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid #eadccc;
-    background: #fcf7ef;
-    border-radius: 19px;
-    padding: 10px;
-    text-decoration: none;
-  }
-  .home-dog img {
-    object-fit: contain;
-    width: 75px;
-    height: 82px;
-  }
-  .home-dog div {
-    flex: 1;
-    min-width: 0;
-  }
-  .home-dog small {
-    font-size: 11px;
-    color: var(--brand);
-  }
-  .home-dog strong {
+  .suggestions-toggle {
     display: block;
-    font-size: 14px;
-    margin: 7px 0;
-    letter-spacing: -0.4px;
-  }
-  .home-dog p {
-    font-size: 11px;
-    margin: 0;
-    color: var(--muted);
+    min-height: 44px;
+    margin: 8px auto 0;
+    padding: 8px 16px;
+    border: 0;
+    background: none;
+    color: var(--brown-warm);
+    font-size: 13px;
+    font-weight: 600;
   }
   .section-location {
     display: flex;

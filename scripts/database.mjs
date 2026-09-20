@@ -14,19 +14,18 @@ const sql = neon(process.env.DATABASE_URL);
 
 try {
   if (command === 'auth') {
-    const source = await readFile(
-      new URL('../db/009_password_accounts.sql', import.meta.url),
-      'utf8'
-    );
-    const statements = source
-      .replace(/--[^\n]*/g, '')
-      .split(';')
-      .map((value) => value.trim());
-    await sql.transaction(
-      statements
-        .filter((value) => value && !/^(BEGIN|COMMIT)$/i.test(value))
-        .map((statement) => sql.query(statement))
-    );
+    for (const file of ['009_password_accounts.sql', '010_database_password_hashing.sql']) {
+      const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
+      const statements = source
+        .replace(/--[^\n]*/g, '')
+        .split(';')
+        .map((value) => value.trim());
+      await sql.transaction(
+        statements
+          .filter((value) => value && !/^(BEGIN|COMMIT)$/i.test(value))
+          .map((statement) => sql.query(statement))
+      );
+    }
     console.log('Password account schema is ready. Existing accounts were preserved.');
   }
   if (command === 'setup') {
@@ -40,7 +39,8 @@ try {
       '006_menu.sql',
       '007_kto_pet_tour.sql',
       '008_dog_characters.sql',
-      '009_password_accounts.sql'
+      '009_password_accounts.sql',
+      '010_database_password_hashing.sql'
     ]) {
       const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
       // These checked-in migrations contain no functions or semicolons in literals.

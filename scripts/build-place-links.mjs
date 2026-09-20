@@ -43,7 +43,8 @@ function firstUrl(value) {
       return parsed.searchParams.get('u');
     }
     // 우리 정보 출처 페이지(data.go.kr·visitkorea 상세)는 업소 링크가 아닙니다.
-    if (/data\.go\.kr$/.test(parsed.hostname)) return '';
+    if (/data\.go\.kr$/.test(parsed.hostname) || /(^|\.)modoo\.at$/i.test(parsed.hostname))
+      return '';
     return parsed.href;
   } catch {
     return '';
@@ -200,6 +201,14 @@ if (offline) {
     })
   );
 }
+// Human-reviewed destinations take precedence over obsolete provider snapshots.
+const reviewed = await read('../src/lib/data/reviewedPlaceLinks.json');
+for (const [id, review] of Object.entries(reviewed)) {
+  if (review.url) links[id] = review.url;
+  else delete links[id];
+}
+const aliases = await read('../src/lib/data/placeAliases.json');
+for (const id of Object.keys(aliases)) delete links[id];
 const sorted = Object.fromEntries(Object.entries(links).sort(([a], [b]) => a.localeCompare(b)));
 await writeFile(OUTPUT, JSON.stringify(sorted, null, 1) + '\n');
 console.log(`저장 ${Object.keys(sorted).length}곳 · 제외 ${dropped.length}곳 → ${OUTPUT.pathname}`);

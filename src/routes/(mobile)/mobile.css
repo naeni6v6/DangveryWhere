@@ -33,6 +33,29 @@
   word-break: keep-all;
   overflow-wrap: break-word;
 }
+/* Keep Korean words together, with a fallback for long names and source URLs. */
+.mobile-root.mobile-place-detail {
+  --mobile-header-height: 0px;
+}
+/* One fill rule for place photos on the home, map, favorites and detail screens. */
+.mobile-root .mobile-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.mobile-root :where(p, small, li, label, summary, h1, h2, h3) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.mobile-root :where(h1, h2, h3) {
+  text-wrap: balance;
+}
+.mobile-root :where(p, label, summary) > svg {
+  flex-shrink: 0;
+}
 .mobile-root button,
 .mobile-root input,
 .mobile-root select {
@@ -69,6 +92,58 @@
   min-width: 0;
   text-decoration: none;
 }
+.mobile-header.with-tutorial {
+  height: auto;
+  min-height: var(--mobile-header-height);
+}
+.mobile-tutorial-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px;
+  flex-shrink: 0;
+  border: 1px dashed var(--brand);
+  border-radius: 12px;
+  background: none;
+  color: var(--brand);
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.mobile-tutorial-link:hover {
+  background: var(--sand);
+  color: var(--brown-warm);
+}
+.mobile-tutorial-link svg {
+  flex-shrink: 0;
+}
+.mobile-header.with-tutorial .mobile-account-area.signed-in {
+  display: grid;
+  grid-template-columns: auto auto;
+  row-gap: 0;
+}
+.mobile-header.with-tutorial .signed-in .mobile-tutorial-link {
+  grid-row: 1 / 3;
+}
+.mobile-header.with-tutorial .signed-in .mobile-account-logout {
+  min-height: 28px;
+}
+@container mobile (max-width: 359px) {
+  .mobile-header.with-tutorial {
+    padding-inline: 14px;
+    gap: 6px;
+  }
+  .with-tutorial .mobile-account-area {
+    gap: 6px;
+  }
+  .with-tutorial .mobile-tutorial-link,
+  .with-tutorial .mobile-account {
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+}
 .mobile-wordmark {
   display: block;
   width: 112px;
@@ -83,6 +158,9 @@
   line-height: 1.35;
   word-break: keep-all;
   color: var(--muted);
+}
+.mobile-brand small > span {
+  display: inline-block;
 }
 .mobile-account-area {
   display: flex;
@@ -253,7 +331,7 @@
   min-height: 0;
 }
 .mobile-root .explore-map[aria-hidden='true'] {
-  display: none;
+  visibility: hidden;
 }
 .mobile-root .app-map .map-message {
   bottom: 193px;
@@ -428,8 +506,24 @@
   font-size: 12px;
 }
 .mobile-root .mobile-dog .go-explore {
-  padding: 14px 12px;
+  padding: 14px 12px 14px 18px;
   gap: 9px;
+}
+.mobile-root .mobile-dog .dog-map-action {
+  border: 0;
+  border-radius: 13px;
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 12px #b5704e29;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.mobile-root .mobile-dog .dog-map-action:hover {
+  background: var(--brand-deep);
+  box-shadow: 0 6px 16px #b5704e38;
 }
 .mobile-root .mobile-dog .go-figure {
   display: none;
@@ -456,14 +550,20 @@
 .mobile-root .mobile-dog .summary-stats > div {
   flex: 1;
   min-width: 0;
-  padding: 12px 8px;
+  padding: 12px 8px 12px 14px;
 }
 .mobile-root .mobile-dog .summary-stats dt {
   font-size: 10px;
   gap: 3px;
+  white-space: normal;
+  line-height: 1.5;
+  flex: 1;
+  align-items: flex-start;
 }
 .mobile-root .mobile-dog .summary-stats dt svg {
   width: 13px;
+  height: 15px;
+  flex-shrink: 0;
 }
 .mobile-root .mobile-dog .summary-stats dd {
   font-size: 25px;

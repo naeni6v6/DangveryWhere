@@ -24,7 +24,7 @@
     type Place,
     type DogProfile
   } from '$lib/domain/place';
-  import { placeLink } from '$lib/domain/placeLink';
+  import { placeLink, placeLinkLabel } from '$lib/domain/placeLink';
   import { photoCredit, providerInfo, providerOfUrl } from '$lib/domain/region';
   // 장소 대표 사진 (scripts/fetch-place-images.mjs 로 생성, 강원 반려동물 동반관광 API 사진)
   import placeImages from '$lib/data/placeImages.json';
@@ -35,6 +35,7 @@
     place,
     dogs = [],
     saved = false,
+    panel = $bindable<HTMLElement>(),
     onclose,
     onsave
   }: {
@@ -42,6 +43,7 @@
     /** 기준으로 고른 아이들. 둘을 함께 보고 있으면 안내도 두 줄이 됩니다. */
     dogs?: DogProfile[];
     saved?: boolean;
+    panel?: HTMLElement;
     onclose: () => void;
     onsave: () => void;
   } = $props();
@@ -98,10 +100,9 @@
     if (zoomed !== null) zoomLayer?.focus({ preventScroll: true });
   });
 
-  let panel: HTMLElement;
   onMount(() => {
     const previous = document.activeElement as HTMLElement | null;
-    panel.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+    panel?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     return () => {
       if (previous?.isConnected) previous.focus();
     };
@@ -129,7 +130,8 @@
       <span class="cover-shade" aria-hidden="true"></span>
       <!-- 사진을 눌러 크게 볼 수 있다는 걸 돋보기 표로 알려 줍니다 -->
       <button class="zoom-cover" type="button" onclick={() => (zoomed = 0)}>
-        <span class="zoom-badge"><ZoomIn size={16} />크게 보기{#if photos.length > 1}
+        <span class="zoom-badge"
+          ><ZoomIn size={16} />크게 보기{#if photos.length > 1}
             <em>{photos.length}장</em>{/if}</span
         >
       </button>
@@ -148,7 +150,7 @@
         <span>{themeNames[theme]} 사진을 모으고 있어요</span>
       </div>{/if}
     <div class="cover-text">
-      <span class="cover-eyebrow">{themeNames[theme]}{area ? " · " + area : ""}</span>
+      <span class="cover-eyebrow">{themeNames[theme]}{area ? ' · ' + area : ''}</span>
       <h2>{place.name}</h2>
       <p class="cover-address"><MapPin size={15} />{place.address}</p>
       {#if phone}<a class="cover-phone" href={`tel:${phone}`}><Phone size={15} />{place.phone}</a
@@ -231,9 +233,9 @@
       </section>
       <a class="source-link" href={place.sourceUrl} target="_blank" rel="noreferrer"
         ><div>
-          <span>{hasPhoto && !credit ? '정보·사진 출처' : '정보 출처'}</span><strong>{sourceName}</strong><small
-            >데이터 수집 {place.importedAt} · 규정 확인일 미제공</small
-          >
+          <span>{hasPhoto && !credit ? '정보·사진 출처' : '정보 출처'}</span><strong
+            >{sourceName}</strong
+          ><small>데이터 수집 {place.importedAt} · 규정 확인일 미제공</small>
         </div>
         <ExternalLink size={15} /></a
       >
@@ -249,7 +251,7 @@
       onclick={onsave}><Heart size={20} fill={saved ? 'currentColor' : 'none'} /></button
     >
     <a class="primary-button" href={link.url} target="_blank" rel="noreferrer"
-      >상세 정보 확인<ArrowUpRight size={16} /></a
+      >{placeLinkLabel(link)}<ArrowUpRight size={16} /></a
     >
   </div>
 </div>
@@ -276,15 +278,25 @@
     }}
   >
     <!-- 사진 바깥을 누르면 닫힙니다 -->
-    <button class="zoom-backdrop" type="button" aria-label="크게 보기 닫기" onclick={() => (zoomed = null)}
+    <button
+      class="zoom-backdrop"
+      type="button"
+      aria-label="크게 보기 닫기"
+      onclick={() => (zoomed = null)}
     ></button>
     <img class="zoom-photo" src={photos[zoomed]} alt={`${place.name} 사진 ${zoomed + 1}`} />
-    <button class="zoom-close" type="button" aria-label="크게 보기 닫기" onclick={() => (zoomed = null)}
-      ><X size={22} /></button
+    <button
+      class="zoom-close"
+      type="button"
+      aria-label="크게 보기 닫기"
+      onclick={() => (zoomed = null)}><X size={22} /></button
     >
     {#if photos.length > 1}
-      <button class="zoom-nav prev" type="button" aria-label="이전 사진" onclick={() => zoomStep(-1)}
-        ><ChevronLeft size={26} /></button
+      <button
+        class="zoom-nav prev"
+        type="button"
+        aria-label="이전 사진"
+        onclick={() => zoomStep(-1)}><ChevronLeft size={26} /></button
       >
       <button class="zoom-nav next" type="button" aria-label="다음 사진" onclick={() => zoomStep(1)}
         ><ChevronRight size={26} /></button
@@ -713,7 +725,9 @@
     background: #241811d9;
     color: #fff;
     cursor: pointer;
-    transition: background 0.16s, transform 0.16s;
+    transition:
+      background 0.16s,
+      transform 0.16s;
   }
   .zoom-close {
     top: clamp(14px, 3vw, 28px);

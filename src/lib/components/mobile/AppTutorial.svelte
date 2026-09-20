@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from './ReadableText.svelte';
   import { onMount } from 'svelte';
   import { goto, replaceState } from '$app/navigation';
   import { page } from '$app/state';
@@ -99,7 +100,7 @@
       <span><current.icon size={64} strokeWidth={1.4} /></span><strong>{current.label}</strong>
     </div>
     <h2 id="app-guide-title">{current.title}</h2>
-    <p>{current.description}</p>
+    <p><ReadableText text={current.description} /></p>
     <small>{current.hint}</small>
   </div>
   <div class="guide-dots" aria-label={`안내 ${index + 1} / ${steps.length}`}>

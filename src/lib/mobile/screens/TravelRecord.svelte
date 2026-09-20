@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import { tick } from 'svelte';
   let { basePath = '' }: { basePath?: string } = $props();
   import { Stamp, Map, RotateCcw, ChevronLeft, PawPrint, X, Check } from '@lucide/svelte';
@@ -291,7 +292,7 @@
           </div>
           <p class="progress-note">
             {#if filled === 0}
-              첫 스탬프를 기다리고 있어요. 다녀온 시군구부터 찍어 보세요.
+              <ReadableText text="첫 스탬프를 기다리고 있어요. 다녀온 시군구부터 찍어 보세요." />
             {:else if complete}
               강원 {districts.length}개 시군구 스탬프를 모두 모았어요! 대단해요 🐾
             {:else}
@@ -376,12 +377,15 @@
 
         {#if hasLegacyProvince}
           <p class="legacy-note">
-            예전에 '강원'을 통째로 기록해 둔 게 남아 있어요. 다녀온 시군구에 스탬프를 찍으면 이
-            표시는 사라져요.
+            <ReadableText
+              text="예전에 '강원'을 통째로 기록해 둔 게 남아 있어요. 다녀온 시군구에 스탬프를 찍으면 이 표시는 사라져요."
+            />
           </p>
         {/if}
         <p class="storage-note">
-          지금은 이 브라우저에만 저장돼요. 다른 기기에서도 보이게 하려면 계정 저장이 필요해요.
+          <ReadableText
+            text="지금은 이 브라우저에만 저장돼요. 다른 기기에서도 보이게 하려면 계정 저장이 필요해요."
+          />
           {#if outside}<br />강원 밖에 찍어 둔 예전 기록 {outside}곳은 지우지 않고 그대로 두었어요.{/if}
         </p>
       </aside>
@@ -449,7 +453,9 @@
         {#if !dogName}
           <a href={`${basePath}/dog`}>우리 강아지</a>를 등록하면 아이 이름으로 스탬프가 남아요.
         {:else if complete}
-          강원 스탬프 투어를 완주했어요. 다음 여행에서도 {dogName}{josa(dogName, '와/과')} 좋은 하루 보내세요.
+          <ReadableText
+            text={`강원 스탬프 투어를 완주했어요. 다음 여행에서도 ${dogName}${josa(dogName, '와/과')} 좋은 하루 보내세요.`}
+          />
         {:else}
           <span class="copy-sentence">시군구마다 스탬프는 하나예요.</span>
           <span class="copy-sentence">날짜는 위에서 고른 시군구 카드에서 고칠 수 있어요.</span>

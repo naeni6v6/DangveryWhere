@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   import { goto } from '$app/navigation';
   import {
     PawPrint,
@@ -199,8 +200,9 @@
           <div>
             <h2>등록한 강아지 {store.dogs.length}마리</h2>
             <p>
-              선택한 아이의 체중·체급으로 동반 조건을 비교해요. {MAX_ACTIVE_DOGS}마리까지 함께 고를
-              수 있어요.
+              <ReadableText
+                text={`선택한 아이의 체중·체급으로 동반 조건을 비교해요. ${MAX_ACTIVE_DOGS}마리까지 함께 고를 수 있어요.`}
+              />
             </p>
           </div>
           <button class="primary-button" onclick={startNew} disabled={atLimit}>
@@ -208,7 +210,9 @@
           </button>
         </div>
         {#if atLimit}
-          <p class="manage-limit">등록은 {MAX_DOGS}마리까지예요. 지운 뒤 다시 추가할 수 있어요.</p>
+          <p class="manage-limit">
+            <ReadableText text={`등록은 ${MAX_DOGS}마리까지예요. 지운 뒤 다시 추가할 수 있어요.`} />
+          </p>
         {/if}
 
         <div class="dog-grid">
@@ -258,8 +262,11 @@
 
         {#if !store.loggedIn}
           <p class="manage-note">
-            <Info size={15} />로그인 전에는 이 브라우저에만 저장돼요. 로그인하면 계정에 저장돼 다른
-            기기에서도 보여요.
+            <Info size={15} /><span
+              ><ReadableText
+                text="로그인 전에는 이 브라우저에만 저장돼요. 로그인하면 계정에 저장돼 다른 기기에서도 보여요."
+              /></span
+            >
           </p>
         {/if}
       </section>
@@ -386,7 +393,9 @@
               </div>
             </label>
 
-            {#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
+            {#if formError}<p class="form-error" role="alert">
+                <ReadableText text={formError} />
+              </p>{/if}
             <p class="form-note">
               <Info size={15} />{store.loggedIn
                 ? '계정에 저장돼요.'
@@ -396,7 +405,11 @@
                이미 저장된 아이를 고치는 중이면 저장은 오른쪽 끝 연필 버튼이 맡아요. -->
             <div class="form-actions" class:has-go={Boolean(editing)}>
               {#if editing}
-                <a class="go-explore" href={`${basePath}/explore`} onclick={rememberDogFilter}>
+                <a
+                  class="go-explore dog-map-action"
+                  href={`${basePath}/explore`}
+                  onclick={rememberDogFilter}
+                >
                   <span class="go-figure" aria-hidden="true"
                     ><PawPrint size={24} strokeWidth={1.4} /></span
                   >
@@ -436,7 +449,9 @@
         <div class="summary-copy">
           <h2>{store.dogNames} 조건으로 본 장소</h2>
           <p>
-            ‘제한 체중 이내’도 입장을 보장하지 않아요. 허용 구역과 준비물은 방문 전에 확인해 주세요.
+            <ReadableText
+              text="‘제한 체중 이내’도 입장을 보장하지 않아요. 허용 구역과 준비물은 방문 전에 확인해 주세요."
+            />
           </p>
         </div>
         <dl class="summary-stats">
@@ -453,7 +468,7 @@
             <dd>{summary.check}</dd>
           </div>
         </dl>
-        <button class="primary-button summary-go" onclick={exploreWithDog}
+        <button class="primary-button summary-go dog-map-action" onclick={exploreWithDog}
           ><Map size={18} />이 조건으로 지도 보기</button
         >
       </section>
@@ -496,10 +511,7 @@
   }
 
   /* ---------- 등록 직후 다음 걸음 ---------- */
-  /* 이 화면의 주 버튼.
-     흰 폼 카드 위에 흰 버튼을 두니 구분이 안 돼서, 브랜드 브라운을 단색으로 채웠습니다.
-     이 화면의 다른 버튼들과 같은 색이지만 폭과 글자가 커서 위계가 분명해요.
-     예전처럼 그라데이션이나 큰 색 그림자는 쓰지 않아 여전히 차분합니다. */
+  /* 두 지도 이동 버튼의 색과 그림자는 mobile.css의 dog-map-action을 함께 씁니다. */
   .go-explore {
     flex: 1;
     min-width: 0;
@@ -507,18 +519,7 @@
     align-items: center;
     gap: 16px;
     padding: 18px 22px;
-    border: 0;
-    border-radius: 16px;
-    background: var(--brand);
-    box-shadow: 0 6px 16px #b5704e3d;
     text-decoration: none;
-    transition:
-      background 0.16s ease,
-      box-shadow 0.16s ease;
-  }
-  .go-explore:hover {
-    background: var(--brand-deep);
-    box-shadow: 0 8px 20px #b5704e52;
   }
   .go-figure {
     display: grid;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReadableText from '$lib/components/mobile/ReadableText.svelte';
   let { basePath = '' }: { basePath?: string } = $props();
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
@@ -392,7 +393,7 @@
               {/if}
             </div>
             {#if arrived}
-              <p class="speech hello-speech">{bubble}</p>
+              <p class="speech hello-speech"><ReadableText text={bubble} /></p>
             {:else}
               <p class="hello-wait" aria-live="polite">
                 {MASCOT_NAME}{josa(MASCOT_NAME, '이/가')} 달려오고 있어요<span
@@ -413,7 +414,7 @@
                 draggable="false"
               />
             </span>
-            <p class="speech">{bubble}</p>
+            <p class="speech"><ReadableText text={bubble} /></p>
           </div>
 
           {#if step === 1}
@@ -613,9 +614,11 @@
                 <strong>{trimmedName}</strong>
                 <span>{breedValue || unknownBreed} · {sizeNames[size]} · {weight}kg</span>
                 <small
-                  >{store.loggedIn
-                    ? '로그인 상태라 계정에 저장돼요.'
-                    : '로그인 전에는 이 브라우저에 저장돼요. 우리 강아지 메뉴에서 언제든 고칠 수 있어요.'}</small
+                  ><ReadableText
+                    text={store.loggedIn
+                      ? '로그인 상태라 계정에 저장돼요.'
+                      : '로그인 전에는 이 브라우저에 저장돼요. 우리 강아지 메뉴에서 언제든 고칠 수 있어요.'}
+                  /></small
                 >
               </div>
             </div>
