@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && wrangler pages deploy",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:check": "node --env-file=.env scripts/database.mjs check",

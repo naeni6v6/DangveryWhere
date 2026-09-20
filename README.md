@@ -150,7 +150,7 @@ npm run dev -- --open
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
-| `PUBLIC_NAVER_MAP_CLIENT_ID` | 지도 표시에 필수 | 네이버 클라우드 Maps > Web Dynamic Map. 로컬 URL(`http://localhost:5173`) 등록 필요 |
+| `PUBLIC_NAVER_MAP_CLIENT_ID` | 지도 표시에 필수 | 네이버 클라우드 Maps > Web Dynamic Map. 로컬 URL(`http://localhost:5173`)과 실제 배포 URL을 Web 서비스 URL에 등록 |
 | `DATABASE_URL` | 선택 | Neon Postgres 연결 문자열. 없으면 강릉 스냅샷으로 동작 |
 | `APP_ORIGIN` | 카카오 로그인 시 필수 | 예: `http://127.0.0.1:5173` (끝에 `/` 없음) |
 | `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET` | 카카오 로그인 시 필수 | 카카오 개발자 콘솔. Redirect URI 는 `{APP_ORIGIN}/auth/kakao/callback` |
@@ -165,6 +165,15 @@ npm run dev -- --open
 
 심사용 계정 등 미리 생성할 계정은 프로세스 환경 변수 `ACCOUNT_PASSWORD`에 비밀번호를 지정하고 `npm run account:create -- <아이디> <닉네임>`으로 만듭니다. 이미 있는 아이디는 덮어쓰지 않으며, 비밀번호는 소스에 기록하지 않습니다. 배포 환경에서도 같은 DB를 연결하고 `009_password_accounts.sql`, `010_database_password_hashing.sql`을 적용해야 합니다.
 
+## Cloudflare Pages 배포
+
+Cloudflare Pages 무료 플랜에 `dangverywhere` 프로젝트로 배포합니다. 설정은 `wrangler.jsonc`에 있으며, SvelteKit 서버 기능도 함께 배포하므로 같은 Neon DB의 계정과 저장 데이터를 사용합니다.
+
+- 배포 주소: https://dangverywhere.pages.dev (기본 접속은 `/web`, 모바일 홈은 `/mobile`)
+- Pages의 프로덕션 환경에 `DATABASE_URL`, `PUBLIC_NAVER_MAP_CLIENT_ID`를 설정합니다. DB 연결 문자열은 암호화된 Secret으로 저장하고 Git에는 올리지 않습니다.
+- 네이버 클라우드 Maps의 기존 애플리케이션에 위 배포 주소를 Web 서비스 URL로 추가합니다.
+- Cloudflare 로그인 후 `npm run deploy`로 빌드하고 배포합니다. 현재는 직접 업로드 방식이므로 GitHub에 푸시한 뒤에도 이 배포 명령을 실행해야 실제 사이트에 반영됩니다.
+
 ## 🛠 npm 스크립트
 
 | 명령 | 역할 |
@@ -175,14 +184,14 @@ npm run dev -- --open
 | `npm run check` | 타입·Svelte 검사 |
 | `npm test` | 단위 테스트 (vitest) |
 | `npm run db:check` / `npm run db:setup` | DB 연결 확인 / 테이블 생성 + 초기 데이터 |
-| `npm run deploy` | Cloudflare Workers 배포 |
+| `npm run deploy` | Cloudflare Pages 빌드·배포 |
 | `npm run format` | 코드 포맷 (prettier) |
 
 ---
 
 ## 🧱 기술 스택
 
-SvelteKit 2 (Svelte 5) · TypeScript · Vite · 네이버 지도 SDK · Neon (Postgres) · 카카오 로그인 · Cloudflare Workers · PWA
+SvelteKit 2 (Svelte 5) · TypeScript · Vite · 네이버 지도 SDK · Neon (Postgres) · 카카오 로그인 · Cloudflare Pages / Workers 런타임 · PWA
 
 ## 기능 현황
 
