@@ -139,7 +139,7 @@
     <img src="/wordmark.png" alt="댕브리웨어" width="112" height="39" /><span
       >DangveryWhere · 반려견 동반 지도</span
     >
-    <a href="/?guide=1">앱 사용법 다시 보기</a><a href="/web"
+    <a href="/mobile?guide=1">앱 사용법 다시 보기</a><a href="/web"
       >PC 웹으로 보기 <ArrowUpRight size={13} /></a
     >
   </footer>

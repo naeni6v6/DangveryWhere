@@ -124,7 +124,7 @@
       ></span
     ><button onclick={update}>새로 열기</button>
   </aside>
-{:else if !installed && !dismissed && page.url.pathname === '/'}
+{:else if !installed && !dismissed && page.url.pathname === '/mobile'}
   <aside class="install-banner">
     <img src="/icon-192.png" alt="" width="40" height="40" />
     <span

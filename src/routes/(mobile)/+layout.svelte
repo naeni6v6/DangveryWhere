@@ -37,7 +37,7 @@
     isMap && data.places.some((place) => place.id === canonicalPlaceId(selectedPlaceId ?? ''))
   );
   const nav = [
-    { href: '/', label: '홈', icon: Home },
+    { href: '/mobile', label: '홈', icon: Home },
     { href: '/dog', label: '우리 강아지', icon: PawPrint },
     { href: '/explore', label: '매장 찾기', icon: Map },
     { href: '/record', label: '댕스탬프', icon: Stamp },
@@ -73,8 +73,8 @@
 >
   <a class="mobile-skip" href="#mobile-main">본문으로 건너뛰기</a>
   {#if !isTutorial && !isPlaceDetail}
-    <header class="mobile-header" class:with-tutorial={path === '/'}>
-      <a class="mobile-brand" href="/" aria-label="댕브리웨어 홈">
+    <header class="mobile-header" class:with-tutorial={path === '/mobile'}>
+      <a class="mobile-brand" href="/mobile" aria-label="댕브리웨어 홈">
         <img
           class="mobile-wordmark"
           src="/wordmark.png"
@@ -85,7 +85,7 @@
         <small>DangveryWhere · <span>반려견 동반 지도</span></small>
       </a>
       <div class="mobile-account-area" class:signed-in={store.loggedIn}>
-        {#if path === '/'}
+        {#if path === '/mobile'}
           <a
             class="mobile-tutorial-link"
             href="/start?replay"

@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
   const storedReturn = cookies.get('dw_oauth_return') ?? '';
   const returnTo = /^\/web(?:\/(?:explore|favorites|dog))?$/.test(storedReturn)
     ? storedReturn
-    : '/';
+    : '/mobile';
   cookies.delete('dw_oauth_return', { path: '/auth' });
   const state = url.searchParams.get('state');
   if (!expected || !state || expected !== state)

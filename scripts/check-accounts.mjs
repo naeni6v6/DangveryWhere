@@ -32,7 +32,7 @@ async function send(path, body, cookie, method = 'POST', requestOrigin = origin)
   return { response, data: await response.json(), cookie: nextCookie };
 }
 
-async function account(cookie, path = '') {
+async function account(cookie, path = '/mobile') {
   const response = await fetch(`${origin}${path}/__data.json`, { headers: { cookie } });
   assert.equal(response.status, 200);
   assert.match(response.headers.get('cache-control'), /no-store/);

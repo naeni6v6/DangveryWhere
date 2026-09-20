@@ -19,7 +19,7 @@ export const GET: RequestHandler = ({ url, cookies }) => {
   cookies.set('dw_oauth_state', state, cookieOptions);
   // Only known in-app screens may be used as the post-login destination.
   const requested = url.searchParams.get('return') ?? '';
-  const returnTo = /^\/web(?:\/(?:explore|favorites|dog))?$/.test(requested) ? requested : '/';
+  const returnTo = /^\/web(?:\/(?:explore|favorites|dog))?$/.test(requested) ? requested : '/mobile';
   cookies.set('dw_oauth_return', returnTo, cookieOptions);
   const params = new URLSearchParams({
     client_id: env.KAKAO_REST_API_KEY,

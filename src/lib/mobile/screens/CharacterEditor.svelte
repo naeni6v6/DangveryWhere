@@ -189,7 +189,7 @@
 
 <div class="tutorial">
   <div class="tutorial-bar">
-    <a class="bar-brand" href={basePath || '/'}>
+    <a class="bar-brand" href={basePath || '/mobile'}>
       <img class="bar-logo" src="/logo.png" alt="" width="34" height="34" />
       <!-- 헤더(+layout.svelte)·메인·튜토리얼과 같은 글자 로고 1번 시안, 같은 높이(46px)로 -->
       <img class="bar-wordmark" src="/wordmark.png" alt="댕브리웨어" width="393" height="138" />

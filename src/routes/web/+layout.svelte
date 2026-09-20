@@ -120,7 +120,7 @@
                 ><Sparkles size={17} /><span>튜토리얼 페이지 보기</span></a
               >
             {/if}
-            <a class="mobile-link" href="/" title="모바일 앱 화면으로 보기"
+            <a class="mobile-link" href="/mobile" title="모바일 앱 화면으로 보기"
               ><Smartphone size={17} /><span>모바일 버전</span></a
             >
             {#if store.loggedIn}<span class="account-nickname" title={store.nickname}>{store.nickname}님</span>{/if}

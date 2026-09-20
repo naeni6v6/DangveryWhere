@@ -53,7 +53,7 @@ rem 한글 경로 + Node.js 24.13.0 이하의 fs.rmSync 버그 우회 (scripts/s
 if exist ".svelte-kit\" rmdir /s /q ".svelte-kit"
 
 echo [안내] 서버를 켜고 웹(PC) 화면을 브라우저로 엽니다. ^(주소: http://localhost:5173/web^)
-echo        모바일 앱 화면은 http://localhost:5173 에서 그대로 볼 수 있습니다.
+echo        모바일 앱 화면은 http://localhost:5173/mobile 에서 볼 수 있습니다.
 echo        종료하려면 이 창을 닫거나 Ctrl+C 를 누르세요.
 echo.
 call npm run dev -- --open /web

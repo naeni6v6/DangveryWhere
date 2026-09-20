@@ -282,7 +282,7 @@
           ><Sparkles size={16} />튜토리얼 페이지 보기</a
         >
       {/if}
-      <a class="nav-mobile" href="/"><Smartphone size={16} />모바일 버전</a>
+      <a class="nav-mobile" href="/mobile"><Smartphone size={16} />모바일 버전</a>
       {#if store.loggedIn}
         <button class="nav-account" onclick={() => store.logout()} title={`${store.nickname}님 로그아웃`}><LogOut size={16} /><span class="account-nickname">{store.nickname}님</span> · 로그아웃</button>
       {:else}

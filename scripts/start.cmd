@@ -43,8 +43,8 @@ rem A second server would move to port 5174 (Naver Maps auth fails there)
 rem and the .svelte-kit cleanup below would break the running server.
 netstat -ano | findstr /R /C:":5173 .*LISTENING" >nul
 if errorlevel 1 goto start_server
-echo [안내] 서버가 이미 실행 중이라 브라우저만 엽니다. ^(주소: http://localhost:5173^)
-start "" http://localhost:5173
+echo [안내] 서버가 이미 실행 중이라 브라우저만 엽니다. ^(주소: http://localhost:5173/mobile^)
+start "" http://localhost:5173/mobile
 timeout /t 3 >nul
 exit /b 0
 :start_server
@@ -58,10 +58,10 @@ rem .svelte-kit 은 매번 자동 생성되는 캐시이므로 cmd 의 rmdir 로
 rem ------------------------------------------------------------------
 if exist ".svelte-kit\" rmdir /s /q ".svelte-kit"
 
-echo [안내] 서버를 켜고 브라우저를 자동으로 엽니다. ^(주소: http://localhost:5173^)
+echo [안내] 서버를 켜고 브라우저를 자동으로 엽니다. ^(주소: http://localhost:5173/mobile^)
 echo        종료하려면 이 창을 닫거나 Ctrl+C 를 누르세요.
 echo.
-call npm run dev -- --open
+call npm run dev -- --open /mobile
 set "EXIT_CODE=%errorlevel%"
 
 echo.

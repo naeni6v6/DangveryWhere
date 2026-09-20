@@ -1,5 +1,5 @@
 ﻿# 프로젝트 루트에 실행 바로가기(.lnk) 두 개를 만듭니다.
-#   - 댕브리웨어 실행.lnk      → 모바일 앱 화면 (http://localhost:5173)
+#   - 댕브리웨어 실행.lnk      → 모바일 앱 화면 (http://localhost:5173/mobile)
 #   - 댕브리웨어 웹 실행.lnk   → 웹(PC) 화면   (http://localhost:5173/web)
 # 폴더를 다른 위치로 옮겨서 바로가기가 깨졌을 때 이 파일을 우클릭 → "PowerShell로 실행" 하세요.
 
