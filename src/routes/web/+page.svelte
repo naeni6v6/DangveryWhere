@@ -284,7 +284,7 @@
       {/if}
       <a class="nav-mobile" href="/"><Smartphone size={16} />모바일 버전</a>
       {#if store.loggedIn}
-        <button class="nav-account" onclick={() => store.logout()}><LogOut size={16} />로그아웃</button>
+        <button class="nav-account" onclick={() => store.logout()} title={`${store.nickname}님 로그아웃`}><LogOut size={16} /><span class="account-nickname">{store.nickname}님</span> · 로그아웃</button>
       {:else}
         <button class="nav-account" onclick={() => store.requestLogin()}
           ><LogIn size={16} />로그인</button
@@ -623,6 +623,12 @@
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.16s, color 0.16s;
+  }
+  .account-nickname {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .nav-mobile:hover,
   .nav-account:hover {

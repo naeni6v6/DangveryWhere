@@ -7,5 +7,7 @@ export function database() {
   return neon(env.DATABASE_URL);
 }
 
-export const authConfigured = () =>
+export const authConfigured = () => Boolean(env.DATABASE_URL);
+
+export const kakaoAuthConfigured = () =>
   Boolean(env.DATABASE_URL && env.KAKAO_REST_API_KEY && env.APP_ORIGIN);

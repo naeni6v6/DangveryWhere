@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { neon } from '@neondatabase/serverless';
 
 const command = process.argv[2];
-if (!['check', 'setup'].includes(command)) {
-  console.error('Use npm run db:check or npm run db:setup.');
+if (!['check', 'setup', 'auth'].includes(command)) {
+  console.error('Use npm run db:check, npm run db:setup, or npm run db:auth.');
   process.exit(1);
 }
 if (!process.env.DATABASE_URL) {
@@ -13,6 +13,22 @@ if (!process.env.DATABASE_URL) {
 const sql = neon(process.env.DATABASE_URL);
 
 try {
+  if (command === 'auth') {
+    const source = await readFile(
+      new URL('../db/009_password_accounts.sql', import.meta.url),
+      'utf8'
+    );
+    const statements = source
+      .replace(/--[^\n]*/g, '')
+      .split(';')
+      .map((value) => value.trim());
+    await sql.transaction(
+      statements
+        .filter((value) => value && !/^(BEGIN|COMMIT)$/i.test(value))
+        .map((statement) => sql.query(statement))
+    );
+    console.log('Password account schema is ready. Existing accounts were preserved.');
+  }
   if (command === 'setup') {
     const queries = [];
     for (const file of [
@@ -23,7 +39,8 @@ try {
       '005_region_favorites.sql',
       '006_menu.sql',
       '007_kto_pet_tour.sql',
-      '008_dog_characters.sql'
+      '008_dog_characters.sql',
+      '009_password_accounts.sql'
     ]) {
       const source = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');
       // These checked-in migrations contain no functions or semicolons in literals.

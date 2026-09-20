@@ -61,8 +61,15 @@
       </a>
       <div class="mobile-account-area">
         {#if store.loggedIn}
-          <span class="mobile-login-status" role="status">
-            <CircleCheck size={15} aria-hidden="true" />로그인됨
+          <span
+            class="mobile-login-status"
+            role="status"
+            aria-label={`${store.nickname}님 로그인됨`}
+            title={`${store.nickname}님`}
+          >
+            <CircleCheck size={15} aria-hidden="true" /><span class="mobile-account-nickname"
+              >{store.nickname}님</span
+            >
           </span>
           <button class="mobile-account-logout" onclick={() => store.logout()}>로그아웃</button>
         {:else}
@@ -97,9 +104,9 @@
   {/if}
   <MobileLoginDialog
     bind:this={loginDialog}
-    kakaoEnabled={data.authEnabled}
+    authEnabled={data.authEnabled}
+    kakaoEnabled={data.kakaoEnabled}
     returnPath={page.url.pathname + page.url.search}
-    onpending={(provider) => store.notify(`${provider} 로그인은 준비 중이에요.`)}
   />
   <InstallApp />
   <AppTutorial enabled={!isTutorial} />

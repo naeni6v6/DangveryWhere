@@ -114,6 +114,12 @@
   font-size: 12px;
   font-weight: 700;
 }
+.mobile-account-nickname {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mobile-account-logout {
   min-height: 44px;
   padding: 0 4px;

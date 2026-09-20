@@ -123,6 +123,7 @@
             <a class="mobile-link" href="/" title="모바일 앱 화면으로 보기"
               ><Smartphone size={17} /><span>모바일 버전</span></a
             >
+            {#if store.loggedIn}<span class="account-nickname" title={store.nickname}>{store.nickname}님</span>{/if}
             <button class="login-cta" class:signed-in={store.loggedIn} onclick={accountAction}
               >{#if store.loggedIn}<LogOut size={17} />로그아웃{:else}<LogIn size={17} />로그인하기{/if}</button
             >
@@ -138,9 +139,9 @@
 
   <WebLoginDialog
     bind:this={loginDialog}
-    kakaoEnabled={data.authEnabled}
+    authEnabled={data.authEnabled}
+    kakaoEnabled={data.kakaoEnabled}
     returnPath={path}
-    onpending={(provider) => store.notify(`${provider} 로그인은 준비 중이에요. 곧 연결할게요!`)}
   />
 
   <dialog bind:this={infoDialog} class="app-dialog" aria-labelledby="web-info-title">
@@ -185,6 +186,15 @@
 </div>
 
 <style>
+  .account-nickname {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--brown);
+  }
   /* ---------- 앱 틀 ---------- */
   .web-app {
     display: flex;

@@ -11,11 +11,12 @@ import {
 
 import type { DogCharacter } from '$lib/domain/character';
 
-type Account = {
-  user: { id: string } | null;
+export type Account = {
+  user: App.Locals['user'];
   dogs: Dog[];
   favorites: string[];
   characters?: DogCharacter[];
+  accountUnavailable?: boolean;
 };
 /** 로그인 전에 만든 캐릭터. 그림이 커서 이 브라우저에만 몇 개 남깁니다. */
 const LOCAL_CHARACTERS_KEY = 'dangverywhere-characters';
@@ -60,6 +61,7 @@ export class WebStore {
   /** 직접 꾸민 캐릭터들. 최근 것이 앞에 옵니다. */
   characters = $state<DogCharacter[]>([]);
   loggedIn = $state(false);
+  nickname = $state('');
   toast = $state('');
   /** Set by the layout to open the login dialog. */
   requestLogin: () => void = () => {};
@@ -68,11 +70,33 @@ export class WebStore {
 
   constructor(account: Account) {
     this.loggedIn = Boolean(account.user);
+    this.nickname = account.user?.nickname ?? '';
     this.savedIds = this.loggedIn ? [...account.favorites] : readLocalFavorites();
     // 로그인했으면 계정에 저장된 것이, 아니면 이 브라우저에 담아 둔 것이 기준입니다.
     this.dogs = this.loggedIn ? [...account.dogs] : readLocalDogs();
     this.characters = this.loggedIn ? [...(account.characters ?? [])] : readLocalCharacters();
     this.activeDogIds = this.#restoreActiveIds();
+  }
+
+  completeLogin(account: Account, signup = false) {
+    if (!account.user) return;
+    // The authentication response contains only this account's personal data. Switching
+    // it together avoids showing guest or previous-account records under the new name.
+    this.loggedIn = true;
+    this.nickname = account.user.nickname;
+    this.savedIds = [...account.favorites];
+    this.dogs = [...account.dogs];
+    this.characters = [...(account.characters ?? [])];
+    this.activeDogIds = this.#restoreActiveIds();
+    if (!this.dogs.length) this.mode = 'all';
+    this.notify(
+      account.accountUnavailable
+        ? `${this.nickname}님, 로그인했어요. 저장한 정보를 불러오지 못해 다시 확인이 필요해요.`
+        : `${this.nickname}님, ${signup ? '회원가입이 완료됐어요!' : '로그인했어요!'}`
+    );
+    // Refresh SvelteKit's cached layout data without blocking the success feedback,
+    // remounting the map, or downloading the whole document and scripts again.
+    void invalidateAll().catch(() => {});
   }
 
   /** 이 아이의 캐릭터 (가장 최근 것). 없으면 null — 그때는 견종 캐릭터를 보여 주면 돼요. */
@@ -404,8 +428,8 @@ export class WebStore {
     try {
       const response = await fetch('/auth/logout', { method: 'POST' });
       if (!response.ok) throw new Error();
-      await invalidateAll();
       this.loggedIn = false;
+      this.nickname = '';
       // 로그아웃하면 계정 기록 대신 이 브라우저에 담아 둔 기록으로 돌아갑니다.
       this.savedIds = readLocalFavorites();
       this.dogs = readLocalDogs();
@@ -413,6 +437,7 @@ export class WebStore {
       this.activeDogIds = this.#firstDogIds();
       this.mode = 'all';
       this.notify('로그아웃했어요.');
+      void invalidateAll().catch(() => {});
     } catch {
       this.notify('로그아웃을 완료하지 못했어요. 다시 시도해 주세요.');
     }

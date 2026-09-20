@@ -23,7 +23,13 @@ export function requireUser(event: RequestEvent): string {
 export async function issueSession(userId: string, cookies: Cookies, secure: boolean) {
   const token = randomToken();
   const sql = database();
-  await sql`INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (${await hashToken(token)}, ${userId}, now() + interval '14 days')`;
+  const previous = cookies.get(sessionCookie);
+  const queries = [
+    sql`INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (${await hashToken(token)}, ${userId}, now() + interval '14 days')`
+  ];
+  if (previous && /^[a-f0-9]{64}$/.test(previous))
+    queries.push(sql`DELETE FROM app_sessions WHERE token_hash=${await hashToken(previous)}`);
+  await sql.transaction(queries);
   cookies.set(sessionCookie, token, {
     path: '/',
     httpOnly: true,

@@ -22,7 +22,7 @@
 까지 진행됩니다. 종료는 검은 창을 닫거나 `Ctrl+C`.
 
 > **지도가 안 보이면:** `.env` 의 `PUBLIC_NAVER_MAP_CLIENT_ID` 에 네이버 지도 Client ID 를 넣고 다시 실행하세요.
-> DB(`DATABASE_URL`)·카카오 키가 없어도 강릉 기본 데이터로 동작합니다. 로그인/즐겨찾기만 비활성화됩니다.
+> DB(`DATABASE_URL`)가 없어도 강릉 기본 데이터와 브라우저에 저장하는 찜·강아지 프로필을 사용할 수 있습니다. 계정별 저장과 아이디·비밀번호 로그인에는 DB가 필요하며, 카카오 키는 카카오 로그인에만 필요합니다.
 >
 > **바로가기가 깨졌으면** (폴더를 옮긴 경우): `scripts/make-shortcut.ps1` 우클릭 → *PowerShell로 실행*.
 
@@ -141,10 +141,18 @@ npm run dev -- --open
 |---|---|---|
 | `PUBLIC_NAVER_MAP_CLIENT_ID` | 지도 표시에 필수 | 네이버 클라우드 Maps > Web Dynamic Map. 로컬 URL(`http://localhost:5173`) 등록 필요 |
 | `DATABASE_URL` | 선택 | Neon Postgres 연결 문자열. 없으면 강릉 스냅샷으로 동작 |
-| `APP_ORIGIN` | 로그인 시 필수 | 예: `http://127.0.0.1:5173` (끝에 `/` 없음) |
-| `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET` | 로그인 시 필수 | 카카오 개발자 콘솔. Redirect URI 는 `{APP_ORIGIN}/auth/kakao/callback` |
+| `APP_ORIGIN` | 카카오 로그인 시 필수 | 예: `http://127.0.0.1:5173` (끝에 `/` 없음) |
+| `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET` | 카카오 로그인 시 필수 | 카카오 개발자 콘솔. Redirect URI 는 `{APP_ORIGIN}/auth/kakao/callback` |
 
 ---
+
+## 개인 계정 로그인
+
+모바일과 PC 화면의 **로그인 → 회원가입**에서 아이디, 닉네임, 비밀번호와 비밀번호 확인을 입력하면 계정을 만들고 바로 로그인합니다. 아이디는 대소문자를 구분하지 않으며, 비밀번호는 구분합니다. 로그인한 계정의 강아지·찜·캐릭터를 읽고 저장하며, 로그아웃하면 브라우저의 비회원 기록으로 돌아갑니다.
+
+기존 DB에는 `npm run db:auth`로 계정 마이그레이션만 적용합니다. 신규 DB는 `npm run db:setup`에 포함되어 있습니다. 서버에는 bcrypt 해시만 저장하고 세션은 HttpOnly 쿠키로 유지합니다. 로그인·가입 횟수 제한은 DB를 공유하므로 서버 재시작에도 적용됩니다. 만료된 제한 기록은 `DELETE FROM auth_rate_limits WHERE expires_at < now()`로 정리할 수 있습니다.
+
+심사용 계정 등 미리 생성할 계정은 프로세스 환경 변수 `ACCOUNT_PASSWORD`에 비밀번호를 지정하고 `npm run account:create -- <아이디> <닉네임>`으로 만듭니다. 이미 있는 아이디는 덮어쓰지 않으며, 비밀번호는 소스에 기록하지 않습니다. 배포 환경에서도 같은 DB를 연결하고 `009_password_accounts.sql`을 적용해야 합니다.
 
 ## 🛠 npm 스크립트
 

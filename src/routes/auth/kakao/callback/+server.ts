@@ -1,11 +1,11 @@
 import { env } from '$env/dynamic/private';
-import { database, authConfigured } from '$lib/server/db';
+import { database, kakaoAuthConfigured } from '$lib/server/db';
 import { issueSession } from '$lib/server/auth';
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
-  if (!authConfigured() || !env.APP_ORIGIN || !env.KAKAO_REST_API_KEY)
+  if (!kakaoAuthConfigured() || !env.APP_ORIGIN || !env.KAKAO_REST_API_KEY)
     error(503, '로그인 연결을 준비 중이에요.');
   const expected = cookies.get('dw_oauth_state');
   cookies.delete('dw_oauth_state', { path: '/auth' });
