@@ -432,7 +432,7 @@
     </div>
   </section>
 
-  <!-- 선언부: 연한 갈색 바탕에 큰 글자. 기능 셋은 알약 모양 카드로. -->
+  <!-- 선언부: 연한 갈색 바탕에 큰 글자. 기능 셋은 세로선에 꿴 단계 목록으로. -->
   <section class="manifesto">
     <div class="manifesto-inner">
       <div class="manifesto-copy" use:reveal>
@@ -443,30 +443,26 @@
           목표예요.
         </p>
       </div>
+      <!--
+        기능 셋. 세로선 하나에 번호를 꿰어 01 → 02 → 03 의 차례가 그대로 보이게 합니다.
+        설명의 <br> 은 넓은 화면에서 뜻이 끊기는 자리를 잡아 주는 용도라,
+        두 칸이 위아래로 풀리는 1100px 아래에서는 CSS 로 꺼서 글이 스스로 흐르게 둡니다.
+      -->
       <ol class="reasons" use:reveal>
         <li>
           <span class="reason-num">01</span>
-          <div>
-            <h3>우리 강아지 조건으로 비교</h3>
-            <p>체급과 몸무게를 등록하면 원본 규정의 체중·체급 제한과 맞지 않는 곳을 알려드려요.</p>
-          </div>
+          <h3>우리 강아지 조건으로 비교</h3>
+          <p>체급과 몸무게를 등록하면 원본 규정의 체중·체급 제한과 <br />맞지 않는 곳을 알려드려요.</p>
         </li>
         <li>
           <span class="reason-num">02</span>
-          <div>
-            <h3>동반 규정을 한눈에</h3>
-            <p>실내·야외 허용 구역, 목줄, 배변 매너 같은 조건을 항목별로 나눠 보여드려요.</p>
-          </div>
+          <h3>동반 규정을 한눈에</h3>
+          <p>실내·야외 허용 구역, 목줄, 배변 매너 같은 조건을 <br />항목별로 나눠 보여드려요.</p>
         </li>
         <li>
           <span class="reason-num">03</span>
-          <div>
-            <h3>출처가 분명한 공공데이터</h3>
-            <p>
-              {sources.map((source) => source.shortName).join(' · ')} 자료를 쓰고, 수집일과 원문
-              링크를 함께 표시해요.
-            </p>
-          </div>
+          <h3>출처가 분명한 공공데이터</h3>
+          <p>{sources.map((source) => source.shortName).join(' · ')} 자료를 쓰고, <br />수집일과 원문 링크를 함께 표시해요.</p>
         </li>
       </ol>
     </div>
@@ -951,7 +947,8 @@
 
   /* ---------- 문제 제기 ---------- */
   .problem {
-    padding: clamp(72px, 10vh, 118px) 0 clamp(48px, 6vh, 72px);
+    /* 사진 띠에서 눈을 떼고 글을 읽기 시작하는 자리라, 위쪽을 넉넉히 비웁니다. */
+    padding: clamp(104px, 15vh, 168px) 0 clamp(64px, 8vh, 96px);
   }
   .problem-inner {
     width: min(1120px, calc(100% - clamp(36px, 8vw, 112px)));
@@ -1103,74 +1100,71 @@
     color: #f0e2d5;
     word-break: keep-all;
   }
-  /* 기능 셋 — 알약 모양의 반투명 카드. 번호는 금색 동그라미 배지. */
+  /* 기능 셋 — 면도 테두리도 없이, 세로선 하나에 번호를 꿴 단계 목록입니다. */
   .reasons {
+    position: relative;
     margin: 0;
-    padding: 0;
+    /* 왼쪽 큰 글자와 번호가 서로 붙어 보이지 않게, 번호 줄 전체를 오른쪽으로 물립니다.
+       오른쪽 칸에는 글이 다 들어가고도 자리가 남아 있어서, 미는 만큼 그대로 여백이 됩니다. */
+    margin-left: clamp(24px, 4.5vw, 64px);
+    padding: 0 0 0 64px;
     list-style: none;
     align-self: center;
     display: grid;
-    gap: 14px;
+    gap: 34px;
   }
-  /* 짙은 갈색 위에 떠 있는 유리 알약. 평평해 보이지 않게
-     ① 위에서 빛을 받은 듯한 옅은 그러데이션 ② 바닥으로 떨어지는 그림자
-     ③ 윗변 안쪽의 흰 선(inset) 세 가지를 겹칩니다. */
+  /* 셋을 하나로 꿰는 세로선. 위아래 끝은 흐리게 풀어 띠에 얹히게 합니다. */
+  .reasons::before {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 14px;
+    bottom: 14px;
+    width: 2px;
+    background: linear-gradient(
+      180deg,
+      #d1b49800 0%,
+      #d1b49870 14%,
+      #d1b49870 86%,
+      #d1b49800 100%
+    );
+  }
   .reasons li {
     position: relative;
-    display: grid;
-    grid-template-columns: 46px 1fr;
-    align-items: center;
-    gap: 18px;
-    padding: 20px 30px 20px 20px;
-    border-radius: 999px;
-    background: linear-gradient(150deg, #ffffff26 0%, #ffffff12 46%, #ffffff0a 100%);
-    border: 1px solid #ffffff33;
-    box-shadow:
-      inset 0 1px 0 #ffffff2e,
-      inset 0 -1px 0 #2a170d1f,
-      0 14px 30px #1b0f0757,
-      0 3px 8px #1b0f0740;
-    transition:
-      transform 0.22s ease,
-      box-shadow 0.22s ease,
-      background 0.22s ease;
   }
-  .reasons li:hover {
-    transform: translateY(-3px);
-    background: linear-gradient(150deg, #ffffff33 0%, #ffffff1a 46%, #ffffff0f 100%);
-    box-shadow:
-      inset 0 1px 0 #ffffff3d,
-      inset 0 -1px 0 #2a170d1f,
-      0 16px 34px #24140b4d,
-      0 3px 8px #24140b33;
-  }
+  /* 번호 동그라미. 짙은 갈색 띠 위에서 먼저 눈에 띄도록 밝은 베이지로 채우고,
+     숫자는 가장 짙은 갈색으로 눌러 대비를 크게 벌립니다(약 9:1). */
   .reason-num {
+    position: absolute;
+    left: -64px;
+    top: -3px;
     display: grid;
     place-items: center;
     width: 46px;
     height: 46px;
     border-radius: 50%;
-    background: radial-gradient(circle at 34% 28%, #f0bd8c 0%, var(--gold) 58%, #cf8b52 100%);
+    background: radial-gradient(circle at 34% 26%, #ecdcc9 0%, #d1b498 58%, #b99a7c 100%);
     box-shadow:
-      inset 0 1px 0 #fff6,
-      0 4px 10px #24140b47;
-    color: #4a3428;
-    font-size: 14px;
+      inset 0 1px 0 #fff,
+      0 5px 14px #24140b4d;
+    color: #40291a;
+    font-size: 15.5px;
     font-weight: 800;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     font-variant-numeric: tabular-nums;
   }
   .reasons h3 {
     margin: 0;
-    font-size: 20px;
+    font-size: 21px;
     letter-spacing: -0.6px;
     color: #fff;
   }
   .reasons p {
-    margin: 5px 0 0;
+    margin: 9px 0 0;
+    max-width: 470px;
     font-size: 15px;
-    line-height: 1.65;
-    color: #f0e2d5;
+    line-height: 1.72;
+    color: #ecdccd;
     word-break: keep-all;
   }
 
@@ -1431,6 +1425,17 @@
 
   /* ---------- 좁은 화면 ---------- */
   @media (max-width: 1100px) {
+    /* 두 칸이 위아래로 풀리면서 글 너비가 달라집니다. 넓은 화면에서만 맞던
+       줄바꿈을 그대로 두면 엉뚱한 곳이 끊기므로, 여기서부터는 글이 스스로 흐르게 둡니다.
+       마크업에서 <br> 앞에 공백을 하나 두었기 때문에, 꺼도 낱말이 서로 붙지 않아요
+       (넓은 화면에서는 줄 끝 공백이라 보이지 않습니다). */
+    .reasons p br {
+      display: none;
+    }
+    /* 위아래로 풀리면 왼쪽 글과 같은 선에서 시작해야 해서, 오른쪽으로 물린 것을 되돌립니다. */
+    .reasons {
+      margin-left: 0;
+    }
     .manifesto-inner,
     .problem-inner {
       grid-template-columns: 1fr;
@@ -1472,16 +1477,19 @@
       align-items: flex-start;
       gap: 12px;
     }
-    .reasons li {
-      grid-template-columns: 40px 1fr;
-      gap: 14px;
-      padding: 18px 22px 18px 16px;
-      border-radius: 28px;
+    /* 좁은 화면에서는 들여쓰기와 동그라미를 줄여, 글이 들어갈 자리를 넓힙니다. */
+    .reasons {
+      padding-left: 52px;
+      gap: 28px;
+    }
+    .reasons::before {
+      left: 19px;
     }
     .reason-num {
-      width: 40px;
-      height: 40px;
-      align-self: start;
+      left: -52px;
+      width: 38px;
+      height: 38px;
+      font-size: 13.5px;
     }
     .shot {
       width: 280px;

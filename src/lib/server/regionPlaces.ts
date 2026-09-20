@@ -26,12 +26,6 @@ import {
   type PreparedRegionalPlace
 } from './regions';
 
-const providerNames: Record<PreparedPlaceSource['provider'], string> = {
-  'gangwon-pettravel': '강원 반려동반관광',
-  'kcisa-pet-culture': '한국문화정보원',
-  'kto-pet-tour': '한국관광공사'
-};
-
 /** 강릉 스냅샷과 같은 꼬리말. policyLines() 가 여기서부터 잘라 냅니다. */
 const POLICY_FOOTER = '* 반려견 동반 운영 정책은 현지 사정에 따라 변동될 수 있습니다.';
 
@@ -167,13 +161,15 @@ export function menuOf(place: PreparedRegionalPlace): string {
 }
 
 function policyOf(place: PreparedRegionalPlace): string {
-  const labelled = place.sources.length > 1;
   const lines: string[] = [];
   for (const source of place.sources) {
-    const prefix = labelled ? `[${providerNames[source.provider]}] ` : '';
-    for (const chunk of policyChunks(source.policyText)) lines.push(`- ${prefix}${chunk}`);
+    // 예전에는 출처가 둘이면 문장마다 '[한국관광공사] ' 처럼 이름표를 달았습니다. 그런데 같은
+    // 규정이 자료마다 조금씩 다르게 적혀 있을 뿐인데 이름표 때문에 서로 다른 줄로 남아,
+    // 읽는 사람 앞에는 같은 말이 두 번씩 놓였어요. 어느 자료에서 왔는지는 아래 '자료 출처'
+    // 칸이 이미 말해 주므로, 규정 줄에서는 빼고 문장만 남깁니다.
+    for (const chunk of policyChunks(source.policyText)) lines.push(`- ${chunk}`);
     const sizeLine = sizeClassLine(source.sizeText);
-    if (sizeLine) lines.push(`- ${prefix}${sizeLine}`);
+    if (sizeLine) lines.push(`- ${sizeLine}`);
   }
   if (!lines.length) lines.push('- 원본에 동반 규정 문장이 없어요. 방문 전 전화로 확인해 주세요.');
   return [...new Set(lines)].join('\n') + '\n' + POLICY_FOOTER;

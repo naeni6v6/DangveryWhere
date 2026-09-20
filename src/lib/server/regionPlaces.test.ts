@@ -74,12 +74,19 @@ describe('policy text keeps what the sources actually wrote', () => {
     ).toEqual(['리드줄 필수입니다', '대형견은 동반 불가']);
   });
 
-  it('labels each provider when two of them disagree', async () => {
+  // 예전에는 문장마다 '[한국문화정보원] ' 같은 이름표를 달았습니다. 같은 규정을 자료마다
+  // 조금씩 다르게 적어 둔 것뿐인데 이름표 때문에 서로 다른 줄로 남아, 읽는 사람 앞에는
+  // 같은 말이 두 번 놓였어요. 출처는 화면 아래 '정보 출처' 칸이 따로 말해 줍니다.
+  it('keeps every source sentence, without stamping a provider name on each line', async () => {
     const dataset = await loadPreparedRegion('chuncheon');
     const conflicting = dataset.places.find((place) => place.sources.length > 1)!;
     const policy = toPlace(conflicting, dataset.collectedAt).policy;
-    expect(policy).toContain('[강원 반려동반관광]');
-    expect(policy).toContain('[한국문화정보원]');
+    expect(policy).not.toMatch(/\[(강원 반려동반관광|한국문화정보원|한국관광공사)\]/);
+    // 이름표는 뺐어도 두 자료가 적어 둔 문장은 그대로 남아 있어야 합니다.
+    for (const source of conflicting.sources) {
+      const [first] = policyChunks(source.policyText);
+      if (first) expect(policy).toContain(first);
+    }
   });
 
   it('never turns an indoor flag into permission to go inside', async () => {

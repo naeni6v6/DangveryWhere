@@ -260,6 +260,157 @@ export function placeMenu(menu: string, board?: MenuBoard | null): PlaceMenu {
   return { ...menuGroups(menu), source: null };
 }
 
+/**
+ * 규정 한 줄 다듬기.
+ *
+ * 원본은 세 자료를 그대로 옮겨 온 것이라 결이 제각각입니다. 어떤 곳은 '목줄' 처럼 낱말만
+ * 적혀 있고, 어떤 곳은 '닫아주세요' 처럼 부탁하는 말투예요. 한 가게 안에서 말투가 섞이지
+ * 않도록 화면에 내보내기 전에 '~다' 로 맞춰 줍니다.
+ *
+ * 다만 뜻은 바꾸지 않습니다. 아래 규칙에 걸리지 않는 문장은 원문 그대로 둬요.
+ * 아무 말이나 뒤에 '입니다' 를 붙이면 ('전염성 질환 반려견' → '…반려견입니다')
+ * 원본에 없던 뜻이 생기고, 그건 결국 문 앞에서 헛걸음으로 돌아옵니다.
+ */
+
+/** 원본에 박혀 있는 출처 이름표. 어느 자료에서 왔는지는 '자료 출처' 칸에 따로 적혀 있어요. */
+const SOURCE_LABEL = /^\[(?:한국관광공사|한국문화정보원|강원\s*반려동반관광)\]\s*/;
+
+/** 낱말만 적어 둔 칸에서 쓰는 말 → 문장. */
+const PHRASES = new Map<string, string>([
+  ['목줄', '목줄 착용 필수입니다.'],
+  ['목줄 착용', '목줄 착용 필수입니다.'],
+  ['목줄착용', '목줄 착용 필수입니다.'],
+  ['실내 목줄 필수', '실내에서는 목줄 착용이 필수입니다.'],
+  ['리드줄', '리드줄 착용 필수입니다.'],
+  ['리드줄 착용', '리드줄 착용 필수입니다.'],
+  ['인식표', '반려견 인식표를 착용해야 합니다.'],
+  ['인식표 착용', '반려견 인식표를 착용해야 합니다.'],
+  ['입마개', '입마개를 착용해야 합니다.'],
+  ['입마개 착용', '입마개를 착용해야 합니다.'],
+  ['배변봉투', '배변봉투를 지참해야 합니다.'],
+  ['배변봉투 지참', '배변봉투를 지참해야 합니다.'],
+  ['배변봉투 지참 및 배변처리 필수', '배변봉투를 지참하고 배변은 즉시 처리해야 합니다.'],
+  ['케이지', '케이지를 이용해야 합니다.'],
+  ['케이지 이용', '케이지를 이용해야 합니다.'],
+  ['이동장(켄넬)사용', '이동장(켄넬)을 사용해야 합니다.'],
+  ['이동장(켄넬) 사용', '이동장(켄넬)을 사용해야 합니다.'],
+  ['반려동물 유모차 탑승', '반려동물 유모차를 이용할 수 있습니다.'],
+  ['제한사항 없음', '별도 제한 사항이 없습니다.'],
+  ['견종 및 무게제한 없음', '견종과 무게 제한이 없습니다.'],
+  ['전 견종 동반 가능', '전 견종 동반할 수 있습니다.'],
+  ['전견종 동반 가능', '전 견종 동반할 수 있습니다.'],
+  ['일부구역 동반가능', '일부 구역에서만 동반할 수 있습니다.'],
+  ['일부 구역 동반 가능', '일부 구역에서만 동반할 수 있습니다.'],
+  ['야외만 반려동물 동반 가능', '야외에서만 동반할 수 있습니다.'],
+  ['안고 있어야 함', '보호자가 안고 이동해야 합니다.'],
+  ['안기', '보호자가 안고 이동해야 합니다.'],
+  ['매너벨트', '매너벨트를 착용해야 합니다.'],
+  ['매너벨트 착용', '매너벨트를 착용해야 합니다.'],
+  ['대형견 입마개', '대형견은 입마개를 착용해야 합니다.'],
+  ['야외만 동반 가능', '야외에서만 동반할 수 있습니다.'],
+  ['고양이 불가', '고양이는 동반할 수 없습니다.'],
+  ['반려묘 동반가능', '반려묘도 동반할 수 있습니다.'],
+  ['맹견류 입장 불가', '맹견은 입장할 수 없습니다.'],
+  ['맹견의 경우, 입마개 착용 필수', '맹견은 입마개를 착용해야 합니다.'],
+  ['타 반려견 터치 금지', '다른 반려견을 만지지 않아야 합니다.'],
+  ['애견용품 개별준비', '애견용품은 각자 준비해야 합니다.'],
+  ['입질, 공격성 있는 경우 입장 제한', '입질이나 공격성이 있으면 입장이 제한됩니다.']
+]);
+
+/** 뜻이 없는 칸 값. 목록에서 아예 뺍니다. */
+const EMPTY_TOKENS = new Set(['기타', '해당없음', '해당 없음', '없음', '-', '.']);
+
+/**
+ * 낱말만 나열된 칸('입마개 착용,목줄 착용,기타')을 한 줄씩 폅니다.
+ * 쉼표로 끊은 조각이 모두 아는 말일 때만 나눠요. 그렇지 않으면 쉼표가 들어간
+ * 멀쩡한 문장까지 토막 납니다.
+ */
+function splitKeywordLine(line: string): string[] | null {
+  if (!line.includes(',')) return null;
+  const parts = line
+    .split(/\s*,\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  if (!parts.every((part) => PHRASES.has(part) || EMPTY_TOKENS.has(part))) return null;
+  return parts;
+}
+
+/** 숫자가 끼어 있어 표로는 못 적는 말들. */
+const PATTERNS: [RegExp, string][] = [
+  [/^객실\s*당?\s*최대\s*(\d+)\s*마리$/, '객실당 최대 $1마리까지 동반할 수 있습니다.'],
+  [/^최대\s*(\d+)\s*마리$/, '최대 $1마리까지 동반할 수 있습니다.'],
+  [/^(\d+(?:\.\d+)?)\s*kg\s*(이하|미만)\s*동반\s*가능$/i, '$1kg $2만 동반할 수 있습니다.']
+];
+
+/** 끝맺음만 '~다' 로 바꾸는 규칙. 앞말은 건드리지 않습니다. */
+const ENDINGS: [RegExp, string][] = [
+  [/(?:주세요|주십시오|주시길 바래요)\.?$/, '주시기 바랍니다.'],
+  [/마세요\.?$/, '마시기 바랍니다.'],
+  [/하세요\.?$/, '하시기 바랍니다.'],
+  [/해요\.?$/, '합니다.'],
+  [/(?:예요|에요)\.?$/, '입니다.'],
+  [/가능$/, '가능합니다.'],
+  [/불가$/, '불가합니다.'],
+  [/필수$/, '필수입니다.'],
+  [/금지$/, '금지입니다.'],
+  [/제한$/, '제한됩니다.'],
+  [/없음$/, '없습니다.'],
+  [/있음$/, '있습니다.'],
+  [/착용$/, '착용해야 합니다.'],
+  [/지참$/, '지참해야 합니다.'],
+  [/책임$/, '책임입니다.'],
+  [/필요$/, '필요합니다.'],
+  [/조치$/, '조치됩니다.'],
+  // '있어야 함' 은 띄고, '금함' 은 붙입니다. 한 규칙으로 묶으면 '있어야합니다' 가 돼요.
+  [/([가-힣])\s+함$/, '$1 합니다.'],
+  [/([가-힣])함$/, '$1합니다.'],
+  [/([가-힣])\s+됨$/, '$1 됩니다.'],
+  [/([가-힣])됨$/, '$1됩니다.']
+];
+
+/** 문장 끝에 덧붙은 괄호 주석. 앞 문장만 다듬고 괄호는 그대로 뒤에 붙입니다. */
+const TRAILING_NOTE = /^(.*\S)\s*([(（][^()（）]*[)）])$/;
+
+/**
+ * 여러 문장이 한 덩어리로 붙어 있는 칸을 문장마다 끊습니다.
+ * 관광공사 원본은 규정 예닐곱 개를 글머리표 없이 한 줄에 몰아 적는데, 같은 규정을
+ * 강원 원본은 한 줄씩 나눠 줍니다. 덩어리째 두면 같은 말이 목록에 두 번 놓여요.
+ * (lookbehind 는 쓰지 않습니다. 옛 사파리에서 통째로 터집니다.)
+ */
+function splitSentences(line: string): string[] {
+  return line
+    .replace(/([다요]\.)\s+(?=[가-힣0-9])/g, '$1\n')
+    .split('\n')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** 다듬은 한 줄. 어느 규칙에도 안 걸리면 원문 그대로 돌려줍니다. */
+export function tidyPolicyLine(raw: string): string {
+  const line = raw.replace(SOURCE_LABEL, '').replace(/\s+/g, ' ').trim();
+  if (!line) return '';
+  const mapped = PHRASES.get(line.replace(/\.$/, ''));
+  if (mapped) return mapped;
+  for (const [pattern, replacement] of PATTERNS) {
+    if (pattern.test(line)) return line.replace(pattern, replacement);
+  }
+  // 이미 '~다' 로 끝나면 마침표만 챙깁니다. ('…합니다,.' 처럼 겹친 부호도 여기서 정리해요.)
+  const settled = line.replace(/다\s*[,.]+$/, '다.');
+  if (/다\.$/.test(settled)) return settled;
+  if (/다$/.test(settled)) return settled + '.';
+  for (const [pattern, replacement] of ENDINGS) {
+    if (pattern.test(settled)) return settled.replace(pattern, replacement);
+  }
+  // '… 가능 (15kg 미만 제한 없음)' 처럼 괄호 주석이 꼬리에 붙은 줄은 앞 문장만 다듬습니다.
+  const note = TRAILING_NOTE.exec(settled);
+  if (note) {
+    const head = tidyPolicyLine(note[1]);
+    if (head !== note[1]) return `${head} ${note[2]}`;
+  }
+  return settled;
+}
+
 export function policyLines(policy: string): string[] {
   const lines = policy
     .replace(/\*\s*반려견 동반 운영[\s\S]*$/, '')
@@ -268,10 +419,20 @@ export function policyLines(policy: string): string[] {
     // regionPlaces.ts 의 policyChunks 와 같은 규칙이에요.
     .split(/\s*[-*]\s+|\s*[-*](?=[가-힣])|\n/)
     .map((s) => s.trim())
-    .filter(Boolean);
-  // 화면이 이 줄을 그대로 목록 키로 씁니다. 출처가 여럿이면 같은 문장이 두 번 올 수 있어
-  // 여기서 접어 둡니다(원본에 두 번 적혀 있어도 규정이 두 번 보일 이유는 없어요).
-  return [...new Set(lines)];
+    .filter(Boolean)
+    // 낱말만 나열된 칸은 한 줄씩 펴고, 붙어 있는 문장은 끊고, 나머지는 말투를 맞춥니다.
+    .flatMap((line) => splitKeywordLine(line.replace(SOURCE_LABEL, '')) ?? splitSentences(line))
+    .map(tidyPolicyLine)
+    .filter((line) => Boolean(line) && !EMPTY_TOKENS.has(line));
+  // 출처가 여럿이면 같은 규정이 두 번 옵니다. 그런데 자료마다 띄어쓰기가 조금씩 달라서
+  // ('출입제한' / '출입 제한') 글자 그대로는 접히지 않아요. 공백을 뺀 값을 열쇠로 씁니다.
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    const key = line.replace(/\s+/g, '');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function matchesTerm(place: Place, term: string): boolean {

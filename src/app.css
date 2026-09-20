@@ -515,6 +515,21 @@ a {
   bottom: 0;
   transform: translate(-50%, -100%);
 }
+/* 해안가 이름표. 바다 쪽으로 뻗어 나가지 않도록 뭍이 있는 안쪽으로 펼치고,
+   꼬리만 끝에 남겨 그 장소를 계속 가리키게 합니다. 들여 넣는 깊이(20px)는
+   MapView 의 LEAN_INSET 과 같아야 겹침 판정이 실제 자리와 어긋나지 않아요. */
+.live-marker-pin[data-lean='right'] > button {
+  transform: translate(calc(-100% + 20px), -100%);
+}
+.live-marker-pin[data-lean='right'] .marker-tail {
+  left: calc(100% - 20px);
+}
+.live-marker-pin[data-lean='left'] > button {
+  transform: translate(-20px, -100%);
+}
+.live-marker-pin[data-lean='left'] .marker-tail {
+  left: 20px;
+}
 .live-marker-dot > button,
 .live-marker-cluster > button {
   top: 0;

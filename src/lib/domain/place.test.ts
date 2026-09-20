@@ -6,6 +6,7 @@ import {
   placeMenu,
   placeArea,
   placeTheme,
+  policyLines,
   profileNotice,
   searchPlaces,
   searchPlacesByTheme,
@@ -220,5 +221,50 @@ describe('naverPlaceUrl', () => {
     expect(naverPlaceUrl({ ...place, name: ' 감자밭 ', address: '강원' })).toBe(
       'https://map.naver.com/p/search/' + encodeURIComponent('감자밭')
     );
+  });
+});
+
+describe('policyLines', () => {
+  it('drops the provider stamp the raw data carries', () => {
+    expect(policyLines('- [한국관광공사] 반려견 동반 시 사전 문의 필수입니다.')).toEqual([
+      '반려견 동반 시 사전 문의 필수입니다.'
+    ]);
+  });
+
+  it('turns a keyword cell into one sentence per rule and throws away 기타', () => {
+    expect(policyLines('- 입마개 착용,목줄 착용,기타')).toEqual([
+      '입마개를 착용해야 합니다.',
+      '목줄 착용 필수입니다.'
+    ]);
+  });
+
+  it("speaks in one voice inside a place ('~다')", () => {
+    expect(
+      policyLines('- 출입문은 항상 꼭 닫아주세요.\n- 1층은 안고 있어야 함\n- 일부구역 동반가능')
+    ).toEqual([
+      '출입문은 항상 꼭 닫아주시기 바랍니다.',
+      '1층은 안고 있어야 합니다.',
+      '일부 구역에서만 동반할 수 있습니다.'
+    ]);
+  });
+
+  // 뜻을 지어내지 않습니다. '전염성 질환 반려견' 뒤에 '입니다' 를 붙이면 원본에 없던 말이 됩니다.
+  it('leaves a phrase alone when no rule understands it', () => {
+    expect(policyLines('- 전염성 질환 반려견\n- [출입 제한 사항]')).toEqual([
+      '전염성 질환 반려견',
+      '[출입 제한 사항]'
+    ]);
+  });
+
+  // 한 자료는 규정을 한 줄에 몰아 적고, 다른 자료는 한 줄씩 나눠 줍니다.
+  it('folds a run-on cell into the same rules the other source already listed', () => {
+    const policy =
+      '- 빵 구매 시 반려견은 안아주세요\n' +
+      '- 1층과 야외정원만 이용 가능합니다\n' +
+      '- 빵 구매 시 반려견은 안아주세요. 1층과 야외 정원만 이용 가능합니다.';
+    expect(policyLines(policy)).toEqual([
+      '빵 구매 시 반려견은 안아주시기 바랍니다.',
+      '1층과 야외정원만 이용 가능합니다.'
+    ]);
   });
 });
