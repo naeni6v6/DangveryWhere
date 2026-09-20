@@ -1,37 +1,23 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import {
-    Search,
-    ArrowUpRight,
-    ChevronRight,
-    MapPin,
-    PawPrint,
-    Stamp,
-    Heart
-  } from '@lucide/svelte';
+  import { Search, ArrowUpRight, ChevronRight, MapPin, PawPrint, Heart } from '@lucide/svelte';
   import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
   import MobilePlaceCard from '$lib/components/mobile/MobilePlaceCard.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   import { photoFirst } from '$lib/domain/placePhoto';
   import { directLinkFirst } from '$lib/domain/placeLink';
-  import { MASCOT_IMAGE } from '$lib/domain/mascot';
-  import { breedImage, findBreed, MYSTERY_IMAGE } from '$lib/domain/breeds';
-  import { type Theme, type Place } from '$lib/domain/place';
+  import { breedCutout, findBreed, MYSTERY_IMAGE } from '$lib/domain/breeds';
+  import { placeTheme, type Theme, type Place } from '$lib/domain/place';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   const store = getWebStore();
   const region = $derived(data.regions.find((item) => item.id === data.regionId)!);
-  const suggestions = $derived(
-    photoFirst(directLinkFirst(data.places.filter((place) => place.category !== 'hospital'))).slice(
-      0,
-      4
-    )
-  );
+  const dogBreed = $derived(findBreed(store.dog?.breed ?? ''));
   const dogPhoto = $derived(
     store.dog
       ? (store.characterFor(store.dog.id)?.finalImage ??
-          (findBreed(store.dog.breed) ? breedImage(findBreed(store.dog.breed)!) : MYSTERY_IMAGE))
-      : MASCOT_IMAGE
+          (dogBreed ? breedCutout(dogBreed) : MYSTERY_IMAGE))
+      : MYSTERY_IMAGE
   );
   const themes: { id: Theme; label: string }[] = [
     { id: 'cafe', label: '카페' },
@@ -43,6 +29,14 @@
     { id: 'shopping', label: '쇼핑' },
     { id: 'hospital', label: '동물병원' }
   ];
+  const suggestions = $derived.by(() => {
+    const ranked = photoFirst(directLinkFirst(data.places));
+    // 현재 지역에 있는 유형마다 한 곳씩. 사진과 직접 연결되는 업소 정보가 있는 곳을 우선합니다.
+    return themes.flatMap((theme) => {
+      const place = ranked.find((item) => placeTheme(item) === theme.id);
+      return place ? [place] : [];
+    });
+  });
   function search(event: SubmitEvent) {
     event.preventDefault();
     goto('/explore');
@@ -53,7 +47,7 @@
 </script>
 
 <svelte:head
-  ><title>댕브리웨어 — 강아지와 함께 떠나요</title><meta
+  ><title>댕브리웨어 — 강아지와 함께, 헛걸음 없이</title><meta
     name="description"
     content="반려견과 함께 갈 장소를 찾고, 동반 규정을 확인하고, 우리만의 여행 기록을 모아요."
   /></svelte:head
@@ -62,16 +56,22 @@
   <section class="home-hero">
     <div class="hero-copy">
       <span class="home-eyebrow">EVERYWHERE, TOGETHER</span>
-      <h1>오늘도 너와<br />함께라서 좋아.</h1>
-      <p>발길 닿는 곳마다, 우리만의 여행.</p>
-      <a href={store.dogs.length ? '/explore' : '/start'}
-        >{store.dogs.length ? '함께 갈 곳 찾기' : '우리의 여행 시작하기'}<ArrowUpRight
-          size={17}
-        /></a
-      >
+      <h1>강아지와 함께,<br />헛걸음 없이</h1>
+      <p>반려견 동반 장소의 출입 규정을 한곳에 모았어요.</p>
+      <a href={store.dogs.length ? '/explore' : '/start'}>시작하기<ArrowUpRight size={17} /></a>
     </div>
-    <img src={MASCOT_IMAGE} alt="인사하는 댕브리" fetchpriority="high" width="170" height="190" />
+    <div class="hero-dog">
+      <img
+        src={dogPhoto}
+        alt={store.dog ? `${store.dog.name}의 캐릭터` : '등록을 기다리는 강아지 캐릭터'}
+        fetchpriority="high"
+        width="180"
+        height="180"
+      />
+      <span>{store.dog ? store.dog.name : '우리 강아지를 만나볼까요?'}</span>
+    </div>
   </section>
+  {#if !store.dog}<p class="home-start-hint">강아지 등록부터 차근차근 시작해요.</p>{/if}
   <form class="home-search" role="search" onsubmit={search}>
     <Search size={20} /><input
       aria-label="장소 검색"
@@ -90,16 +90,17 @@
         >{/each}
     </div>
   </section>
-  <a class="home-dog" href="/dog"
-    ><img src={dogPhoto} alt="" width="84" height="84" />
-    <div>
-      <small>MY LITTLE COMPANION</small><strong
-        >{store.dog ? `${store.dogNames}와 떠나는 여행` : '우리 강아지를 소개해 주세요'}</strong
-      >
-      <p>{store.dog ? '프로필과 캐릭터를 만나보세요' : '체중·체급에 맞춰 장소를 확인해요'}</p>
-    </div>
-    <ChevronRight size={19} /></a
-  >
+  {#if store.dog}<a class="home-dog" href="/dog"
+      ><img src={dogPhoto} alt="" width="84" height="84" />
+      <div>
+        <small
+          >{store.dog.name}{store.dogs.length > 1 ? ` 외 ${store.dogs.length - 1}마리` : ''}</small
+        >
+        <strong>우리 강아지 관리</strong>
+        <p>프로필 수정 · 캐릭터 꾸미기</p>
+      </div>
+      <ChevronRight size={19} /></a
+    >{/if}
   <section class="home-section home-places">
     <div class="section-title">
       <div>
@@ -108,6 +109,7 @@
       </div>
       <a href="/explore">지도 보기<ChevronRight size={14} /></a>
     </div>
+    <p class="home-places-intro">카테고리별로 한 곳씩 둘러보세요.</p>
     {#each suggestions as place (place.id)}<MobilePlaceCard
         {place}
         onselect={() => openPlace(place)}
@@ -117,18 +119,25 @@
     </p>
   </section>
   <section class="home-shortcuts">
-    <a href="/record"
-      ><Stamp size={25} /><strong>발도장 모으기</strong><span
+    <a class="shortcut-record" href="/record"
+      ><span class="shortcut-icon" aria-hidden="true"
+        ><PawPrint size={27} fill="currentColor" strokeWidth={1.5} /></span
+      ><strong>발도장 모으기</strong><span class="shortcut-description"
         >우리의 여행을 기록해요<ChevronRight size={13} /></span
       ></a
-    ><a href="/favorites"
-      ><Heart size={25} /><strong>다음에 함께 갈 곳</strong><span
+    ><a class="shortcut-favorites" href="/favorites"
+      ><span class="shortcut-icon" aria-hidden="true"
+        ><Heart size={26} fill="currentColor" strokeWidth={1.5} /></span
+      ><strong>다음에 함께 갈 곳</strong><span class="shortcut-description"
         >찜한 장소 {store.savedIds.length}곳<ChevronRight size={13} /></span
       ></a
     >
   </section>
   <footer class="mobile-home-footer">
-    <PawPrint size={18} /><span>함께라서 더 좋은 모든 곳, 댕브리웨어</span><a href="/web"
+    <img src="/wordmark.png" alt="댕브리웨어" width="112" height="39" /><span
+      >DangveryWhere · 반려견 동반 지도</span
+    >
+    <a href="/?guide=1">앱 사용법 다시 보기</a><a href="/web"
       >PC 웹으로 보기 <ArrowUpRight size={13} /></a
     >
   </footer>
@@ -136,7 +145,7 @@
 
 <style>
   .mobile-home {
-    padding: 8px 20px 145px;
+    padding: 8px 20px 24px;
   }
   .home-hero {
     display: flex;
@@ -168,6 +177,8 @@
   .hero-copy p {
     font-size: 10px;
     color: #8c705b;
+    max-width: 150px;
+    line-height: 1.7;
   }
   .hero-copy a {
     display: inline-flex;
@@ -181,13 +192,42 @@
     color: #fff;
     background: #a36746;
   }
-  .home-hero > img {
+  .hero-dog {
     position: absolute;
-    width: 47%;
+    width: 45%;
+    right: 12px;
+    bottom: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .hero-dog img {
+    display: block;
+    width: 100%;
     height: auto;
-    right: -7px;
-    bottom: 16px;
-    transform: rotate(6deg);
+    aspect-ratio: 1;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 7px #8f60321a);
+  }
+  .hero-dog > span {
+    max-width: 100%;
+    margin-top: -3px;
+    padding: 5px 9px;
+    border: 1px solid #e9d4bd;
+    border-radius: 30px;
+    background: #fffaf3cc;
+    color: #84634d;
+    font-size: 10px;
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .home-start-hint {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
   }
   .home-search {
     display: flex;
@@ -273,7 +313,6 @@
   }
   .home-dog img {
     object-fit: contain;
-    mix-blend-mode: multiply;
     width: 75px;
     height: 82px;
   }
@@ -282,8 +321,7 @@
     min-width: 0;
   }
   .home-dog small {
-    font-size: 8px;
-    letter-spacing: 1px;
+    font-size: 11px;
     color: var(--brand);
   }
   .home-dog strong {
@@ -310,6 +348,11 @@
     font-size: 10px;
     line-height: 1.7;
   }
+  .home-places-intro {
+    margin: 7px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
   .home-shortcuts {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -323,19 +366,40 @@
     text-decoration: none;
     gap: 8px;
     padding: 19px 14px;
-    background: #f5f3ed;
-    border-radius: 17px;
+    background: linear-gradient(145deg, #fbf5e9, #f1e4ce);
+    border: 1px solid #ece0cd;
+    border-radius: 22px;
+    box-shadow: 0 5px 14px #8157350a;
     color: var(--brown-warm);
   }
-  .home-shortcuts a:last-child {
-    background: #f9eee8;
+  .home-shortcuts .shortcut-favorites {
+    background: linear-gradient(145deg, #fff5ee, #f3dfd3);
+    border-color: #eddbcf;
+  }
+  .shortcut-icon {
+    display: grid;
+    place-items: center;
+    width: 66px;
+    height: 46px;
+    border: 1px solid #fff9ec;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #fffaf0, #e6cba4);
+    box-shadow:
+      0 5px 10px #92673b1f,
+      inset 0 1px 1px #ffffffb3;
+    color: #a27248;
+  }
+  .shortcut-favorites .shortcut-icon {
+    background: linear-gradient(145deg, #fff9f3, #e9ba9f);
+    border-color: #fff8f2;
+    color: #ae6548;
   }
   .home-shortcuts strong {
     font-size: 13px;
     color: var(--ink);
     margin-top: 4px;
   }
-  .home-shortcuts span {
+  .shortcut-description {
     display: flex;
     align-items: center;
     font-size: 10px;
@@ -355,5 +419,17 @@
     gap: 3px;
     min-height: 35px;
     text-decoration: none;
+  }
+  @media (max-width: 359px) {
+    h1 {
+      font-size: 23px;
+    }
+    .hero-copy p {
+      font-size: 9px;
+      max-width: 128px;
+    }
+    .hero-dog {
+      width: 42%;
+    }
   }
 </style>

@@ -30,7 +30,8 @@
   box-shadow: 0 0 50px #49342109;
   isolation: isolate;
   font-size: 14px;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .mobile-root button,
 .mobile-root input,
@@ -63,21 +64,24 @@
 }
 .mobile-brand {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
   text-decoration: none;
 }
-.mobile-brand > span {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.6px;
+.mobile-wordmark {
+  display: block;
+  width: 112px;
+  max-width: 100%;
+  height: auto;
 }
 .mobile-brand small {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   font-size: 9px;
   font-weight: 400;
-  letter-spacing: 0.3px;
+  line-height: 1.35;
+  word-break: keep-all;
   color: var(--muted);
 }
 .mobile-account-area {
@@ -351,9 +355,14 @@
 }
 .mobile-root .mobile-dog .dog-tabs button {
   flex: 1;
+  justify-content: center;
   min-width: 0;
-  padding: 12px 9px;
+  padding: 12px 10px;
+  gap: 6px;
   font-size: 12px;
+}
+.mobile-root .mobile-dog .dog-tabs button svg {
+  flex-shrink: 0;
 }
 .mobile-root .mobile-dog .stage-caption strong {
   font-size: 22px;
@@ -459,6 +468,18 @@
 }
 .mobile-root .mobile-record .map-card {
   padding: 20px 12px;
+}
+.mobile-root .mobile-record .map-top {
+  align-items: flex-start;
+  gap: 12px;
+}
+.mobile-root .mobile-record .map-top strong {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.mobile-root .mobile-record .map-top > span {
+  font-size: 11px;
+  line-height: 1.7;
 }
 .mobile-root .mobile-record .gangwon {
   max-width: 100%;

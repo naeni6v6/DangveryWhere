@@ -186,8 +186,12 @@
         {#if dogName}{dogName}{josa(dogName, '와/과')} 모으는 댕스탬프{:else}댕스탬프{/if}
       </h1>
       <p>
-        강원 {districts.length}개 시군구를 다녀올 때마다 스탬프를 하나씩 찍어요. 지도에서 다녀온
-        시군구를 누르고 스탬프를 찍으면, 아래 스탬프 기록에 차곡차곡 모여요.
+        <span class="copy-sentence"
+          >강원 {districts.length}개 시군구를 다녀올 때마다 스탬프를 하나씩 찍어요.</span
+        >
+        <span class="copy-sentence"
+          >지도에서 다녀온 시군구를 누르고 스탬프를 찍으면, 아래 스탬프 기록에 차곡차곡 모여요.</span
+        >
       </p>
     </header>
 
@@ -351,7 +355,8 @@
               </a>
             {:else}
               <p class="district-note">
-                이 시군구의 장소 데이터는 아직 준비 중이에요. 스탬프는 지금도 찍을 수 있어요.
+                <span class="copy-sentence">이 시군구의 장소 데이터는 아직 준비 중이에요.</span>
+                <span class="copy-sentence">스탬프는 지금도 찍을 수 있어요.</span>
               </p>
             {/if}
 
@@ -446,7 +451,8 @@
         {:else if complete}
           강원 스탬프 투어를 완주했어요. 다음 여행에서도 {dogName}{josa(dogName, '와/과')} 좋은 하루 보내세요.
         {:else}
-          시군구마다 스탬프는 하나예요. 날짜는 위에서 고른 시군구 카드에서 고칠 수 있어요.
+          <span class="copy-sentence">시군구마다 스탬프는 하나예요.</span>
+          <span class="copy-sentence">날짜는 위에서 고른 시군구 카드에서 고칠 수 있어요.</span>
         {/if}
       </p>
     </section>
@@ -454,6 +460,14 @@
 </div>
 
 <style>
+  .copy-sentence {
+    display: block;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  .copy-sentence + .copy-sentence {
+    margin-top: 4px;
+  }
   .page-scroll {
     flex: 1;
     min-width: 0;

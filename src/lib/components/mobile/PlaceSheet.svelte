@@ -24,6 +24,7 @@
   import { photoCredit, providerInfo, providerOfUrl } from '$lib/domain/region';
   import { menuBoardOf } from '$lib/data/menuBoards';
   import MenuBoard from '$lib/components/MenuBoard.svelte';
+  import PhotoGallery from './PhotoGallery.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
   let { place, onclose }: { place: Place; onclose: () => void } = $props();
   const store = getWebStore();
@@ -85,23 +86,19 @@
     <h2 id="mobile-place-title">{place.name}</h2>
     <p class="address"><MapPin size={15} />{place.address}</p>
     {#if photos.length}
-      <div class="mobile-detail-photos" aria-label="장소 사진">
-        {#each photos as photo, index}<a
-            href={photo}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${place.name} 사진 ${index + 1} 크게 보기`}
-            ><img src={photo} alt={`${place.name} 사진 ${index + 1}`} loading="lazy" /></a
-          >{/each}
-      </div>
+      <PhotoGallery {photos} name={place.name} />
       {#if credit}<p class="credit">{credit}</p>{/if}
     {/if}
-    {#if place.description}<p class="description">{place.description}</p>{/if}
+    {#if place.description}<section class="detail-about">
+        <h3>이런 곳이에요</h3>
+        <p class="description">{place.description}</p>
+      </section>{/if}
     {#if place.hours}<p class="hours"><Clock3 size={17} /><span>{place.hours}</span></p>{/if}
-    {#if place.category !== 'hospital'}
-      <section class="mobile-detail-section">
-        <h3><PawPrint size={19} />함께 가기 전 확인해요</h3>
-        {#each notices as notice}<div
+    <section class="mobile-detail-section">
+      <h3>
+        <PawPrint size={19} />{place.category === 'hospital' ? '진료 전에' : '함께 가기 전에'}
+      </h3>
+      {#if place.category !== 'hospital'}{#each notices as notice}<div
             class="dog-notice"
             class:restricted={notice.kind === 'restricted'}
           >
@@ -110,19 +107,25 @@
           </div>{/each}
         {#if !store.dogs.length}<a href="/dog" class="register-dog"
             >우리 강아지를 등록하고 조건 비교하기 <ArrowUpRight size={16} /></a
-          >{/if}
-        {#if lines.length}<ul>
-            {#each lines as line}<li>{line}</li>{/each}
-          </ul>{:else}<p>제공된 동반 규정이 없어요. 방문 전에 시설에 확인해 주세요.</p>{/if}
-        <p class="policy-note">
-          <Info size={15} />체중 조건만으로 입장이 보장되지는 않아요. 허용 구역과 준비물도 함께
-          확인해 주세요.
-        </p>
-      </section>
-    {/if}
+          >{/if}{/if}
+      {#if lines.length}<ul>
+          {#each lines as line}<li>{line}</li>{/each}
+        </ul>{:else}<p>
+          {place.category === 'hospital'
+            ? '진료 시간과 진료 과목은 원본 데이터에 없어요. 방문 전 전화로 확인해 주세요.'
+            : '상세 규정이 부족해요. 방문 전 시설에 문의해 주세요.'}
+        </p>{/if}
+      <p class="policy-note">
+        <Info size={15} /><span
+          >공공데이터에 등록된 안내예요. {place.category === 'hospital'
+            ? '진료 시간과 응급 여부는 전화로 확인해 주세요.'
+            : '최근 운영 규정은 방문 전에 확인해 주세요.'}</span
+        >
+      </p>
+    </section>
     {#if place.category === 'food'}
       <section class="mobile-detail-section">
-        <h3>메뉴·이용 안내</h3>
+        <h3>대표 메뉴</h3>
         <MenuBoard
           groups={menu.groups}
           notes={menu.notes}
@@ -134,7 +137,7 @@
     {/if}
     <section class="mobile-detail-source">
       <h3>정보 출처</h3>
-      <p>{source.name} · 수집 {place.importedAt}</p>
+      <p>{source.name}<br />데이터 수집 {place.importedAt} · 규정 확인일 미제공</p>
       <a href={place.sourceUrl} target="_blank" rel="noreferrer"
         >원본 정보 확인<ArrowUpRight size={14} /></a
       >
@@ -243,27 +246,6 @@
   .policy-note :global(svg) {
     flex-shrink: 0;
   }
-  .mobile-detail-photos {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    border-radius: 16px;
-  }
-  .mobile-detail-photos a {
-    width: 90%;
-    flex-shrink: 0;
-    scroll-snap-align: start;
-    border-radius: 16px;
-    overflow: hidden;
-    background: var(--cream);
-  }
-  .mobile-detail-photos img {
-    display: block;
-    width: 100%;
-    height: 210px;
-    object-fit: contain;
-  }
   .credit {
     font-size: 10px;
     color: var(--muted);
@@ -273,6 +255,9 @@
     font-size: 14px;
     line-height: 1.85;
     white-space: pre-line;
+  }
+  .detail-about {
+    margin-top: 22px;
   }
   .hours {
     display: flex;

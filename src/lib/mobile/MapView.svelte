@@ -46,6 +46,8 @@
   let markers: naver.maps.Marker[] = [];
   let mapRevision = $state(0);
   let clusterPlaces = $state<Place[]>([]);
+  // 장소가 없는 시군구도 포함해 강원 18개 시군구 전체를 담는 지도 범위입니다.
+  const gangwonBounds = { south: 36.95, west: 127.0, north: 38.65, east: 129.45 };
   // 지도를 못 불러왔을 때 보여 주는 대체 지도용 아이콘입니다.
   // hospital 은 웹(PC) 전용 분류지만, 값이 비면 마커가 깨지므로 여기도 채워 둡니다.
   const icons = {
@@ -236,7 +238,7 @@
         map = new maps.Map(mapElement, {
           center: new maps.LatLng(region.center.lat, region.center.lng),
           zoom: region.zoom,
-          minZoom: 7,
+          minZoom: 6,
           maxZoom: 20,
           zoomControl: false,
           scaleControl: true,
@@ -404,16 +406,31 @@
     }
   });
 
+  function showRegion() {
+    useMap(() => {
+      if (region.id === 'all') {
+        map.fitBounds(
+          new maps.LatLngBounds(
+            new maps.LatLng(gangwonBounds.south, gangwonBounds.west),
+            new maps.LatLng(gangwonBounds.north, gangwonBounds.east)
+          ),
+          // MapOptions.padding already reserves space for the bottom results sheet.
+          { maxZoom: 9 }
+        );
+      } else {
+        map.setCenter(new maps.LatLng(region.center.lat, region.center.lng));
+        map.setZoom(region.zoom, true);
+      }
+    });
+  }
+
   // 지역을 바꾸면 그 지역으로 옮겨 갑니다. 같은 지역 안에서 지도를 움직인 것은 되돌리지 않아요.
   // 화면에 그리는 값이 아니라 '이미 옮겨 갔는지' 표시라, 반응형으로 두지 않습니다.
   let shownRegion: RegionId | null = null;
   $effect(() => {
     if (!ready || shownRegion === region.id) return;
     shownRegion = region.id;
-    useMap(() => {
-      map.setCenter(new maps.LatLng(region.center.lat, region.center.lng));
-      map.setZoom(region.zoom, true);
-    });
+    showRegion();
   });
 
   $effect(() => {
@@ -819,11 +836,12 @@
     display: none;
   }
   .app-map .map-controls {
-    bottom: 30px;
-  }
-  .app-map .map-controls {
-    bottom: calc(var(--app-nav-height, 64px) + 248px);
-    right: 16px;
+    top: 15px;
+    bottom: auto;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
   }
   .app-map .preview-label {
     bottom: calc(var(--app-nav-height, 64px) + 238px);
@@ -845,7 +863,6 @@
     .app-map .map-controls button:disabled {
       display: none;
     }
-    .app-map .map-controls,
     .app-map .map-message {
       bottom: calc(var(--app-nav-height, 64px) + 210px);
     }

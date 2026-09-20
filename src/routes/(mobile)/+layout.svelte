@@ -3,24 +3,25 @@
   import { page } from '$app/state';
   import { Home, Map, Heart, Stamp, PawPrint, LogIn, CircleCheck, WifiOff } from '@lucide/svelte';
   import { WebStore, setWebStore } from '$lib/web/store.svelte';
-  import WebLoginDialog from '$lib/components/web/WebLoginDialog.svelte';
+  import MobileLoginDialog from '$lib/components/mobile/MobileLoginDialog.svelte';
   import InstallApp from '$lib/components/mobile/InstallApp.svelte';
+  import AppTutorial from '$lib/components/mobile/AppTutorial.svelte';
   import type { LayoutData } from './$types';
   import './mobile.css';
 
   let { data, children }: { data: LayoutData; children: Snippet } = $props();
   const store = setWebStore(untrack(() => new WebStore(data)));
-  let loginDialog: WebLoginDialog;
+  let loginDialog: MobileLoginDialog;
   let offline = $state(false);
   const path = $derived(page.url.pathname.replace(/\/+$/, '') || '/');
   const isTutorial = $derived(path.startsWith('/start'));
   const isMap = $derived(path === '/explore');
   const nav = [
     { href: '/', label: '홈', icon: Home },
-    { href: '/explore', label: '탐색', icon: Map },
-    { href: '/favorites', label: '찜', icon: Heart },
+    { href: '/dog', label: '우리 강아지', icon: PawPrint },
+    { href: '/explore', label: '매장 찾기', icon: Map },
     { href: '/record', label: '댕스탬프', icon: Stamp },
-    { href: '/dog', label: '우리 강아지', icon: PawPrint }
+    { href: '/favorites', label: '찜', icon: Heart }
   ];
   store.requestLogin = () => loginDialog?.open();
   onMount(() => {
@@ -49,8 +50,14 @@
   {#if !isTutorial}
     <header class="mobile-header">
       <a class="mobile-brand" href="/" aria-label="댕브리웨어 홈">
-        <img src="/logo.png" alt="" width="34" height="34" />
-        <span>댕브리웨어<small>함께라서 더 좋은 여행</small></span>
+        <img
+          class="mobile-wordmark"
+          src="/wordmark.png"
+          alt="댕브리웨어"
+          width="393"
+          height="138"
+        />
+        <small>DangveryWhere · 반려견 동반 지도</small>
       </a>
       <div class="mobile-account-area">
         {#if store.loggedIn}
@@ -88,13 +95,14 @@
       {/each}
     </nav>
   {/if}
-  <WebLoginDialog
+  <MobileLoginDialog
     bind:this={loginDialog}
     kakaoEnabled={data.authEnabled}
     returnPath={page.url.pathname + page.url.search}
     onpending={(provider) => store.notify(`${provider} 로그인은 준비 중이에요.`)}
   />
   <InstallApp />
+  <AppTutorial enabled={!isTutorial} />
   {#if store.toast}<div class="mobile-toast" role="status">
       <PawPrint size={17} />{store.toast}
     </div>{/if}

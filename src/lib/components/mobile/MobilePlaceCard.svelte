@@ -29,11 +29,13 @@
       <h3>{place.name}</h3>
       <p><MapPin size={12} />{shortAddress(place)}</p>
       <span class:restricted={!!restriction} class="policy-chip"
-        >{restriction
-          ? `${restriction.dog.name} · 조건 확인`
-          : place.sourceWeight
-            ? `${place.sourceWeight}kg ${place.sourceWeightBound === 'under' ? '미만' : '이하'} 안내`
-            : '동반 규정 확인'}<ChevronRight size={12} /></span
+        >{placeTheme(place) === 'hospital'
+          ? '전화 후 방문'
+          : restriction
+            ? `${restriction.dog.name} · 조건 확인`
+            : place.sourceWeight
+              ? `${place.sourceWeight}kg ${place.sourceWeightBound === 'under' ? '미만' : '이하'} 안내`
+              : '동반 규정 확인'}<ChevronRight size={12} /></span
       >
     </div>
   </button>
@@ -64,19 +66,23 @@
     width: 100%;
   }
   .place-photo {
-    width: 88px;
-    height: 100px;
-    border-radius: 15px;
+    width: 108px;
+    height: 72px;
+    border-radius: 12px;
     overflow: hidden;
     flex-shrink: 0;
     background: var(--sand);
     color: var(--brown-warm);
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .place-photo img {
+    display: block;
     width: 100%;
     height: 100%;
+    min-width: 0;
+    min-height: 0;
     object-fit: contain;
     background: var(--sand);
   }

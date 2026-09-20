@@ -14,11 +14,11 @@
     Info
   } from '@lucide/svelte';
   import MapView from '$lib/mobile/MapView.svelte';
-  import ThemeIcon from '$lib/components/web/ThemeIcon.svelte';
+  import CategoryStrip from '$lib/components/mobile/CategoryStrip.svelte';
   import MobilePlaceCard from '$lib/components/mobile/MobilePlaceCard.svelte';
   import PlaceSheet from '$lib/components/mobile/PlaceSheet.svelte';
   import { getWebStore } from '$lib/web/store.svelte';
-  import { themeNames, placeTheme, type ThemeFilter, type Place } from '$lib/domain/place';
+  import { placeTheme, type ThemeFilter, type Place } from '$lib/domain/place';
   import { photoFirst } from '$lib/domain/placePhoto';
   import { directLinkFirst } from '$lib/domain/placeLink';
   import { providerInfo } from '$lib/domain/region';
@@ -60,6 +60,7 @@
   let openedHere = false;
   let filters: HTMLDialogElement;
   let sources: HTMLDialogElement;
+  let dogPicker = $state<HTMLDetailsElement>();
   $effect(() => {
     const theme = page.state.mobileCategory ?? page.url.searchParams.get('category');
     if (theme && allThemes.includes(theme as ThemeFilter)) store.category = theme as ThemeFilter;
@@ -96,6 +97,7 @@
   }
   async function changeRegion(event: Event) {
     changingRegion = true;
+    expanded = false;
     const url = new URL(window.location.href);
     url.searchParams.set('region', (event.currentTarget as HTMLSelectElement).value);
     url.searchParams.delete('place');
@@ -109,14 +111,24 @@
     store.resetFilters();
     chooseTheme('all');
   }
+  function closeDogPicker(event: PointerEvent) {
+    if (dogPicker?.open && event.target instanceof Node && !dogPicker.contains(event.target))
+      dogPicker.open = false;
+  }
 </script>
 
-<svelte:head><title>{region.label} 장소 탐색 — 댕브리웨어</title></svelte:head>
+<svelte:head><title>매장 찾기 — 댕브리웨어</title></svelte:head>
+<svelte:document
+  onpointerdown={closeDogPicker}
+  onkeydown={(event) => {
+    if (event.key === 'Escape' && dogPicker?.open) dogPicker.open = false;
+  }}
+/>
 <div class="mobile-explore">
   <section class="explore-toolbar" aria-label="장소 검색과 필터">
     <div class="explore-location">
       <label
-        ><MapPin size={16} /><span class="sr-only">탐색 지역</span><select
+        ><MapPin size={16} /><span class="sr-only">매장 찾기 지역</span><select
           value={data.regionId}
           onchange={changeRegion}
           disabled={changingRegion}
@@ -152,33 +164,53 @@
           >{/if}</button
       >
     </form>
-    <div class="explore-themes" aria-label="장소 유형">
-      {#each themes as theme}<button
-          class:active={store.category === theme}
-          aria-pressed={store.category === theme}
-          onclick={() => chooseTheme(theme)}
-          >{#if theme === 'all'}<Map size={15} />{:else}<ThemeIcon
-              {theme}
-              size={16}
-            />{/if}{themeNames[theme]}</button
-        >{/each}
-    </div>
+    <CategoryStrip
+      items={themes.map((id) => ({ id }))}
+      value={store.category}
+      onchange={chooseTheme}
+    />
     <div class="explore-dogs">
-      <button
-        class:active={store.mode === 'dog'}
-        onclick={() => {
-          if (!store.dogs.length) goto('/dog');
-          else {
-            store.mode = store.mode === 'dog' ? 'all' : 'dog';
-            store.hideKnownMismatch = store.mode === 'dog';
-          }
-        }}
-        aria-pressed={store.mode === 'dog'}
-        ><PawPrint size={14} />{store.dog
-          ? `${store.dogNames} 기준`
-          : '우리 강아지 등록'}<ChevronDown size={13} /></button
-      ><span
-        >{changingRegion ? '지역을 불러오는 중…' : `${filtered.length.toLocaleString()}곳`}</span
+      {#if store.dogs.length}
+        <details class="dog-picker" bind:this={dogPicker}>
+          <summary class:active={store.mode === 'dog'}
+            ><PawPrint size={14} /><span>{store.dogNames} 기준</span><ChevronDown
+              size={13}
+            /></summary
+          >
+          <div class="dog-picker-panel">
+            <strong>함께 갈 강아지 <small>최대 2마리</small></strong>
+            {#each store.dogs as dog (dog.id)}
+              <label class="dog-choice">
+                <input
+                  type="checkbox"
+                  checked={store.isActive(dog.id)}
+                  disabled={store.isActive(dog.id) && store.activeDogs.length === 1}
+                  onchange={() => {
+                    store.toggleDog(dog.id);
+                    store.mode = 'dog';
+                    store.hideKnownMismatch = true;
+                  }}
+                />
+                <span>{dog.name}<small>{dog.breed} · {dog.weight}kg</small></span>
+              </label>
+            {/each}
+            <label class="dog-match"
+              ><input
+                type="checkbox"
+                checked={store.mode === 'dog' && store.hideKnownMismatch}
+                onchange={(event) => {
+                  store.hideKnownMismatch = event.currentTarget.checked;
+                  store.mode = event.currentTarget.checked ? 'dog' : 'all';
+                }}
+              />조건 제한 장소 제외</label
+            >
+            <a href="/dog">우리 강아지 관리</a>
+          </div>
+        </details>
+      {:else}<a class="register-inline" href="/dog"
+          ><PawPrint size={14} />우리 강아지 등록<ChevronDown size={13} /></a
+        >{/if}
+      <span>{changingRegion ? '지역을 불러오는 중…' : `${filtered.length.toLocaleString()}곳`}</span
       >
     </div>
   </section>
@@ -222,8 +254,8 @@
         {:else}<div class="mobile-empty">
             <Search size={28} />
             <h2>조건에 맞는 장소가 없어요</h2>
-            <p>검색어나 지역, 필터를 바꿔보세요.</p>
-            <button class="secondary-button" onclick={reset}>검색·필터 초기화</button>
+            <p>검색어나 필터를 바꿔보세요.</p>
+            <button class="secondary-button" onclick={reset}>전체 장소 보기</button>
           </div>{/if}
       </div>
     </section>
@@ -238,8 +270,8 @@
   <button class="mobile-close" onclick={() => filters.close()} aria-label="필터 닫기"
     ><X size={23} /></button
   >
-  <h2 id="mobile-filter-title">우리에게 맞는 장소</h2>
-  <p>알려진 동반 규정을 기준으로 골라요.</p>
+  <h2 id="mobile-filter-title">동반 조건 필터</h2>
+  <p>방문 전 동반 규정을 확인해 보세요.</p>
   {#if store.dogs.length}<fieldset>
       <legend>함께 갈 강아지 <small>최대 2마리</small></legend>
       <div class="filter-dogs">
@@ -254,7 +286,9 @@
       >우리 강아지 등록하기<ChevronUp size={14} /></a
     >{/if}
   <label class="filter-option"
-    ><span><strong>체중 정보가 있는 곳</strong><small>원본에 제한 체중이 기재된 장소만</small></span
+    ><span
+      ><strong>제한 체중이 기재된 장소만</strong><small>원본의 체중 정보를 기준으로 골라요</small
+      ></span
     ><input type="checkbox" bind:checked={store.weightInfoOnly} /></label
   >
   <label class="filter-option"
@@ -275,7 +309,7 @@
     /></label
   >
   <p class="filter-note">
-    정보가 없는 곳은 입장 가능을 뜻하지 않아요. 방문 전 상세 규정을 확인해 주세요.
+    필터 결과도 방문 가능을 보장하지 않아요. 허용 구역과 준비물을 함께 확인해 주세요.
   </p>
   <div class="filter-actions">
     <button class="secondary-button" onclick={reset}>초기화</button><button
@@ -288,7 +322,7 @@
   <button class="mobile-close" onclick={() => sources.close()} aria-label="데이터 안내 닫기"
     ><X size={23} /></button
   >
-  <h2 id="mobile-source-title">장소 정보 안내</h2>
+  <h2 id="mobile-source-title">어떤 정보를 보여주나요?</h2>
   <p class="mobile-page-lead">
     {region.label}의 공공데이터를 모았어요. 원문을 옮긴 정보로, 시설의 현재 운영 여부와 규정을 방문
     전에 확인해 주세요.
@@ -386,50 +420,99 @@
     font-size: 9px;
     padding: 1px 4px;
   }
-  .explore-themes {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 12px 0 7px;
-  }
-  .explore-themes button {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-    padding: 9px 12px;
-    font-size: 12px;
-    border: 1px solid var(--line);
-    background: white;
-    border-radius: 22px;
-    min-height: 38px;
-  }
-  .explore-themes button.active {
-    color: white;
-    background: var(--brand);
-    border-color: var(--brand);
-  }
   .explore-dogs {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
   }
-  .explore-dogs button {
+  .dog-picker summary,
+  .register-inline {
     display: flex;
     gap: 5px;
     align-items: center;
     border: 0;
     background: none;
-    padding: 7px 0;
+    padding: 8px 0;
     color: var(--muted);
     font-size: 11px;
-    max-width: 80%;
+    min-height: 36px;
+    cursor: pointer;
+    text-decoration: none;
+    list-style: none;
   }
-  .explore-dogs button.active {
+  .dog-picker summary.active {
     color: var(--brand-deep);
     font-weight: 700;
+  }
+  .dog-picker {
+    position: relative;
+    max-width: calc(100% - 65px);
+  }
+  .dog-picker summary::-webkit-details-marker {
+    display: none;
+  }
+  .dog-picker summary > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dog-picker summary :global(svg) {
+    flex-shrink: 0;
+  }
+  .dog-picker-panel {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0;
+    width: min(300px, calc(100vw - 40px));
+    padding: 17px;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 10px 28px #49342120;
+    z-index: 20;
+  }
+  .dog-picker-panel > strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 9px;
+  }
+  .dog-picker-panel small {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .dog-choice {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 13px;
+  }
+  .dog-choice small {
+    display: block;
+    margin-top: 4px;
+  }
+  .dog-picker-panel input {
+    accent-color: var(--brand);
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+  }
+  .dog-match {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-top: 1px solid var(--line);
+    padding-top: 13px;
+    margin-top: 7px;
+    font-size: 12px;
+  }
+  .dog-picker-panel > a {
+    display: inline-block;
+    color: var(--brand);
+    font-size: 11px;
+    padding: 13px 0 0;
   }
   .explore-dogs > span {
     font-size: 11px;

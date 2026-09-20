@@ -233,7 +233,7 @@
 
   onMount(() => {
     // 이미 마친 브라우저라면 바로 지도로. ?replay 를 붙이면 다시 볼 수 있어요.
-    if (isTutorialDone() && !page.url.searchParams.has('replay'))
+    if (store.dogs.length && isTutorialDone() && !page.url.searchParams.has('replay'))
       goto(AFTER_TUTORIAL_PATH, { replaceState: true });
   });
 
